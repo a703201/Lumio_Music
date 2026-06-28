@@ -1,8 +1,3 @@
-@Builder
-export function AboutBuilder() {
-  About()
-}
-
 @Entry
 @Component
 struct About {
@@ -59,7 +54,7 @@ struct About {
       .layoutWeight(1)
       .scrollBar(BarState.Off)
       .backgroundColor(Color.White)
-      .padding({ top: 16 })
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     }
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;

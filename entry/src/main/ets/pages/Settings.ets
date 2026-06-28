@@ -1,10 +1,5 @@
 import { MusicStore } from '../services/MusicStore';
 
-@Builder
-export function SettingsBuilder() {
-  Settings()
-}
-
 @Entry
 @Component
 struct Settings {
@@ -152,7 +147,7 @@ struct Settings {
       .width('100%')
       .height('100%')
       .backgroundColor(Color.White)
-      .padding({ top: 16 })
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     }
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;
