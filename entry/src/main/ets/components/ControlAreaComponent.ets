@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Prompt, router } from '@kit.ArkUI';
+import { Prompt } from '@kit.ArkUI';
 import { AudioRendererController } from '../utils/AudioRendererController';
 import { AVSessionController } from '../utils/AVSessionController';
 import { Logger } from '../utils/Logger';
@@ -42,6 +42,9 @@ export struct ControlAreaComponent {
   @StorageLink('songList') songList: SongItem[] = [];
   @State isShowPlayList: boolean = false;
   @StorageLink('playMode') playMode: MusicPlayMode = PlayModeSwitchList[this.playModeIndex];
+  @State prevScale: number = 1.0;
+  @State playBtnScale: number = 1.0;
+  @State nextScale: number = 1.0;
   @StorageLink('selectIndex') selectIndex: number = 0;
   @StorageLink('isFavorite') isFavorite: boolean = false;
   @StorageLink('isSilentMode') isSilentMode: boolean = false;
@@ -126,7 +129,10 @@ export struct ControlAreaComponent {
           }).getValue(this.currentBreakpoint))
           .onClick(() => {
             AVSessionController.getInstance().updateFavoriteState(this.selectIndex.toString(), this.isFavorite)
-            router.pushUrl({ url: 'pages/Favorites' });
+            const navPathStack = AppStorage.get<NavPathStack>('navPathStack');
+            if (navPathStack) {
+              navPathStack.pushPathByName('Favorites', null);
+            }
           })
       }
       .width(StyleConstants.FULL_WIDTH)
@@ -188,9 +194,18 @@ export struct ControlAreaComponent {
           .controlImageBuilder()
           .width(this.currentBreakpoint === BreakpointConstants.BREAKPOINT_LG ?
           $r('app.float.control_width_lg') : $r('app.float.control_width'))
+          .scale({ x: this.prevScale, y: this.prevScale })
+          .animation({ duration: 120, curve: Curve.EaseOut })
           .onClick(() => {
             AudioRendererController.getInstance().playPrevious();
             this.pageShowTime = 0;
+          })
+          .onTouch((event: TouchEvent) => {
+            if (event.type === TouchType.Down) {
+              this.prevScale = 0.75;
+            } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+              this.prevScale = 1.0;
+            }
           })
         Image(this.isPlay ? $r('app.media.ic_public_play') : $r('app.media.ic_public_pause'))
           .controlImageBuilder()
@@ -199,6 +214,8 @@ export struct ControlAreaComponent {
             md: $r('app.float.image_play_width'),
             lg: $r('app.float.image_play_width_lg')
           }).getValue(this.currentBreakpoint))
+          .scale({ x: this.playBtnScale, y: this.playBtnScale })
+          .animation({ duration: 120, curve: Curve.EaseOut })
           .onClick(() => {
             if (this.isPlay) {
               AudioRendererController.getInstance().pause();
@@ -211,13 +228,29 @@ export struct ControlAreaComponent {
             }
             this.pageShowTime = 0;
           })
+          .onTouch((event: TouchEvent) => {
+            if (event.type === TouchType.Down) {
+              this.playBtnScale = 0.85;
+            } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+              this.playBtnScale = 1.0;
+            }
+          })
         Image($r('app.media.ic_public_next'))
           .controlImageBuilder()
           .width(this.currentBreakpoint === BreakpointConstants.BREAKPOINT_LG ?
           $r('app.float.control_width_lg') : $r('app.float.control_width'))
+          .scale({ x: this.nextScale, y: this.nextScale })
+          .animation({ duration: 120, curve: Curve.EaseOut })
           .onClick(() => {
             AudioRendererController.getInstance().playNext();
             this.pageShowTime = 0;
+          })
+          .onTouch((event: TouchEvent) => {
+            if (event.type === TouchType.Down) {
+              this.nextScale = 0.75;
+            } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+              this.nextScale = 1.0;
+            }
           })
       }
       .width(StyleConstants.FULL_WIDTH)
@@ -324,7 +357,7 @@ struct MusicListContainer {
             }).getValue(this.currentBreakpoint))
             .margin({ bottom: $r('app.float.list_item_title_margin') })
           Row() {
-            Image(this.item!.mark)
+            Image(this.item!.getMark())
               .width($r('app.float.list_item_image_size'))
               .height($r('app.float.list_item_image_size'))
               .margin({ right: $r('app.float.list_item_image_margin') })

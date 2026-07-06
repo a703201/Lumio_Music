@@ -1,6 +1,5 @@
 import { SongItem } from '../models/music';
 import fs from '@ohos.file.fs';
-import { BusinessError } from '@kit.BasicServicesKit';
 
 const AUDIO_EXTENSIONS: string[] = ['.mp3', '.m4a', '.flac', '.wav', '.ogg', '.aac', '.amr', '.webm'];
 
@@ -13,44 +12,34 @@ interface FileInfo {
 
 export async function scanLocalMusic(context: Context): Promise<SongItem[]> {
   const songList: SongItem[] = [];
-  const scannedPaths: Set<string> = new Set();
 
-  try {
-    const cacheDir: string = context.cacheDir;
-    const filesDir: string = context.filesDir;
+  const cacheDir: string = context.cacheDir;
+  const filesDir: string = context.filesDir;
 
-    const musicDirs: string[] = [
-      '/data/storage/el2/base/haps/entry/files',
-      filesDir,
-      cacheDir
-    ];
+  const musicDirs: string[] = [
+    filesDir,
+    cacheDir
+  ];
 
-    for (const dir of musicDirs) {
-      if (!dir || scannedPaths.has(dir)) continue;
-      scannedPaths.add(dir);
-
-      try {
-        const files: FileInfo[] = await scanDirectory(dir);
-        for (const file of files) {
-          const ext: string = getFileExtension(file.name).toLowerCase();
-          if (AUDIO_EXTENSIONS.includes(ext)) {
-            songList.push({
-              id: generateId(file.path),
-              title: removeExtension(file.name),
-              artist: '未知艺术家',
-              album: '未知专辑',
-              duration: 0,
-              uri: file.path,
-              dateAdded: file.lastModified
-            });
-          }
+  for (const dir of musicDirs) {
+    if (!dir) continue;
+    try {
+      const files: FileInfo[] = await scanDirectory(dir);
+      for (const file of files) {
+        const ext: string = getFileExtension(file.name).toLowerCase();
+        if (AUDIO_EXTENSIONS.includes(ext)) {
+          const song = new SongItem();
+          song.id = generateId(file.path);
+          song.title = removeExtension(file.name);
+          song.singer = '未知艺术家';
+          song.src = file.path;
+          song.index = songList.length;
+          songList.push(song);
         }
-      } catch (e) {
-        console.warn(`Cannot scan directory: ${dir}`);
       }
+    } catch (e) {
+      console.warn(`Cannot scan directory: ${dir}`);
     }
-  } catch (err) {
-    console.error(`scanLocalMusic failed: code=${err.code}, message=${err.message}`);
   }
 
   return songList;
@@ -99,12 +88,12 @@ function removeExtension(filename: string): string {
   return filename.substring(0, lastDot);
 }
 
-function generateId(path: string): string {
+function generateId(path: string): number {
   let hash: number = 0;
   for (let i = 0; i < path.length; i++) {
     const char: number = path.charCodeAt(i);
     hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
+    hash = hash & hash;
   }
-  return Math.abs(hash).toString();
+  return Math.abs(hash);
 }

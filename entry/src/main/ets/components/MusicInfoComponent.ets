@@ -63,7 +63,7 @@ export struct MusicInfoComponent {
   @Builder
   CoverInfo() {
     Row() {
-      Image(this.songList[this.selectIndex].label)
+      Image(this.songList[this.selectIndex].getLabel())
         .width(StyleConstants.FULL_WIDTH)
         .aspectRatio(1)
         .borderRadius($r('app.float.cover_radius_label'))

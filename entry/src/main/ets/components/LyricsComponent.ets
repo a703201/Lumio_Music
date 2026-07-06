@@ -75,7 +75,7 @@ export struct LyricsComponent {
       if (this.currentBreakpoint === BreakpointConstants.BREAKPOINT_SM) {
         Row() {
           if (!this.isTablet) {
-            Image(this.songList[this.selectIndex].label)
+            Image(this.songList[this.selectIndex].getLabel())
               .width(this.currentBreakpoint === BreakpointConstants.BREAKPOINT_SM ?
               $r('app.float.label_width_sm') : $r('app.float.label_width'))
               .borderRadius($r('app.float.label_border'))

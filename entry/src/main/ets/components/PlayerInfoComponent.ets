@@ -37,7 +37,7 @@ export struct PlayerInfoComponent {
   @StorageLink('imageColor') imageColor: string = 'rgba(0, 0, 2, 1.00)';
   @StorageLink('topHeight') topHeight: number = 0;
   @StorageLink('bottomHeight') bottomHeight: number = 0;
-  @State imageLabel: PixelMap | Resource = this.songList[this.selectIndex].label;
+  @State imageLabel: PixelMap | Resource = this.songList[this.selectIndex].getLabel();
   @State isShowControl: boolean = true;
   @State isShowControlLg: boolean = false;
   @State isTablet: boolean = true;
@@ -152,7 +152,7 @@ export struct PlayerInfoComponent {
                 offset: { lg: BreakpointConstants.OFFSET_MD }
               }) {
                 Column() {
-                  Image(this.songList[this.selectIndex].label)
+                  Image(this.songList[this.selectIndex].getLabel())
                     .width(StyleConstants.FULL_WIDTH)
                     .aspectRatio(1)
                     .borderRadius($r('app.float.cover_radius'))
@@ -254,7 +254,7 @@ export struct PlayerInfoComponent {
     }
     const currentSong = this.songList[this.selectIndex];
     ColorConversion.setSysBarLightBackground(currentSong.isDarkBackground);
-    const songLabel = currentSong.label;
+    const songLabel = currentSong.getLabel();
     if (!songLabel) {
       return;
     }

@@ -1,28 +1,40 @@
 import { SongItem } from '../models/music';
 import { MusicStore } from '../services/MusicStore';
-@Entry
+
 @Component
 export struct Find {
-  @StorageLink('navPathStack') pathStack: NavPathStack = new NavPathStack();
+  @Consume('navPathStack') pathStack: NavPathStack;
   store: MusicStore = MusicStore.getInstance();
 
+  @State cardScales: number[] = [];
+  @State emptyIconScale: number = 1.0;
+
+  aboutToAppear(): void {
+    this.updateCardScales();
+    setInterval(() => {
+      if (this.store.recentlyPlayed.length === 0 && this.store.songs.length === 0) {
+        this.emptyIconScale = this.emptyIconScale === 1.0 ? 1.08 : 1.0;
+      }
+    }, 2000);
+  }
+
+  updateCardScales(): void {
+    const total = this.store.recentlyPlayed.length + this.store.songs.length;
+    this.cardScales = [];
+    for (let i = 0; i < total; i++) {
+      this.cardScales.push(1.0);
+    }
+  }
+
   @Builder
-  buildSongCard(song: SongItem) {
+  buildSongCard(song: SongItem, globalIndex: number) {
     Row() {
       Stack() {
-        if (song.coverUri) {
-          Image(song.coverUri)
-            .width(56)
-            .height(56)
-            .borderRadius(8)
-            .clip(true)
-        } else {
-          Image($r('app.media.ic_cd'))
-            .width(56)
-            .height(56)
-            .borderRadius(8)
-            .clip(true)
-        }
+        Image(song.getMark())
+          .width(56)
+          .height(56)
+          .borderRadius(8)
+          .clip(true)
       }
 
       Column() {
@@ -34,7 +46,7 @@ export struct Find {
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
 
-        Text(song.artist)
+        Text(song.singer)
           .fontSize(13)
           .fontColor('#8E8E93')
           .maxLines(1)
@@ -50,11 +62,27 @@ export struct Find {
     .backgroundColor('#F2F2F7')
     .borderRadius(12)
     .margin({ bottom: 8 })
+    .scale({ x: this.cardScales[globalIndex] ?? 1.0, y: this.cardScales[globalIndex] ?? 1.0 })
+    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 30 })))
+    .animation({ duration: 300, curve: Curve.EaseOut, delay: globalIndex * 50 })
     .onClick(() => {
       const index: number = this.store.songs.findIndex(s => s.id === song.id);
       if (index >= 0) {
         this.store.currentIndex = index;
-        this.pathStack.pushPathByName('PlayerPage', null, false);
+        AppStorage.setOrCreate('selectIndex', index);
+        AppStorage.setOrCreate('songList', this.store.songs);
+        this.pathStack.pushPathByName('PlayerPage', null);
+      }
+    })
+    .onTouch((event: TouchEvent) => {
+      if (event.type === TouchType.Down) {
+        let scales = [...this.cardScales];
+        scales[globalIndex] = 0.96;
+        this.cardScales = scales;
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        let scales = [...this.cardScales];
+        scales[globalIndex] = 1.0;
+        this.cardScales = scales;
       }
     })
   }
@@ -66,6 +94,8 @@ export struct Find {
         .fontWeight(FontWeight.Bold)
         .fontColor('#1C1C1E')
         .margin({ bottom: 20, left: 16, right: 16 })
+        .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: -20 })))
+        .animation({ duration: 400, curve: Curve.EaseOut })
 
       Scroll() {
         Column() {
@@ -77,9 +107,9 @@ export struct Find {
               .margin({ bottom: 12, left: 16, right: 16 })
 
             List() {
-              ForEach(this.store.recentlyPlayed, (song: SongItem) => {
+              ForEach(this.store.recentlyPlayed, (song: SongItem, index: number) => {
                 ListItem() {
-                  this.buildSongCard(song)
+                  this.buildSongCard(song, index)
                 }
               })
             }
@@ -96,9 +126,9 @@ export struct Find {
               .margin({ top: 20, bottom: 12, left: 16, right: 16 })
 
             List() {
-              ForEach(this.store.songs, (song: SongItem) => {
+              ForEach(this.store.songs, (song: SongItem, index: number) => {
                 ListItem() {
-                  this.buildSongCard(song)
+                  this.buildSongCard(song, this.store.recentlyPlayed.length + index)
                 }
               })
             }
@@ -113,6 +143,8 @@ export struct Find {
                 .width(64)
                 .fillColor('#8E8E93')
                 .margin({ bottom: 16 })
+                .scale({ x: this.emptyIconScale, y: this.emptyIconScale })
+                .animation({ duration: 2000, curve: Curve.EaseInOut })
 
               Text('暂无内容')
                 .fontSize(15)
