@@ -1,7 +1,14 @@
 import { SongItem } from '../models/music';
 import { RepeatMode, Playlist } from '../models/music';
 import dataPreferences from '@ohos.data.preferences';
-import { BusinessError } from '@kit.BasicServicesKit';
+
+interface SongData {
+  id: number;
+  title: string;
+  singer: string;
+  src: string;
+  index: number;
+}
 
 const PREF_NAME = 'music_store';
 const KEY_SONGS = 'songs';
@@ -20,7 +27,7 @@ export class MusicStore {
   public currentIndex: number = 0;
   public isPlaying: boolean = false;
   public repeatMode: RepeatMode = 'list';
-  public favorites: Set<string> = new Set();
+  public favorites: Set<number> = new Set();
   public playlists: Playlist[] = [];
   public recentlyPlayed: SongItem[] = [];
 
@@ -62,7 +69,7 @@ export class MusicStore {
     this.saveRepeatMode();
   }
 
-  toggleFavorite(songId: string) {
+  toggleFavorite(songId: number) {
     if (this.favorites.has(songId)) {
       this.favorites.delete(songId);
     } else {
@@ -71,11 +78,11 @@ export class MusicStore {
     this.saveFavorites();
   }
 
-  isFavorite(songId: string): boolean {
+  isFavorite(songId: number): boolean {
     return this.favorites.has(songId);
   }
 
-  addPlaylist(name: string, songIds: string[]): Playlist {
+  addPlaylist(name: string, songIds: number[]): Playlist {
     const playlist: Playlist = {
       id: Date.now().toString(),
       name: name,
@@ -112,7 +119,7 @@ export class MusicStore {
     return this.songs.filter(s => this.favorites.has(s.id));
   }
 
-  removeSong(songId: string) {
+  removeSong(songId: number) {
     this.songs = this.songs.filter(s => s.id !== songId);
     this.playList = this.playList.filter(s => s.id !== songId);
     this.favorites.delete(songId);
@@ -126,15 +133,33 @@ export class MusicStore {
     if (!this.preferences) return;
     try {
       const songsStr = await this.preferences.get(KEY_SONGS, '[]') as string;
-      this.songs = JSON.parse(songsStr) as SongItem[];
+      const songsData = JSON.parse(songsStr) as SongData[];
+      this.songs = songsData.map((data) => {
+        const song = new SongItem();
+        song.id = data.id;
+        song.title = data.title;
+        song.singer = data.singer;
+        song.src = data.src;
+        song.index = data.index;
+        return song;
+      });
       this.playList = [...this.songs];
 
       const favStr = await this.preferences.get(KEY_FAVORITES, '[]') as string;
-      const favArr = JSON.parse(favStr) as string[];
+      const favArr = JSON.parse(favStr) as number[];
       this.favorites = new Set(favArr);
 
       const recentStr = await this.preferences.get(KEY_RECENTLY_PLAYED, '[]') as string;
-      this.recentlyPlayed = JSON.parse(recentStr) as SongItem[];
+      const recentData = JSON.parse(recentStr) as SongData[];
+      this.recentlyPlayed = recentData.map((data) => {
+        const song = new SongItem();
+        song.id = data.id;
+        song.title = data.title;
+        song.singer = data.singer;
+        song.src = data.src;
+        song.index = data.index;
+        return song;
+      });
 
       const playlistStr = await this.preferences.get(KEY_PLAYLISTS, '[]') as string;
       this.playlists = JSON.parse(playlistStr) as Playlist[];

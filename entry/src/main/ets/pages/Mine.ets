@@ -1,19 +1,81 @@
 import { MusicStore } from '../services/MusicStore';
 
-@Entry
 @Component
 export struct Mine {
-  @StorageLink('navPathStack') pathStack: NavPathStack = new NavPathStack();
+  @Consume('navPathStack') pathStack: NavPathStack;
   store: MusicStore = MusicStore.getInstance();
+  @StorageProp('topHeight') topHeight: number = 0;
+
+  @State avatarScale: number = 0.8;
+  @State avatarOpacity: number = 0;
+  @State avatarStrokeWidth: number = 2;
+  @State avatarRotation: number = 0;
+  @State menuScales: number[] = [1.0, 1.0, 1.0, 1.0, 1.0];
+  @State statsCount: number[] = [0, 0, 0];
+  private breatheInterval: number = -1;
+  private rotateInterval: number = -1;
+
+  aboutToAppear(): void {
+    setTimeout(() => {
+      this.avatarScale = 1.0;
+      this.avatarOpacity = 1.0;
+    }, 100);
+    this.breatheInterval = setInterval(() => {
+      if (this.avatarStrokeWidth === 2) {
+        this.avatarStrokeWidth = 4;
+      } else {
+        this.avatarStrokeWidth = 2;
+      }
+    }, 2000);
+    // Stats count animation
+    const targetFav = this.store.getFavoriteSongs().length;
+    const targetSongs = this.store.songs.length;
+    const targetRecent = this.store.recentlyPlayed.length;
+    let step = 0;
+    const countInterval = setInterval(() => {
+      step++;
+      this.statsCount = [
+        Math.min(step * 2, targetFav),
+        Math.min(step * 3, targetSongs),
+        Math.min(step * 2, targetRecent)
+      ];
+      if (step >= Math.max(targetFav, targetSongs, targetRecent) / 3 + 1) {
+        clearInterval(countInterval);
+        this.statsCount = [targetFav, targetSongs, targetRecent];
+      }
+    }, 30);
+  }
+
+  aboutToDisappear(): void {
+    if (this.breatheInterval >= 0) {
+      clearInterval(this.breatheInterval);
+    }
+    if (this.rotateInterval >= 0) {
+      clearInterval(this.rotateInterval);
+    }
+  }
 
   @Builder
-  buildMenuItem(icon: ResourceStr, title: string, subtitle: string = '', showArrow: boolean = true, onClick: () => void = () => {}) {
+  buildMenuItem(icon: ResourceStr, title: string, subtitle: string = '', showArrow: boolean = true, index: number = 0, iconColor: string = '#1C1C1E', onClick: () => void = () => {}) {
     Row() {
-      Image(icon)
-        .width(24)
-        .height(24)
-        .fillColor('#1C1C1E')
-        .margin({ right: 14 })
+      // Icon container
+      Stack() {
+        Image(icon)
+          .width(20)
+          .height(20)
+          .fillColor(Color.White)
+      }
+      .width(36)
+      .height(36)
+      .borderRadius(10)
+      .backgroundColor(iconColor)
+      .margin({ right: 14 })
+      .shadow({
+        radius: 6,
+        color: `${iconColor}33`,
+        offsetX: 0,
+        offsetY: 2
+      })
 
       Column() {
         Text(title)
@@ -35,58 +97,137 @@ export struct Mine {
         Image($r('app.media.ic_more'))
           .width(16)
           .height(16)
-          .fillColor('#636366')
+          .fillColor('#C7C7CC')
       }
     }
     .width('100%')
-    .height(56)
+    .height(60)
     .padding({ left: 16, right: 16 })
     .backgroundColor('#F2F2F7')
-    .borderRadius(12)
+    .borderRadius(14)
     .margin({ bottom: 8 })
+    .scale({ x: this.menuScales[index] ?? 1.0, y: this.menuScales[index] ?? 1.0 })
+    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 20 })))
+    .animation({ duration: 300, curve: Curve.EaseOut, delay: 200 + index * 60 })
     .onClick(onClick)
+    .onTouch((event: TouchEvent) => {
+      if (event.type === TouchType.Down) {
+        let scales = [...this.menuScales];
+        scales[index] = 0.96;
+        this.menuScales = scales;
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        let scales = [...this.menuScales];
+        scales[index] = 1.0;
+        this.menuScales = scales;
+      }
+    })
   }
 
   build() {
     Column() {
+      // Header section with gradient
       Column() {
         Stack({ alignContent: Alignment.Center }) {
+          // Outer ring
+          Circle()
+            .width(96)
+            .height(96)
+            .fill(Color.Transparent)
+            .stroke('#FA2759')
+            .strokeWidth(this.avatarStrokeWidth)
+            .animation({ duration: 1000, curve: Curve.EaseInOut })
+
+          // Inner circle
           Circle()
             .width(80)
             .height(80)
             .fill('#E5E5EA')
-            .stroke('#FA2759')
-            .strokeWidth(2)
 
           Image($r('app.media.ic_mine'))
             .width(40)
             .height(40)
             .fillColor('#FA2759')
         }
-        .margin({ bottom: 12 })
+        .margin({ bottom: 16 })
+        .scale({ x: this.avatarScale, y: this.avatarScale })
+        .opacity(this.avatarOpacity)
+        .animation({
+          duration: 500,
+          curve: Curve.EaseOut,
+        })
 
         Text('本地音乐用户')
-          .fontSize(20)
+          .fontSize(22)
           .fontWeight(FontWeight.Bold)
           .fontColor('#1C1C1E')
-          .margin({ bottom: 4 })
+          .margin({ bottom: 6 })
+          .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 10 })))
+          .animation({ duration: 400, curve: Curve.EaseOut, delay: 150 })
 
-        Text(`已收藏 ${this.store.getFavoriteSongs().length} 首 · 共 ${this.store.songs.length} 首歌曲`)
+        Text(`已收藏 ${this.statsCount[0]} 首 · 共 ${this.statsCount[1]} 首歌曲`)
           .fontSize(14)
           .fontColor('#8E8E93')
+          .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 10 })))
+          .animation({ duration: 400, curve: Curve.EaseOut, delay: 200 })
       }
       .width('100%')
-      .padding({ top: 40, bottom: 30 })
+      .padding({ top: this.topHeight + 32, bottom: 24 })
       .justifyContent(FlexAlign.Center)
+      .backgroundColor('#FAFAFA')
 
+      // Quick stats
+      Row() {
+        Column() {
+          Text(`${this.statsCount[1]}`)
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FA2759')
+          Text('歌曲')
+            .fontSize(11)
+            .fontColor('#8E8E93')
+            .margin({ top: 2 })
+        }
+        .layoutWeight(1)
+
+        Column() {
+          Text(`${this.statsCount[0]}`)
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#34C759')
+          Text('收藏')
+            .fontSize(11)
+            .fontColor('#8E8E93')
+            .margin({ top: 2 })
+        }
+        .layoutWeight(1)
+
+        Column() {
+          Text(`${this.statsCount[2]}`)
+            .fontSize(20)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FF9500')
+          Text('历史')
+            .fontSize(11)
+            .fontColor('#8E8E93')
+            .margin({ top: 2 })
+        }
+        .layoutWeight(1)
+      }
+      .width('100%')
+      .padding({ left: 32, right: 32, top: 20, bottom: 20 })
+      .backgroundColor('#FAFAFA')
+
+      // Menu section
       Column() {
         this.buildMenuItem(
           $r('app.media.ic_favorite'),
           '我的收藏',
           `${this.store.getFavoriteSongs().length} 首歌曲`,
           true,
+          0,
+          '#FA2759',
           () => {
-            this.pathStack.pushPathByName('Favorites', null, false);
+            this.pathStack.pushPathByName('Favorites', null);
           }
         )
 
@@ -95,8 +236,10 @@ export struct Mine {
           '播放历史',
           `${this.store.recentlyPlayed.length} 首歌曲`,
           true,
+          1,
+          '#FF9500',
           () => {
-            this.pathStack.pushPathByName('PlayHistory', null, false);
+            this.pathStack.pushPathByName('PlayHistory', null);
           }
         )
 
@@ -105,14 +248,17 @@ export struct Mine {
           '本地音乐库',
           `${this.store.songs.length} 首歌曲`,
           true,
+          2,
+          '#34C759',
           () => {
-            this.pathStack.pushPathByName('LocalLibrary', null, false);
+            this.pathStack.pushPathByName('LocalLibrary', null);
           }
         )
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 8 })
 
+      // Section header
       Text('更多')
         .fontSize(13)
         .fontColor('#8E8E93')
@@ -126,18 +272,22 @@ export struct Mine {
           '设置',
           '',
           true,
+          3,
+          '#8E8E93',
           () => {
-            this.pathStack.pushPathByName('Settings', null, false);
+            this.pathStack.pushPathByName('Settings', null);
           }
         )
 
         this.buildMenuItem(
           $r('app.media.ic_logo'),
           '关于',
-          'HM_Music v1.1.0',
+          'HM_Music v2.0',
           true,
+          4,
+          '#5856D6',
           () => {
-            this.pathStack.pushPathByName('About', null, false);
+            this.pathStack.pushPathByName('About', null);
           }
         )
       }

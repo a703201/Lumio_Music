@@ -2,25 +2,50 @@ import { SongItem } from '../models/music';
 import { MusicStore } from '../services/MusicStore';
 import { scanLocalMusic } from '../services/MusicScanner';
 import { picker } from '@kit.CoreFileKit';
-import { router } from '@kit.ArkUI';
 import fs from '@ohos.file.fs';
 import { common } from '@kit.AbilityKit';
 
-interface MenuItem {
-  value: string;
-  action: () => void;
-}
-@Entry
 @Component
 export struct Songs {
+  @Consume('navPathStack') pathStack: NavPathStack;
   store: MusicStore = MusicStore.getInstance();
+  @StorageProp('topHeight') topHeight: number = 0;
   @State searchText: string = '';
   @State filteredSongs: SongItem[] = [];
   @State isLoading: boolean = false;
   @State isScanning: boolean = false;
+  @State itemScales: number[] = [];
+  @State importScale: number = 1.0;
+  @State emptyIconScale: number = 1.0;
+  @State scanProgress: number = 0;
+  @State playingIndex: number = -1;
+  private playingPulse: number = -1;
 
   aboutToAppear(): void {
     this.filteredSongs = [...this.store.songs];
+    this.itemScales = this.filteredSongs.map(() => 1.0);
+    this.startEmptyPulse();
+    this.startPlayingPulse();
+  }
+
+  aboutToDisappear(): void {
+    if (this.playingPulse >= 0) {
+      clearInterval(this.playingPulse);
+    }
+  }
+
+  startEmptyPulse(): void {
+    setInterval(() => {
+      if (this.filteredSongs.length === 0 && !this.isLoading) {
+        this.emptyIconScale = this.emptyIconScale === 1.0 ? 1.08 : 1.0;
+      }
+    }, 2000);
+  }
+
+  startPlayingPulse(): void {
+    this.playingPulse = setInterval(() => {
+      this.playingIndex = this.store.isPlaying ? this.store.currentIndex : -1;
+    }, 500);
   }
 
   onSearchChange(text: string): void {
@@ -30,25 +55,37 @@ export struct Songs {
     } else {
       this.filteredSongs = this.store.songs.filter(song =>
         song.title.includes(text) ||
-        song.artist.includes(text) ||
-        song.album.includes(text)
+        song.singer.includes(text)
       );
     }
+    this.itemScales = this.filteredSongs.map(() => 1.0);
   }
 
   async onScanMusic(): Promise<void> {
     this.isScanning = true;
     this.isLoading = true;
+    this.scanProgress = 0;
     try {
       const context = AppStorage.get<common.UIAbilityContext>('context') as common.UIAbilityContext;
+      const interval = setInterval(() => {
+        if (this.scanProgress < 90) {
+          this.scanProgress += 5;
+        }
+      }, 100);
       const songs: SongItem[] = await scanLocalMusic(context);
+      clearInterval(interval);
+      this.scanProgress = 100;
       this.store.setSongs(songs);
       this.filteredSongs = [...this.store.songs];
+      this.itemScales = this.filteredSongs.map(() => 1.0);
     } catch (err) {
       console.error('Scan failed');
     } finally {
-      this.isScanning = false;
-      this.isLoading = false;
+      setTimeout(() => {
+        this.isScanning = false;
+        this.isLoading = false;
+        this.scanProgress = 0;
+      }, 300);
     }
   }
 
@@ -69,7 +106,7 @@ export struct Songs {
         }
         const newSongs: SongItem[] = [];
         for (const uri of result) {
-          const existingIndex = this.store.songs.findIndex(s => s.uri === uri);
+          const existingIndex = this.store.songs.findIndex(s => s.src === uri);
           if (existingIndex < 0) {
             const fileName = decodeURIComponent(uri.substring(uri.lastIndexOf('/') + 1));
             const title = fileName.includes('.') ? fileName.substring(0, fileName.lastIndexOf('.')) : fileName;
@@ -77,36 +114,32 @@ export struct Songs {
             try {
               const srcFile = fs.openSync(uri, fs.OpenMode.READ_ONLY);
               const destFile = fs.openSync(destPath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
-              const stat = fs.statSync(srcFile.fd);
               fs.copyFileSync(srcFile.fd, destFile.fd);
               fs.closeSync(srcFile.fd);
               fs.closeSync(destFile.fd);
-              newSongs.push({
-                id: Math.abs(hashCode(destPath)).toString(),
-                title: title,
-                artist: '未知艺术家',
-                album: '未知专辑',
-                duration: 0,
-                uri: destPath,
-                dateAdded: Date.now()
-              });
+              const song = new SongItem();
+              song.id = Math.abs(hashCode(destPath));
+              song.title = title;
+              song.singer = '未知艺术家';
+              song.src = destPath;
+              song.index = this.store.songs.length + newSongs.length;
+              newSongs.push(song);
             } catch (copyErr) {
               console.error('Copy file failed: ' + copyErr);
-              newSongs.push({
-                id: Math.abs(hashCode(uri)).toString(),
-                title: title,
-                artist: '未知艺术家',
-                album: '未知专辑',
-                duration: 0,
-                uri: uri,
-                dateAdded: Date.now()
-              });
+              const song = new SongItem();
+              song.id = Math.abs(hashCode(uri));
+              song.title = title;
+              song.singer = '未知艺术家';
+              song.src = uri;
+              song.index = this.store.songs.length + newSongs.length;
+              newSongs.push(song);
             }
           }
         }
         if (newSongs.length > 0) {
           this.store.setSongs([...this.store.songs, ...newSongs]);
           this.filteredSongs = [...this.store.songs];
+          this.itemScales = this.filteredSongs.map(() => 1.0);
         }
         this.isLoading = false;
       }
@@ -121,13 +154,15 @@ export struct Songs {
     if (index >= 0) {
       this.store.currentIndex = index;
       AppStorage.setOrCreate('selectIndex', index);
-      router.pushUrl({ url: 'pages/PlayerPage' });
+      AppStorage.setOrCreate('songList', this.store.songs);
+      this.pathStack.pushPathByName('PlayerPage', null);
     }
   }
 
   deleteSong(song: SongItem): void {
     this.store.removeSong(song.id);
     this.filteredSongs = [...this.store.songs];
+    this.itemScales = this.filteredSongs.map(() => 1.0);
   }
 
   @Builder
@@ -135,37 +170,41 @@ export struct Songs {
     Row() {
       Row() {
         Stack() {
-          if (song.coverUri) {
-            Image(song.coverUri)
-              .width(56)
-              .height(56)
-              .borderRadius(8)
-              .clip(true)
-          } else {
-            Image($r('app.media.ic_cd'))
-              .width(56)
-              .height(56)
-              .borderRadius(8)
-              .clip(true)
-          }
+          Image(song.getMark())
+            .width(56)
+            .height(56)
+            .borderRadius(this.playingIndex === index ? 28 : 8)
+            .clip(true)
+            .animation({ duration: 300, curve: Curve.EaseOut })
 
           if (this.store.currentIndex === index && this.store.isPlaying) {
-            Image($r('app.media.ic_playing'))
-              .width(20)
-              .position({ x: 18, y: 18 })
+            // Playing indicator with pulse
+            Stack() {
+              Circle()
+                .width(24)
+                .height(24)
+                .fill('rgba(250, 39, 89, 0.3)')
+                .scale({ x: this.emptyIconScale, y: this.emptyIconScale })
+
+              Image($r('app.media.ic_playing'))
+                .width(16)
+                .height(16)
+            }
+            .position({ x: 38, y: 38 })
           }
         }
 
         Column() {
           Text(song.title)
             .fontSize(16)
-            .fontColor('#1C1C1E')
+            .fontColor(this.store.currentIndex === index ? '#FA2759' : '#1C1C1E')
             .fontWeight(FontWeight.Medium)
             .margin({ bottom: 4 })
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .animation({ duration: 200, curve: Curve.EaseOut })
 
-          Text(song.artist)
+          Text(song.singer)
             .fontSize(13)
             .fontColor('#8E8E93')
             .maxLines(1)
@@ -181,6 +220,14 @@ export struct Songs {
         this.playSong(song);
       })
 
+      // Index number
+      if (this.store.currentIndex !== index) {
+        Text(`${index + 1}`)
+          .fontSize(13)
+          .fontColor('#C7C7CC')
+          .margin({ right: 4 })
+      }
+
       Image($r('app.media.ic_more'))
         .width(20)
         .height(20)
@@ -191,9 +238,23 @@ export struct Songs {
     .width('100%')
     .height(72)
     .padding({ left: 16, right: 8 })
-    .backgroundColor('#F2F2F7')
+    .backgroundColor(this.store.currentIndex === index ? 'rgba(250, 39, 89, 0.05)' : '#F2F2F7')
     .borderRadius(12)
     .margin({ bottom: 8 })
+    .scale({ x: this.itemScales[index] ?? 1.0, y: this.itemScales[index] ?? 1.0 })
+    .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 30 })))
+    .animation({ duration: 300, curve: Curve.EaseOut, delay: index * 50 })
+    .onTouch((event: TouchEvent) => {
+      if (event.type === TouchType.Down) {
+        let scales = [...this.itemScales];
+        scales[index] = 0.96;
+        this.itemScales = scales;
+      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+        let scales = [...this.itemScales];
+        scales[index] = 1.0;
+        this.itemScales = scales;
+      }
+    })
   }
 
   @Builder
@@ -218,40 +279,6 @@ export struct Songs {
       Divider().color('#E5E5EA').strokeWidth(0.5)
 
       Row() {
-        Image($r('app.media.ic_list'))
-          .width(18)
-          .fillColor('#1C1C1E')
-          .margin({ right: 12 })
-        Text('添加至播放列表')
-          .fontSize(14)
-          .fontColor('#1C1C1E')
-      }
-      .width('100%')
-      .height(44)
-      .padding({ left: 16, right: 16 })
-      .onClick(() => {
-      })
-
-      Divider().color('#E5E5EA').strokeWidth(0.5)
-
-      Row() {
-        Image($r('app.media.ic_more'))
-          .width(18)
-          .fillColor('#1C1C1E')
-          .margin({ right: 12 })
-        Text('编辑')
-          .fontSize(14)
-          .fontColor('#1C1C1E')
-      }
-      .width('100%')
-      .height(44)
-      .padding({ left: 16, right: 16 })
-      .onClick(() => {
-      })
-
-      Divider().color('#E5E5EA').strokeWidth(0.5)
-
-      Row() {
         Image($r('app.media.ic_close'))
           .width(18)
           .fillColor('#FA2759')
@@ -267,7 +294,7 @@ export struct Songs {
         this.deleteSong(song);
       })
     }
-    .width(180)
+    .width(160)
     .backgroundColor(Color.White)
     .borderRadius(12)
     .shadow({ radius: 8, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 2 })
@@ -275,6 +302,15 @@ export struct Songs {
 
   build() {
     Column() {
+      // Header
+      Text('歌曲')
+        .fontSize(24)
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#1C1C1E')
+        .width('100%')
+        .padding({ left: 16, right: 16, top: this.topHeight + 8, bottom: 12 })
+
+      // Search bar
       Row() {
         Image($r('app.media.ic_search'))
           .width(18)
@@ -293,17 +329,39 @@ export struct Songs {
           })
       }
       .width('100%')
-      .height(40)
+      .height(44)
       .padding({ left: 14, right: 14 })
-      .backgroundColor('#E5E5EA')
-      .borderRadius(20)
-      .margin({ left: 16, right: 16, top: 8, bottom: 12 })
+      .backgroundColor('#F2F2F7')
+      .borderRadius(22)
+      .margin({ left: 16, right: 16, bottom: 12 })
 
+      // Stats row
       Row() {
         Text(`共 ${this.filteredSongs.length} 首歌曲`)
           .fontSize(13)
           .fontColor('#8E8E93')
           .layoutWeight(1)
+
+        // Quick scan button
+        Row({ space: 4 }) {
+          Image($r('app.media.ic_music'))
+            .width(14)
+            .height(14)
+            .fillColor('#FA2759')
+
+          Text('扫描')
+            .fontSize(13)
+            .fontColor('#FA2759')
+            .fontWeight(FontWeight.Medium)
+        }
+        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+        .backgroundColor('rgba(250, 39, 89, 0.08)')
+        .borderRadius(16)
+        .margin({ right: 8 })
+        .enabled(!this.isScanning)
+        .onClick(() => {
+          this.onScanMusic();
+        })
 
         Row({ space: 4 }) {
           Image($r('app.media.ic_music'))
@@ -311,52 +369,77 @@ export struct Songs {
             .height(14)
             .fillColor('#FA2759')
 
-          Text('导入音乐')
+          Text('导入')
             .fontSize(13)
             .fontColor('#FA2759')
             .fontWeight(FontWeight.Medium)
         }
-        .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+        .padding({ left: 10, right: 10, top: 6, bottom: 6 })
         .backgroundColor('rgba(250, 39, 89, 0.08)')
         .borderRadius(16)
         .enabled(!this.isScanning)
+        .scale({ x: this.importScale, y: this.importScale })
+        .animation({ duration: 150, curve: Curve.EaseOut })
         .onClick(() => {
           this.onPickMusic();
+        })
+        .onTouch((event: TouchEvent) => {
+          if (event.type === TouchType.Down) {
+            this.importScale = 0.92;
+          } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
+            this.importScale = 1.0;
+          }
         })
       }
       .width('100%')
       .padding({ left: 16, right: 16, bottom: 12 })
 
-      if (this.isLoading) {
+      // Scanning progress
+      if (this.isScanning) {
         Column() {
-          if (this.isScanning) {
-            Text('正在扫描本地音乐...')
-              .fontSize(14)
-              .fontColor('#8E8E93')
-              .margin({ top: 100 })
-          } else {
-            Text('正在加载...')
-              .fontSize(14)
-              .fontColor('#8E8E93')
-              .margin({ top: 100 })
-          }
+          Progress({ style: ProgressStyle.Linear, value: this.scanProgress })
+            .width('100%')
+            .height(3)
+            .color('#FA2759')
+            .animation({ duration: 100, curve: Curve.Linear })
+
+          Text(`正在扫描... ${this.scanProgress}%`)
+            .fontSize(13)
+            .fontColor('#8E8E93')
+            .margin({ top: 12 })
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, bottom: 12 })
+      }
+
+      if (this.isLoading && !this.isScanning) {
+        Column() {
+          Text('正在加载...')
+            .fontSize(14)
+            .fontColor('#8E8E93')
+            .margin({ top: 100 })
         }
         .layoutWeight(1)
       } else if (this.filteredSongs.length === 0) {
         Column() {
           Image($r('app.media.ic_music'))
-            .width(64)
-            .fillColor('#8E8E93')
+            .width(72)
+            .height(72)
+            .fillColor('#C7C7CC')
             .margin({ bottom: 16 })
+            .scale({ x: this.emptyIconScale, y: this.emptyIconScale })
+            .animation({ duration: 2000, curve: Curve.EaseInOut })
 
           Text('未找到本地音乐')
-            .fontSize(15)
+            .fontSize(16)
             .fontColor('#8E8E93')
+            .fontWeight(FontWeight.Medium)
 
-          Text('点击"导入音乐"按钮添加音频文件')
+          Text('点击上方"扫描"或"导入"按钮添加音频文件')
             .fontSize(13)
             .fontColor('#636366')
             .margin({ top: 8 })
+            .textAlign(TextAlign.Center)
         }
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)

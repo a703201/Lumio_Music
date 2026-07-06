@@ -49,7 +49,17 @@ export default class EntryAbility extends UIAbility {
       windowStage.getMainWindow().then((data: window.Window) => {
         this.windowObj = data;
         AppStorage.setOrCreate<window.Window>('window', data);
-        
+
+        // Enable full-screen immersive mode
+        let systemBarProps: window.SystemBarProperties = {
+          statusBarColor: '#00000000',
+          statusBarContentColor: '#1C1C1E',
+          navigationBarColor: '#00000000',
+          navigationBarContentColor: '#1C1C1E'
+        };
+        data.setWindowSystemBarProperties(systemBarProps);
+        data.setWindowLayoutFullScreen(true);
+
         const uiContext = data.getUIContext();
         AppStorage.setOrCreate('uiContext', uiContext);
         let topArea = this.windowObj!.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
