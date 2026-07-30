@@ -10,7 +10,7 @@
     },
     {
       "name": "EntryAbility_label",
-      "value": "HM_Music"
+      "value": "Lumio Music"
     },
     {
       "name": "read_media_reason",
@@ -42,7 +42,7 @@
     },
     {
       "name": "page_show",
-      "value": "HM_Music"
+      "value": "Lumio Music"
     }
   ]
 }

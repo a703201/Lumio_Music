@@ -39,6 +39,7 @@ export class AudioRendererController {
   private curMs: number = 0;
   private avSessionController: AVSessionController | undefined = undefined;
   private duration: number = 0;
+  private curFile?: fileIo.File;
 
   constructor() {
     let list: SongItem[] | undefined = AppStorage.get('songList');
@@ -76,7 +77,13 @@ export class AudioRendererController {
 
     this.avPlayer.on('stateChange', (state: string) => {
       Logger.info(TAG, 'AVPlayer stateChange: ' + state);
-      if (state === 'playing') {
+      if (state === 'initialized') {
+        // fdSrc 已设置，进入 prepared 状态准备播放（官方推荐：在状态回调中驱动状态机）
+        this.avPlayer?.prepare();
+      } else if (state === 'prepared') {
+        // 准备完成，开始播放
+        this.start();
+      } else if (state === 'playing') {
         this.updateIsPlay(true);
       } else if (state === 'paused') {
         this.updateIsPlay(false);
@@ -147,6 +154,14 @@ export class AudioRendererController {
     if (!this.avPlayer) {
       return;
     }
+    // 关闭上一首歌曲占用的文件句柄，避免 fd 泄漏
+    if (this.curFile) {
+      try {
+        fileIo.closeSync(this.curFile.fd);
+      } catch (e: BusinessError) {
+      }
+      this.curFile = undefined;
+    }
     try {
       await this.avPlayer.stop();
     } catch (e: BusinessError) {
@@ -164,6 +179,7 @@ export class AudioRendererController {
 
     try {
       const file: fileIo.File = fileIo.openSync(song.src, fileIo.OpenMode.READ_ONLY);
+      this.curFile = file;
       this.avPlayer.fdSrc = { fd: file.fd };
       Logger.info(TAG, 'Playing: ' + song.title + ' from ' + song.src);
     } catch (e: BusinessError) {
@@ -327,6 +343,13 @@ export class AudioRendererController {
     if (this.avPlayer && this.context) {
       try {
         await this.avPlayer.release();
+        if (this.curFile) {
+          try {
+            fileIo.closeSync(this.curFile.fd);
+          } catch (e) {
+          }
+          this.curFile = undefined;
+        }
         this.avSessionController?.unregisterSessionListener();
         BackgroundUtil.stopContinuousTask(this.context);
         Logger.info(TAG, 'release success');
