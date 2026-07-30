@@ -22,7 +22,7 @@ export class SongItem {
   }
 }
 
-export type RepeatMode = 'single' | 'list' | 'none'
+export type RepeatMode = 'single' | 'list' | 'random'
 
 export interface Playlist {
   id: string

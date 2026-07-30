@@ -1,4 +1,5 @@
 import { getAppVersionName } from '../utils/AppInfoUtil';
+import { ThemeManager } from '../utils/ThemeManager';
 
 @Builder
 export function AboutBuilder() {
@@ -9,6 +10,7 @@ export function AboutBuilder() {
 struct About {
   pathStack: NavPathStack = new NavPathStack();
   @StorageProp('topHeight') topHeight: number = 0;
+  @StorageProp('isDark') isDark: boolean = false;
 
   @State logoScale: number = 0.5;
   @State logoOpacity: number = 0;
@@ -70,7 +72,7 @@ struct About {
             Text('Lumio Music')
               .fontSize(30)
               .fontWeight(FontWeight.Bold)
-              .fontColor('#1C1C1E')
+              .fontColor(ThemeManager.getColors().primaryText)
               .margin({ top: 20, bottom: 6 })
               .opacity(this.titleOpacity)
               .transition(TransitionEffect.translate({ y: 10 }))
@@ -78,19 +80,19 @@ struct About {
 
             Text('本地音乐播放器')
               .fontSize(15)
-              .fontColor('#8E8E93')
+              .fontColor(ThemeManager.getColors().secondaryText)
               .opacity(this.subtitleOpacity)
               .transition(TransitionEffect.translate({ y: 10 }))
               .animation({ duration: 400, curve: Curve.EaseOut })
           }
           .width('100%')
           .padding({ top: this.topHeight + 48, bottom: 36 })
-          .backgroundColor('#FAFAFA')
+          .backgroundColor(ThemeManager.getColors().secondaryBg)
 
           // Features section
           Text('功能特色')
             .fontSize(13)
-            .fontColor('#8E8E93')
+            .fontColor(ThemeManager.getColors().secondaryText)
             .width('100%')
             .padding({ left: 20, bottom: 12 })
 
@@ -102,7 +104,7 @@ struct About {
               Text('本地播放')
                 .fontSize(13)
                 .fontWeight(FontWeight.Medium)
-                .fontColor('#1C1C1E')
+                .fontColor(ThemeManager.getColors().primaryText)
             }
             .layoutWeight(1)
             .scale({ x: this.featureScales[0], y: this.featureScales[0] })
@@ -116,7 +118,7 @@ struct About {
               Text('文件扫描')
                 .fontSize(13)
                 .fontWeight(FontWeight.Medium)
-                .fontColor('#1C1C1E')
+                .fontColor(ThemeManager.getColors().primaryText)
             }
             .layoutWeight(1)
             .scale({ x: this.featureScales[1], y: this.featureScales[1] })
@@ -130,7 +132,7 @@ struct About {
               Text('歌词显示')
                 .fontSize(13)
                 .fontWeight(FontWeight.Medium)
-                .fontColor('#1C1C1E')
+                .fontColor(ThemeManager.getColors().primaryText)
             }
             .layoutWeight(1)
             .scale({ x: this.featureScales[2], y: this.featureScales[2] })
@@ -144,7 +146,7 @@ struct About {
           // Info section
           Text('应用信息')
             .fontSize(13)
-            .fontColor('#8E8E93')
+            .fontColor(ThemeManager.getColors().secondaryText)
             .width('100%')
             .padding({ left: 20, bottom: 12 })
 
@@ -159,7 +161,7 @@ struct About {
 
           Text('一款简洁的本地音乐播放器，支持导入本地音频、播放控制、歌词显示等功能。')
             .fontSize(14)
-            .fontColor('#636366')
+            .fontColor(ThemeManager.getColors().secondaryText)
             .textAlign(TextAlign.Center)
             .width('100%')
             .margin({ top: 32, bottom: 40 })
@@ -171,7 +173,7 @@ struct About {
       }
       .layoutWeight(1)
       .scrollBar(BarState.Off)
-      .backgroundColor(Color.White)
+      .backgroundColor(ThemeManager.getColors().bg)
     }
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;
@@ -184,19 +186,19 @@ struct About {
     Row() {
       Text(label)
         .fontSize(15)
-        .fontColor('#8E8E93')
+        .fontColor(ThemeManager.getColors().secondaryText)
         .layoutWeight(1)
         .textAlign(TextAlign.Start)
 
       Text(value)
         .fontSize(15)
-        .fontColor('#1C1C1E')
+        .fontColor(ThemeManager.getColors().primaryText)
         .fontWeight(FontWeight.Medium)
     }
     .width('100%')
     .height(56)
     .padding({ left: 16, right: 16 })
-    .backgroundColor('#F2F2F7')
+    .backgroundColor(ThemeManager.getColors().cardBg)
     .borderRadius(14)
     .margin({ bottom: 2 })
     .scale({ x: this.itemScales[index] ?? 1.0, y: this.itemScales[index] ?? 1.0 })

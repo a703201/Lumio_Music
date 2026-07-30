@@ -1,4 +1,5 @@
-import { curves, promptAction } from '@kit.ArkUI';
+import { curves } from '@kit.ArkUI';
+import { ThemeManager } from '../utils/ThemeManager';
 import { SongItem } from '../models/music';
 import { MusicStore } from '../services/MusicStore';
 import { picker } from '@kit.CoreFileKit';
@@ -19,6 +20,7 @@ export struct LocalLibrary {
   store: MusicStore = MusicStore.getInstance();
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('bottomHeight') bottomHeight: number = 0;
+  @StorageProp('isDark') isDark: boolean = false;
 
   @State searchText: string = '';
   @State filteredSongs: SongItem[] = [];
@@ -120,9 +122,9 @@ export struct LocalLibrary {
           this.store.setSongs([...this.store.songs, ...newSongs]);
           this.filteredSongs = [...this.store.songs];
           this.itemScales = this.filteredSongs.map(() => 1.0);
-          promptAction.showToast({ message: `已导入 ${newSongs.length} 首音乐` });
+          this.getUIContext().getPromptAction().showToast({ message: `已导入 ${newSongs.length} 首音乐` });
         } else {
-          promptAction.showToast({ message: '没有新的音乐文件' });
+          this.getUIContext().getPromptAction().showToast({ message: '没有新的音乐文件' });
         }
         this.isLoading = false;
       }
@@ -185,7 +187,7 @@ export struct LocalLibrary {
         Column() {
           Text(song.title)
             .fontSize(16)
-            .fontColor(this.store.currentIndex === index ? '#FA2759' : '#1C1C1E')
+            .fontColor(this.store.currentIndex === index ? '#FA2759' : ThemeManager.getColors().primaryText)
             .fontWeight(FontWeight.Medium)
             .margin({ bottom: 4 })
             .maxLines(1)
@@ -194,7 +196,7 @@ export struct LocalLibrary {
 
           Text(song.singer)
             .fontSize(13)
-            .fontColor('#8E8E93')
+            .fontColor(ThemeManager.getColors().secondaryText)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
@@ -211,21 +213,21 @@ export struct LocalLibrary {
       if (this.store.currentIndex !== index) {
         Text(`${index + 1}`)
           .fontSize(13)
-          .fontColor('#C7C7CC')
+          .fontColor(ThemeManager.getColors().secondaryText)
           .margin({ right: 4 })
       }
 
       Image($r('app.media.ic_hm_more'))
         .width(20)
         .height(20)
-        .fillColor('#8E8E93')
+        .fillColor(ThemeManager.getColors().secondaryText)
         .padding(8)
         .bindMenu(this.buildSongMenu(song))
     }
     .width('100%')
     .height(72)
     .padding({ left: 16, right: 8 })
-    .backgroundColor(this.store.currentIndex === index ? 'rgba(250, 39, 89, 0.05)' : '#F2F2F7')
+    .backgroundColor(this.store.currentIndex === index ? 'rgba(250, 39, 89, 0.05)' : ThemeManager.getColors().cardBg)
     .borderRadius(12)
     .margin({ bottom: 8 })
     .scale({ x: this.itemScales[index] ?? 1.0, y: this.itemScales[index] ?? 1.0 })
@@ -250,11 +252,11 @@ export struct LocalLibrary {
       Row() {
         Image($r('app.media.ic_hm_play'))
           .width(18)
-          .fillColor('#1C1C1E')
+          .fillColor(ThemeManager.getColors().primaryText)
           .margin({ right: 12 })
         Text('播放')
           .fontSize(14)
-          .fontColor('#1C1C1E')
+          .fontColor(ThemeManager.getColors().primaryText)
       }
       .width('100%')
       .height(44)
@@ -263,7 +265,7 @@ export struct LocalLibrary {
         this.playSong(song);
       })
 
-      Divider().color('#E5E5EA').strokeWidth(0.5)
+      Divider().color(ThemeManager.getColors().separator).strokeWidth(0.5)
 
       Row() {
         Image($r('app.media.ic_close'))
@@ -282,7 +284,7 @@ export struct LocalLibrary {
       })
     }
     .width(160)
-    .backgroundColor(Color.White)
+    .backgroundColor(ThemeManager.getColors().bg)
     .borderRadius(12)
     .shadow({ radius: 8, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 2 })
   }
@@ -294,7 +296,7 @@ export struct LocalLibrary {
         Text('音乐库')
           .fontSize(24)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#1C1C1E')
+          .fontColor(ThemeManager.getColors().primaryText)
           .layoutWeight(1)
           .padding({ left: 16, right: 16, top: this.topHeight + 8, bottom: 12 })
 
@@ -332,12 +334,12 @@ export struct LocalLibrary {
         Image($r('app.media.ic_hm_search'))
           .width(18)
           .height(18)
-          .fillColor('#8E8E93')
+          .fillColor(ThemeManager.getColors().secondaryText)
 
         TextInput({ placeholder: '搜索歌曲、艺术家' })
-          .placeholderColor('#8E8E93')
+          .placeholderColor(ThemeManager.getColors().secondaryText)
           .backgroundColor(Color.Transparent)
-          .fontColor('#1C1C1E')
+          .fontColor(ThemeManager.getColors().primaryText)
           .fontSize(15)
           .layoutWeight(1)
           .margin({ left: 8 })
@@ -348,7 +350,7 @@ export struct LocalLibrary {
       .width('100%')
       .height(44)
       .padding({ left: 14, right: 14 })
-      .backgroundColor('#F2F2F7')
+      .backgroundColor(ThemeManager.getColors().cardBg)
       .borderRadius(22)
       .margin({ left: 16, right: 16, bottom: 12 })
 
@@ -356,7 +358,7 @@ export struct LocalLibrary {
       Row() {
         Text(`共 ${this.filteredSongs.length} 首歌曲`)
           .fontSize(13)
-          .fontColor('#8E8E93')
+          .fontColor(ThemeManager.getColors().secondaryText)
           .layoutWeight(1)
       }
       .width('100%')
@@ -366,7 +368,7 @@ export struct LocalLibrary {
         Column() {
           Text('正在导入...')
             .fontSize(14)
-            .fontColor('#8E8E93')
+            .fontColor(ThemeManager.getColors().secondaryText)
             .margin({ top: 100 })
         }
         .layoutWeight(1)
@@ -375,19 +377,19 @@ export struct LocalLibrary {
           Image($r('app.media.ic_hm_library'))
             .width(72)
             .height(72)
-            .fillColor('#C7C7CC')
+            .fillColor(ThemeManager.getColors().secondaryText)
             .margin({ bottom: 16 })
             .scale({ x: this.emptyIconScale, y: this.emptyIconScale })
             .animation({ duration: 2000, curve: Curve.EaseInOut })
 
           Text('音乐库还是空的')
             .fontSize(16)
-            .fontColor('#8E8E93')
+            .fontColor(ThemeManager.getColors().secondaryText)
             .fontWeight(FontWeight.Medium)
 
           Text('点击右上角"导入"添加本地音频')
             .fontSize(13)
-            .fontColor('#636366')
+            .fontColor(ThemeManager.getColors().secondaryText)
             .margin({ top: 8 })
             .textAlign(TextAlign.Center)
         }
@@ -410,7 +412,7 @@ export struct LocalLibrary {
     .width('100%')
     .height('100%')
     .padding({ bottom: this.bottomHeight + 200 })
-    .backgroundColor(Color.White)
+    .backgroundColor(ThemeManager.getColors().bg)
   }
 }
 

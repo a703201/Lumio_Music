@@ -354,6 +354,32 @@ export class AVSessionController {
     }
   }
 
+  // [StartExclude set_lock_screen]
+  /**
+   * 联动设置项「锁屏/状态栏控制」：
+   * 开启 -> 激活 AVSession，在锁屏与通知中心展示媒体控制卡片；
+   * 关闭 -> 停用 AVSession，隐藏系统媒体控制。
+   */
+  public setLockScreenControl(enabled: boolean): void {
+    if (!this.AVSession) {
+      return;
+    }
+    try {
+      if (enabled) {
+        this.AVSession.activate().catch((err: BusinessError) => {
+          Logger.error(TAG, `AVSession activate failed: ${err.message}`);
+        });
+      } else {
+        this.AVSession.deactivate().catch((err: BusinessError) => {
+          Logger.error(TAG, `AVSession deactivate failed: ${err.message}`);
+        });
+      }
+    } catch (e) {
+      Logger.error(TAG, 'setLockScreenControl failed');
+    }
+  }
+  // [EndExclude set_lock_screen]
+
   // [StartExclude set_favorite_state]
   public async updateFavoriteState(assetId: string, isFavorite: boolean = false) {
     if (!this.context) {

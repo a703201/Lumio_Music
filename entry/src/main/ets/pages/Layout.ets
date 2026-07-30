@@ -1,4 +1,5 @@
 import { curves } from '@kit.ArkUI';
+import { ThemeManager } from '../utils/ThemeManager';
 import {
   HdsTabs,
   HdsTabsController,
@@ -29,6 +30,7 @@ struct Layout {
   @StorageProp('imageColor') imageColor: string = 'rgba(0, 0, 0, 0)';
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('bottomHeight') bottomHeight: number = 0;
+  @StorageProp('isDark') isDark: boolean = false;
 
   private controller: HdsTabsController = new HdsTabsController();
   private store: MusicStore = MusicStore.getInstance();
@@ -158,13 +160,13 @@ struct Layout {
                 Text(this.songList[this.selectIndex].title)
                   .fontSize(14)
                   .fontWeight(FontWeight.Medium)
-                  .fontColor('#1C1C1E')
+                  .fontColor(ThemeManager.getColors().primaryText)
                   .maxLines(1)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
 
                 Text(this.songList[this.selectIndex].singer)
                   .fontSize(12)
-                  .fontColor('#8E8E93')
+                  .fontColor(ThemeManager.getColors().secondaryText)
                   .maxLines(1)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
                   .margin({ top: 2 })
@@ -195,10 +197,10 @@ struct Layout {
             }
             .width('100%')
             .height(2)
-            .backgroundColor('#E5E5EA')
+            .backgroundColor(ThemeManager.getColors().separator)
           }
           .width('92%')
-          .backgroundColor('rgba(255, 255, 255, 0.82)')
+          .backgroundColor(ThemeManager.getColors().cardBg)
           .backgroundBlurStyle(BlurStyle.COMPONENT_ULTRA_THICK)
           .borderRadius(20)
           .shadow({
@@ -215,7 +217,7 @@ struct Layout {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor(Color.White)
+      .backgroundColor(ThemeManager.getColors().bg)
     }
     .hideTitleBar(true)
   }

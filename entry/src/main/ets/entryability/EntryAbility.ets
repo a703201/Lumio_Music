@@ -13,11 +13,13 @@
  * limitations under the License.
  */
 
-import { UIAbility } from '@kit.AbilityKit';
+import { UIAbility, Configuration, ConfigurationConstant } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { display, window } from '@kit.ArkUI';
 import { BreakpointConstants } from '../common/constants/BreakpointConstants';
 import { MusicStore } from '../services/MusicStore';
+import { SettingsStore } from '../utils/SettingsStore';
+import { ThemeManager } from '../utils/ThemeManager';
 
 const DOMAIN = 0x0000;
 
@@ -37,6 +39,9 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
 
     await this.initStore();
+    // 初始化设置项偏好与主题管理器（需在窗口就绪前完成，供页面与系统栏取色）
+    await SettingsStore.getInstance().ensureInitialized(this.context);
+    ThemeManager.init();
 
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
@@ -48,14 +53,8 @@ export default class EntryAbility extends UIAbility {
         this.windowObj = data;
         AppStorage.setOrCreate<window.Window>('window', data);
 
-        // Enable full-screen immersive mode
-        let systemBarProps: window.SystemBarProperties = {
-          statusBarColor: '#00000000',
-          statusBarContentColor: '#1C1C1E',
-          navigationBarColor: '#00000000',
-          navigationBarContentColor: '#1C1C1E'
-        };
-        data.setWindowSystemBarProperties(systemBarProps);
+        // Enable full-screen immersive mode；状态栏/导航栏内容色跟随主题
+        ThemeManager.applyToWindow();
         data.setWindowLayoutFullScreen(true);
 
         const uiContext = data.getUIContext();
@@ -104,6 +103,17 @@ export default class EntryAbility extends UIAbility {
       }
     } catch (err) {
       hilog.error(DOMAIN, 'testTag', 'Failed to init store');
+    }
+  }
+
+  onConfigurationUpdated(config: Configuration): void {
+    hilog.info(DOMAIN, 'testTag', 'Ability onConfigurationUpdated');
+    // 同步系统深色模式状态，供 ThemeManager 在「跟随系统」时读取
+    const dark: boolean = config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
+    AppStorage.setOrCreate('systemIsDark', dark);
+    // 仅当主题为「跟随系统」时，随系统深色模式刷新
+    if (SettingsStore.getInstance().getThemeMode() === 'system') {
+      ThemeManager.refreshSystemTheme();
     }
   }
 

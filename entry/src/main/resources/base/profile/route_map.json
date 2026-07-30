@@ -47,6 +47,14 @@
       "data": {
         "description": "this is Favorites"
       }
+    },
+    {
+      "name": "ManageSongs",
+      "pageSourceFile": "src/main/ets/pages/ManageSongs.ets",
+      "buildFunction": "ManageSongsBuilder",
+      "data": {
+        "description": "this is ManageSongs"
+      }
     }
   ]
 }
