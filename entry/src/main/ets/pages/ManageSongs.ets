@@ -1,6 +1,6 @@
 import { SongItem } from '../models/music';
 import { MusicStore } from '../services/MusicStore';
-import { ThemeManager } from '../utils/ThemeManager';
+import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 
 @Builder
 export function ManageSongsBuilder() {
@@ -13,6 +13,10 @@ struct ManageSongs {
   store: MusicStore = MusicStore.getInstance();
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
+
+  private getThemeColors(): ColorTokens {
+    return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
+  }
 
   @State songs: SongItem[] = [];
   @State itemScales: number[] = [];
@@ -79,7 +83,7 @@ struct ManageSongs {
       Column() {
         Text(song.title)
           .fontSize(15)
-          .fontColor(ThemeManager.getColors().primaryText)
+          .fontColor(this.getThemeColors().primaryText)
           .fontWeight(FontWeight.Medium)
           .margin({ bottom: 4 })
           .maxLines(1)
@@ -87,7 +91,7 @@ struct ManageSongs {
 
         Text(song.singer)
           .fontSize(13)
-          .fontColor(ThemeManager.getColors().secondaryText)
+          .fontColor(this.getThemeColors().secondaryText)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
@@ -98,7 +102,7 @@ struct ManageSongs {
       Image($r('app.media.ic_hm_more'))
         .width(20)
         .height(20)
-        .fillColor(ThemeManager.getColors().secondaryText)
+        .fillColor(this.getThemeColors().secondaryText)
         .padding(8)
         .bindMenu([
           {
@@ -112,7 +116,7 @@ struct ManageSongs {
     .width('100%')
     .height(64)
     .padding({ left: 16, right: 8 })
-    .backgroundColor(ThemeManager.getColors().cardBg)
+    .backgroundColor(this.getThemeColors().cardBg)
     .borderRadius(12)
     .margin({ left: 8, right: 8, bottom: 8 })
     .scale({ x: this.itemScales[index] ?? 1.0, y: this.itemScales[index] ?? 1.0 })
@@ -139,7 +143,7 @@ struct ManageSongs {
           Image($r('app.media.ic_hm_back'))
             .width(24)
             .height(24)
-            .fillColor(ThemeManager.getColors().primaryText)
+            .fillColor(this.getThemeColors().primaryText)
             .scale({ x: this.backScale, y: this.backScale })
             .animation({ duration: 150, curve: Curve.EaseOut })
             .onClick(() => {
@@ -156,13 +160,13 @@ struct ManageSongs {
           Text('本地歌曲管理')
             .fontSize(20)
             .fontWeight(FontWeight.Bold)
-            .fontColor(ThemeManager.getColors().primaryText)
+            .fontColor(this.getThemeColors().primaryText)
             .margin({ left: 12 })
             .layoutWeight(1)
 
           Text(`${this.songs.length} 首`)
             .fontSize(13)
-            .fontColor(ThemeManager.getColors().accent)
+            .fontColor(this.getThemeColors().accent)
             .backgroundColor('rgba(250, 39, 89, 0.1)')
             .borderRadius(12)
             .padding({ left: 10, right: 10, top: 4, bottom: 4 })
@@ -175,19 +179,19 @@ struct ManageSongs {
             Image($r('app.media.ic_hm_library'))
               .width(72)
               .height(72)
-              .fillColor(ThemeManager.getColors().secondaryText)
+              .fillColor(this.getThemeColors().secondaryText)
               .margin({ bottom: 16 })
               .scale({ x: this.emptyIconScale, y: this.emptyIconScale })
               .animation({ duration: 2000, curve: Curve.EaseInOut })
 
             Text('暂无本地歌曲')
               .fontSize(16)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .fontWeight(FontWeight.Medium)
 
             Text('在「音乐库」导入本地音频后会显示在这里')
               .fontSize(13)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .margin({ top: 8 })
           }
           .layoutWeight(1)
@@ -208,7 +212,7 @@ struct ManageSongs {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor(ThemeManager.getColors().bg)
+      .backgroundColor(this.getThemeColors().bg)
     }
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;

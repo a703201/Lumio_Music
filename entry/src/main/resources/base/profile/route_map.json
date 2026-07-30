@@ -33,6 +33,14 @@
       }
     },
     {
+      "name": "PrivacyPolicy",
+      "pageSourceFile": "src/main/ets/pages/PrivacyPolicy.ets",
+      "buildFunction": "PrivacyPolicyBuilder",
+      "data": {
+        "description": "this is PrivacyPolicy"
+      }
+    },
+    {
       "name": "PlayHistory",
       "pageSourceFile": "src/main/ets/pages/PlayHistory.ets",
       "buildFunction": "PlayHistoryBuilder",

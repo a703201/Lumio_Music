@@ -1,8 +1,8 @@
 import { common, Want } from '@kit.AbilityKit';
 import { getAppVersionDisplay } from '../utils/AppInfoUtil';
 import { MusicStore } from '../services/MusicStore';
-import { SettingsStore, ThemeMode, RepeatModeSetting, QualitySetting } from '../utils/SettingsStore';
-import { ThemeManager } from '../utils/ThemeManager';
+import { SettingsStore, ThemeMode, RepeatModeSetting } from '../utils/SettingsStore';
+import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import fs from '@ohos.file.fs';
 
 interface PickerOption {
@@ -23,6 +23,11 @@ struct Settings {
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
 
+  /** 主题响应式：根据 isDark 取对应令牌。 */
+  private getThemeColors(): ColorTokens {
+    return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
+  }
+
   @State itemScales: number[] = new Array(24).fill(1.0);
   @State backScale: number = 1.0;
   @State appVersionDisplay: string = 'Lumio Music';
@@ -30,15 +35,13 @@ struct Settings {
   // 设置项 UI 镜像状态
   @State autoNext: boolean = true;
   @State repeatMode: RepeatModeSetting = 'list';
-  @State allowMobileNetwork: boolean = false;
-  @State quality: QualitySetting = 'standard';
   @State themeMode: ThemeMode = 'system';
   @State notificationLockScreen: boolean = true;
   @State privacyStats: boolean = true;
   @State cacheSizeText: string = '约 0.0 MB';
 
-  // 当前单选弹窗类型（repeat/quality/theme，空串表示无）
-  @State currentPicker: 'repeat' | 'quality' | 'theme' | '' = '';
+  // 当前单选弹窗类型（repeat/theme，空串表示无）
+  @State currentPicker: 'repeat' | 'theme' | '' = '';
   pickerController: CustomDialogController = new CustomDialogController({
     builder: this.pickerDialogBuilder,
     autoCancel: true,
@@ -62,8 +65,6 @@ struct Settings {
   private syncFromStore(): void {
     this.autoNext = this.settings.getAutoNext();
     this.repeatMode = this.settings.getRepeatMode();
-    this.allowMobileNetwork = this.settings.getAllowMobileNetwork();
-    this.quality = this.settings.getQuality();
     this.themeMode = this.settings.getThemeMode();
     this.notificationLockScreen = this.settings.getNotificationLockScreen();
     this.privacyStats = this.settings.getPrivacyStats();
@@ -97,10 +98,6 @@ struct Settings {
 
   private openDeveloper(): void {
     this.openUrl('https://www.a703201sworld.top/resume/');
-  }
-
-  private openPrivacyPolicy(): void {
-    this.openUrl('https://www.a703201sworld.top/privacy/');
   }
 
   // ===== 缓存估算与清理 =====
@@ -193,10 +190,6 @@ struct Settings {
     }
   }
 
-  private qualityLabel(): string {
-    return this.quality === 'high' ? '高品' : '标准';
-  }
-
   private themeModeLabel(): string {
     switch (this.themeMode) {
       case 'system': return '跟随系统';
@@ -210,7 +203,6 @@ struct Settings {
   private pickerTitle(): string {
     switch (this.currentPicker) {
       case 'repeat': return '播放模式';
-      case 'quality': return '默认音质';
       case 'theme': return '外观';
       default: return '';
     }
@@ -223,11 +215,6 @@ struct Settings {
           { label: '列表循环', value: 'list' },
           { label: '单曲循环', value: 'single' },
           { label: '随机播放', value: 'random' }
-        ];
-      case 'quality':
-        return [
-          { label: '标准', value: 'standard' },
-          { label: '高品', value: 'high' }
         ];
       case 'theme':
         return [
@@ -243,7 +230,6 @@ struct Settings {
   private currentPickerValue(): string {
     switch (this.currentPicker) {
       case 'repeat': return this.repeatMode;
-      case 'quality': return this.quality;
       case 'theme': return this.themeMode;
       default: return '';
     }
@@ -255,9 +241,6 @@ struct Settings {
     if (picker === 'repeat') {
       this.repeatMode = value as RepeatModeSetting;
       this.settings.setRepeatMode(value as RepeatModeSetting);
-    } else if (picker === 'quality') {
-      this.quality = value as QualitySetting;
-      this.settings.setQuality(value as QualitySetting);
     } else if (picker === 'theme') {
       this.themeMode = value as ThemeMode;
       ThemeManager.setThemeMode(value as ThemeMode);
@@ -291,14 +274,14 @@ struct Settings {
         Column() {
           Text(title)
             .fontSize(16)
-            .fontColor(ThemeManager.getColors().primaryText)
+            .fontColor(this.getThemeColors().primaryText)
             .fontWeight(FontWeight.Medium)
             .margin({ bottom: subtitle ? 4 : 0 })
 
           if (subtitle) {
             Text(subtitle)
               .fontSize(13)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
           }
         }
         .alignItems(HorizontalAlign.Start)
@@ -306,7 +289,7 @@ struct Settings {
 
         Image($r('app.media.ic_hm_more'))
           .width(16)
-          .fillColor(ThemeManager.getColors().separator)
+          .fillColor(this.getThemeColors().separator)
       }
       .width('100%')
       .height(60)
@@ -314,7 +297,7 @@ struct Settings {
       .onClick(onClick)
     }
     .width('100%')
-    .backgroundColor(ThemeManager.getColors().cardBg)
+    .backgroundColor(this.getThemeColors().cardBg)
     .borderRadius(14)
     .margin({ bottom: 2 })
     .scale({ x: this.itemScales[index] ?? 1.0, y: this.itemScales[index] ?? 1.0 })
@@ -360,21 +343,21 @@ struct Settings {
         Column() {
           Text(title)
             .fontSize(16)
-            .fontColor(ThemeManager.getColors().primaryText)
+            .fontColor(this.getThemeColors().primaryText)
             .fontWeight(FontWeight.Medium)
             .margin({ bottom: subtitle ? 4 : 0 })
 
           if (subtitle) {
             Text(subtitle)
               .fontSize(13)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
           }
         }
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
 
         Toggle({ type: ToggleType.Switch, isOn: isOn })
-          .selectedColor(ThemeManager.getColors().accent)
+          .selectedColor(this.getThemeColors().accent)
           .onChange((value: boolean) => {
             onToggle(value);
           })
@@ -384,7 +367,7 @@ struct Settings {
       .padding({ left: 16, right: 16 })
     }
     .width('100%')
-    .backgroundColor(ThemeManager.getColors().cardBg)
+    .backgroundColor(this.getThemeColors().cardBg)
     .borderRadius(14)
     .margin({ bottom: 2 })
     .scale({ x: this.itemScales[index] ?? 1.0, y: this.itemScales[index] ?? 1.0 })
@@ -426,7 +409,7 @@ struct Settings {
           Image($r('app.media.ic_hm_back'))
             .width(24)
             .height(24)
-            .fillColor(ThemeManager.getColors().primaryText)
+            .fillColor(this.getThemeColors().primaryText)
             .scale({ x: this.backScale, y: this.backScale })
             .animation({ duration: 150, curve: Curve.EaseOut })
             .onClick(() => {
@@ -443,7 +426,7 @@ struct Settings {
           Text('设置')
             .fontSize(20)
             .fontWeight(FontWeight.Bold)
-            .fontColor(ThemeManager.getColors().primaryText)
+            .fontColor(this.getThemeColors().primaryText)
             .margin({ left: 12 })
             .layoutWeight(1)
         }
@@ -455,7 +438,7 @@ struct Settings {
             // ===== 播放 =====
             Text('播放')
               .fontSize(13)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .width('100%')
               .padding({ left: 4, bottom: 10 })
 
@@ -480,33 +463,13 @@ struct Settings {
                 '#FF9500',
                 () => { this.currentPicker = 'repeat'; this.openPicker(); }
               )
-              this.buildToggleItem(
-                $r('app.media.ic_download'),
-                '允许蜂窝网络播放',
-                '',
-                2,
-                '#5856D6',
-                this.allowMobileNetwork,
-                (isOn: boolean) => {
-                  this.allowMobileNetwork = isOn;
-                  this.settings.setAllowMobileNetwork(isOn);
-                }
-              )
-              this.buildSettingItem(
-                $r('app.media.ic_music'),
-                '默认音质',
-                this.qualityLabel(),
-                3,
-                '#FF2D55',
-                () => { this.currentPicker = 'quality'; this.openPicker(); }
-              )
             }
             .margin({ bottom: 8 })
 
             // ===== 外观 =====
             Text('外观')
               .fontSize(13)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .width('100%')
               .padding({ left: 4, top: 16, bottom: 10 })
 
@@ -525,7 +488,7 @@ struct Settings {
             // ===== 存储 =====
             Text('存储')
               .fontSize(13)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .width('100%')
               .padding({ left: 4, top: 16, bottom: 10 })
 
@@ -565,7 +528,7 @@ struct Settings {
             // ===== 通知 =====
             Text('通知')
               .fontSize(13)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .width('100%')
               .padding({ left: 4, top: 16, bottom: 10 })
 
@@ -588,7 +551,7 @@ struct Settings {
             // ===== 隐私 =====
             Text('隐私')
               .fontSize(13)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .width('100%')
               .padding({ left: 4, top: 16, bottom: 10 })
 
@@ -619,7 +582,7 @@ struct Settings {
             // ===== 关于 =====
             Text('关于')
               .fontSize(13)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .width('100%')
               .padding({ left: 4, top: 16, bottom: 10 })
 
@@ -651,15 +614,15 @@ struct Settings {
                 13,
                 '#007AFF',
                 () => {
-                  this.openPrivacyPolicy();
-                }
+                this.pathStack.pushPathByName('PrivacyPolicy', null);
+              }
               )
             }
             .margin({ bottom: 8 })
 
             Text('Made with HarmonyOS SDK')
               .fontSize(12)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .margin({ top: 24, bottom: 20 })
           }
           .width('100%')
@@ -670,7 +633,7 @@ struct Settings {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor(ThemeManager.getColors().bg)
+      .backgroundColor(this.getThemeColors().bg)
     }
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;
@@ -721,19 +684,24 @@ struct PickerDialog {
   options: PickerOption[] = [];
   currentValue: string = '';
   onSelect: (value: string) => void = () => {};
+  @StorageProp('isDark') isDark: boolean = false;
+
+  private getThemeColors(): ColorTokens {
+    return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
+  }
 
   build() {
     Column() {
       Text(this.title)
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
-        .fontColor(ThemeManager.getColors().primaryText)
+        .fontColor(this.getThemeColors().primaryText)
         .margin({ top: 20, bottom: 12 })
       ForEach(this.options, (opt: PickerOption) => {
         Row() {
           Text(opt.label)
             .fontSize(16)
-            .fontColor(ThemeManager.getColors().primaryText)
+            .fontColor(this.getThemeColors().primaryText)
             .layoutWeight(1)
           Radio({ value: opt.value, group: 'picker_radio' })
             .checked(this.currentValue === opt.value)
@@ -751,14 +719,14 @@ struct PickerDialog {
       Button('完成')
         .width('90%')
         .margin({ top: 16, bottom: 20 })
-        .backgroundColor(ThemeManager.getColors().accent)
+        .backgroundColor(this.getThemeColors().accent)
         .fontColor(Color.White)
         .onClick(() => {
           this.controller.close();
         })
     }
     .width('100%')
-    .backgroundColor(ThemeManager.getColors().cardBg)
+    .backgroundColor(this.getThemeColors().cardBg)
     .borderRadius(16)
   }
 }

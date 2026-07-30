@@ -69,6 +69,16 @@ export class ThemeManager {
     return isDark ? DARK_TOKENS : LIGHT_TOKENS;
   }
 
+  /** 浅色令牌（静态访问，供组件响应式 getter 使用）。 */
+  static get lightColors(): ColorTokens {
+    return LIGHT_TOKENS;
+  }
+
+  /** 深色令牌（静态访问，供组件响应式 getter 使用）。 */
+  static get darkColors(): ColorTokens {
+    return DARK_TOKENS;
+  }
+
   /** 用户手动切换主题模式：持久化 + 刷新 AppStorage + 同步系统栏。 */
   static setThemeMode(mode: ThemeMode): void {
     SettingsStore.getInstance().setThemeMode(mode);

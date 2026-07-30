@@ -1,18 +1,17 @@
 import { curves } from '@kit.ArkUI';
-import { ThemeManager } from '../utils/ThemeManager';
-import {
-  HdsTabs,
-  HdsTabsController,
-  hdsMaterial
-} from '@kit.UIDesignKit';
+import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { LocalLibrary } from './LocalLibrary';
 import { Mine } from './Mine';
-import { AudioRendererController } from '../utils/AudioRendererController';
 import { MusicStore } from '../services/MusicStore';
 import { SongItem } from '../models/music';
 
 const ACCENT: string = '#FA2759';
 const PLAYER_COVER_ID: string = 'player_cover';
+
+interface TabItem {
+  title: string;
+  icon: Resource;
+}
 
 @Builder
 export function LayoutBuilder() {
@@ -25,18 +24,24 @@ struct Layout {
   @StorageLink('isPlay') isPlaying: boolean = false;
   @StorageLink('songList') songList: SongItem[] = [];
   @StorageLink('selectIndex') selectIndex: number = 0;
-  @StorageLink('progress') progress: number = 0;
-  @StorageLink('progressMax') progressMax: number = 1;
-  @StorageProp('imageColor') imageColor: string = 'rgba(0, 0, 0, 0)';
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('bottomHeight') bottomHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
 
-  private controller: HdsTabsController = new HdsTabsController();
+  private getThemeColors(): ColorTokens {
+    return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
+  }
+
+  private tabsController: TabsController = new TabsController();
   private store: MusicStore = MusicStore.getInstance();
   private rotateTimer: number = -1;
   @State currentIndex: number = 0;
   @State coverRotation: number = 0;
+
+  private tabs: TabItem[] = [
+    { title: '音乐库', icon: $r('sys.symbol.music_square_stack_fill') },
+    { title: '我的', icon: $r('sys.symbol.person') }
+  ];
 
   aboutToAppear(): void {
     AppStorage.setOrCreate('songList', this.store.songs);
@@ -53,20 +58,6 @@ struct Layout {
     }
   }
 
-  private togglePlay(): void {
-    const arc: AudioRendererController = AudioRendererController.getInstance();
-    if (this.isPlaying) {
-      arc.pause();
-    } else {
-      if (arc.getFirst()) {
-        arc.play(0);
-      } else {
-        arc.start();
-      }
-    }
-  }
-
-  // 一镜到底：把进入播放页的压栈包进 animateTo，触发共享元素过渡
   private openPlayer(): void {
     this.getUIContext().animateTo(
       { curve: curves.interpolatingSpring(0, 1, 328, 36) },
@@ -76,148 +67,124 @@ struct Layout {
     );
   }
 
-  // 自定义底部标签栏（兼容当前 SDK：HdsTabs + CustomBuilder tabBar）
   @Builder
-  tabBarItem(index: number) {
+  private capsuleTabItem(item: TabItem, index: number) {
     Column({ space: 4 }) {
-      SymbolGlyph(index === 0 ? $r('sys.symbol.music_square_stack_fill') : $r('sys.symbol.person'))
+      SymbolGlyph(item.icon)
         .fontSize(22)
-        .fontColor([index === this.currentIndex ? ACCENT : '#8E8E93'])
-      Text(index === 0 ? '音乐库' : '我的')
-        .fontSize(10)
-        .fontColor(index === this.currentIndex ? ACCENT : '#8E8E93')
+        .fontColor([index === this.currentIndex ? ACCENT : this.getThemeColors().secondaryText])
+        .animation({ duration: 160, curve: Curve.EaseOut })
+
+      Text(item.title)
+        .fontSize(11)
+        .fontColor(index === this.currentIndex ? ACCENT : this.getThemeColors().secondaryText)
+        .fontWeight(index === this.currentIndex ? FontWeight.Medium : FontWeight.Regular)
+        .animation({ duration: 160, curve: Curve.EaseOut })
     }
+    .height('100%')
+    .layoutWeight(1)
+    .justifyContent(FlexAlign.Center)
+    .onClick(() => {
+      this.tabsController.changeIndex(index);
+    })
   }
 
   @Builder
-  tabBuilder() {
-    HdsTabs({ controller: this.controller }) {
-      TabContent() {
-        LocalLibrary()
+  private playerButton() {
+    Stack() {
+      if (this.songList.length > 0) {
+        Image(this.songList[this.selectIndex].getLabel())
+          .width(48)
+          .height(48)
+          .borderRadius(this.isPlaying ? 24 : 14)
+          .clip(true)
+          .rotate({ angle: this.isPlaying ? this.coverRotation : 0 })
+          .animation({ duration: 40, curve: Curve.Linear })
+          .shadow({
+            radius: 6,
+            color: 'rgba(0, 0, 0, 0.20)',
+            offsetX: 0,
+            offsetY: 2
+          })
+          .geometryTransition(PLAYER_COVER_ID, { follow: true })
+      } else {
+        Image($r('app.media.ic_hm_play'))
+          .width(24)
+          .height(24)
+          .fillColor('#FFFFFF')
       }
-      .tabBar(this.tabBarItem(0))
-
-      TabContent() {
-        Mine()
-      }
-      .tabBar(this.tabBarItem(1))
     }
-    .barOverlap(true)
-    .vertical(false)
-    .barPosition(BarPosition.End)
-    .scrollable(false)
-    .onChange((index: number) => {
-      this.currentIndex = index;
+    .width(56)
+    .height(56)
+    .backgroundColor(ACCENT)
+    .borderRadius(28)
+    .shadow({
+      radius: 12,
+      color: 'rgba(250, 39, 89, 0.35)',
+      offsetX: 0,
+      offsetY: 4
     })
-    .onAttach(() => {
-      try {
-        this.controller.preloadItems([0, 1]);
-      } catch (error) {
-        console.error(`HdsTabs preload failed: ${error}`);
+    .onClick(() => {
+      this.openPlayer();
+    })
+  }
+
+  @Builder
+  private customBottomBar() {
+    Row({ space: 16 }) {
+      Row({ space: 0 }) {
+        ForEach(this.tabs, (item: TabItem, index: number) => {
+          this.capsuleTabItem(item, index)
+        }, (item: TabItem, index: number) => index.toString())
       }
-    })
-    // 沉浸光感 + 智感握姿：悬浮玻璃底栏，自动跟随握持手（需设备支持）
-    .barFloatingStyle({
-      adaptToHandedness: true,
-      barBottomMargin: this.bottomHeight + 12,
-      systemMaterialEffect: {
-        materialType: hdsMaterial.MaterialType.ADAPTIVE,
-        materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
-      }
-    })
+      .width('100%')
+      .height(64)
+      .backgroundColor(this.getThemeColors().cardBg)
+      .backgroundBlurStyle(BlurStyle.COMPONENT_ULTRA_THICK)
+      .borderRadius(32)
+      .padding({ left: 8, right: 8 })
+      .shadow({
+        radius: 16,
+        color: 'rgba(0, 0, 0, 0.10)',
+        offsetX: 0,
+        offsetY: 6
+      })
+      .layoutWeight(1)
+      .justifyContent(FlexAlign.SpaceEvenly)
+
+      this.playerButton()
+    }
+    .width('100%')
+    .height(80)
+    .padding({ left: 16, right: 16, bottom: this.bottomHeight + 8 })
   }
 
   build() {
     NavDestination() {
       Stack({ alignContent: Alignment.Bottom }) {
-        // 主内容（HDS 悬浮底栏）
-        this.tabBuilder()
-
-        // 迷你播放条：作为"一镜到底"的共享元素（封面带 geometryTransition）
-        if (this.songList.length > 0) {
-          Column() {
-            Row() {
-              Stack() {
-                Image(this.songList[this.selectIndex].getLabel())
-                  .width(46)
-                  .height(46)
-                  .borderRadius(this.isPlaying ? 23 : 12)
-                  .clip(true)
-                  .rotate({ angle: this.isPlaying ? this.coverRotation : 0 })
-                  .animation({ duration: 40, curve: Curve.Linear })
-                  .shadow({
-                    radius: 8,
-                    color: 'rgba(0, 0, 0, 0.18)',
-                    offsetX: 0,
-                    offsetY: 2
-                  })
-                  .geometryTransition(PLAYER_COVER_ID, { follow: true })
-              }
-              .width(46)
-              .height(46)
-
-              Column() {
-                Text(this.songList[this.selectIndex].title)
-                  .fontSize(14)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor(ThemeManager.getColors().primaryText)
-                  .maxLines(1)
-                  .textOverflow({ overflow: TextOverflow.Ellipsis })
-
-                Text(this.songList[this.selectIndex].singer)
-                  .fontSize(12)
-                  .fontColor(ThemeManager.getColors().secondaryText)
-                  .maxLines(1)
-                  .textOverflow({ overflow: TextOverflow.Ellipsis })
-                  .margin({ top: 2 })
-              }
-              .layoutWeight(1)
-              .alignItems(HorizontalAlign.Start)
-              .padding({ left: 12 })
-
-              Image(this.isPlaying ? $r('app.media.ic_hm_pause') : $r('app.media.ic_hm_play'))
-                .width(34)
-                .height(34)
-                .fillColor(ACCENT)
-                .animation({ duration: 140, curve: Curve.EaseOut })
-                .onClick(() => {
-                  this.togglePlay();
-                })
-            }
-            .width('100%')
-            .height(66)
-            .padding({ left: 14, right: 12 })
-
-            Row() {
-              Text('')
-                .width(`${this.progressMax > 0 ? (this.progress / this.progressMax) * 100 : 0}%`)
-                .height(2)
-                .backgroundColor(ACCENT)
-                .borderRadius(1)
-            }
-            .width('100%')
-            .height(2)
-            .backgroundColor(ThemeManager.getColors().separator)
+        Tabs({ barPosition: BarPosition.End, controller: this.tabsController }) {
+          TabContent() {
+            LocalLibrary()
           }
-          .width('92%')
-          .backgroundColor(ThemeManager.getColors().cardBg)
-          .backgroundBlurStyle(BlurStyle.COMPONENT_ULTRA_THICK)
-          .borderRadius(20)
-          .shadow({
-            radius: 16,
-            color: 'rgba(0, 0, 0, 0.10)',
-            offsetX: 0,
-            offsetY: 6
-          })
-          .margin({ left: 16, right: 16, bottom: this.bottomHeight + 92 })
-          .onClick(() => {
-            this.openPlayer();
-          })
+
+          TabContent() {
+            Mine()
+          }
         }
+        .barHeight(0)
+        .scrollable(false)
+        .animationDuration(200)
+        .onChange((index: number) => {
+          this.currentIndex = index;
+        })
+        .padding({ bottom: 96 + this.bottomHeight })
+
+        this.customBottomBar()
       }
       .width('100%')
       .height('100%')
-      .backgroundColor(ThemeManager.getColors().bg)
+      .backgroundColor(this.getThemeColors().bg)
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
     }
     .hideTitleBar(true)
   }

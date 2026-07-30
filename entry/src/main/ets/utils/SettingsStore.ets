@@ -13,13 +13,10 @@ import { AVSessionController } from './AVSessionController';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type RepeatModeSetting = 'list' | 'single' | 'random';
-export type QualitySetting = 'standard' | 'high';
 
 const PREF_NAME: string = 'app_settings';
 const KEY_AUTO_NEXT: string = 'auto_next';
 const KEY_REPEAT_MODE: string = 'repeat_mode';
-const KEY_MOBILE_NETWORK: string = 'allow_mobile_network';
-const KEY_QUALITY: string = 'quality';
 const KEY_THEME_MODE: string = 'theme_mode';
 const KEY_NOTIFICATION_LOCK: string = 'notification_lock_screen';
 const KEY_PRIVACY_STATS: string = 'privacy_stats';
@@ -32,8 +29,6 @@ export class SettingsStore {
   // 默认值
   private autoNext: boolean = true;
   private repeatMode: RepeatModeSetting = 'list';
-  private allowMobileNetwork: boolean = false;
-  private quality: QualitySetting = 'standard';
   private themeMode: ThemeMode = 'system';
   private notificationLockScreen: boolean = true;
   private privacyStats: boolean = true;
@@ -67,11 +62,6 @@ export class SettingsStore {
       const rm: string = await this.pref.get(KEY_REPEAT_MODE, 'list') as string;
       this.repeatMode = (rm === 'single' || rm === 'random' || rm === 'list') ? rm as RepeatModeSetting : 'list';
 
-      this.allowMobileNetwork = await this.pref.get(KEY_MOBILE_NETWORK, false) as boolean;
-
-      const q: string = await this.pref.get(KEY_QUALITY, 'standard') as string;
-      this.quality = (q === 'high' || q === 'standard') ? q as QualitySetting : 'standard';
-
       const tm: string = await this.pref.get(KEY_THEME_MODE, 'system') as string;
       this.themeMode = (tm === 'light' || tm === 'dark' || tm === 'system') ? tm as ThemeMode : 'system';
 
@@ -103,26 +93,6 @@ export class SettingsStore {
     await this.putString(KEY_REPEAT_MODE, value);
     // 同步到 MusicStore 的播放模式
     MusicStore.getInstance().setRepeatMode(value);
-  }
-
-  // ===== 允许蜂窝网络播放 =====
-  getAllowMobileNetwork(): boolean {
-    return this.allowMobileNetwork;
-  }
-
-  async setAllowMobileNetwork(value: boolean): Promise<void> {
-    this.allowMobileNetwork = value;
-    await this.putBoolean(KEY_MOBILE_NETWORK, value);
-  }
-
-  // ===== 默认音质 =====
-  getQuality(): QualitySetting {
-    return this.quality;
-  }
-
-  async setQuality(value: QualitySetting): Promise<void> {
-    this.quality = value;
-    await this.putString(KEY_QUALITY, value);
   }
 
   // ===== 深色模式 =====

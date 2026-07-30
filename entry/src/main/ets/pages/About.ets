@@ -1,5 +1,5 @@
 import { getAppVersionName } from '../utils/AppInfoUtil';
-import { ThemeManager } from '../utils/ThemeManager';
+import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 
 @Builder
 export function AboutBuilder() {
@@ -11,6 +11,10 @@ struct About {
   pathStack: NavPathStack = new NavPathStack();
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
+
+  private getThemeColors(): ColorTokens {
+    return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
+  }
 
   @State logoScale: number = 0.5;
   @State logoOpacity: number = 0;
@@ -72,7 +76,7 @@ struct About {
             Text('Lumio Music')
               .fontSize(30)
               .fontWeight(FontWeight.Bold)
-              .fontColor(ThemeManager.getColors().primaryText)
+              .fontColor(this.getThemeColors().primaryText)
               .margin({ top: 20, bottom: 6 })
               .opacity(this.titleOpacity)
               .transition(TransitionEffect.translate({ y: 10 }))
@@ -80,19 +84,19 @@ struct About {
 
             Text('本地音乐播放器')
               .fontSize(15)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .opacity(this.subtitleOpacity)
               .transition(TransitionEffect.translate({ y: 10 }))
               .animation({ duration: 400, curve: Curve.EaseOut })
           }
           .width('100%')
           .padding({ top: this.topHeight + 48, bottom: 36 })
-          .backgroundColor(ThemeManager.getColors().secondaryBg)
+          .backgroundColor(this.getThemeColors().secondaryBg)
 
           // Features section
           Text('功能特色')
             .fontSize(13)
-            .fontColor(ThemeManager.getColors().secondaryText)
+            .fontColor(this.getThemeColors().secondaryText)
             .width('100%')
             .padding({ left: 20, bottom: 12 })
 
@@ -104,7 +108,7 @@ struct About {
               Text('本地播放')
                 .fontSize(13)
                 .fontWeight(FontWeight.Medium)
-                .fontColor(ThemeManager.getColors().primaryText)
+                .fontColor(this.getThemeColors().primaryText)
             }
             .layoutWeight(1)
             .scale({ x: this.featureScales[0], y: this.featureScales[0] })
@@ -118,7 +122,7 @@ struct About {
               Text('文件扫描')
                 .fontSize(13)
                 .fontWeight(FontWeight.Medium)
-                .fontColor(ThemeManager.getColors().primaryText)
+                .fontColor(this.getThemeColors().primaryText)
             }
             .layoutWeight(1)
             .scale({ x: this.featureScales[1], y: this.featureScales[1] })
@@ -132,7 +136,7 @@ struct About {
               Text('歌词显示')
                 .fontSize(13)
                 .fontWeight(FontWeight.Medium)
-                .fontColor(ThemeManager.getColors().primaryText)
+                .fontColor(this.getThemeColors().primaryText)
             }
             .layoutWeight(1)
             .scale({ x: this.featureScales[2], y: this.featureScales[2] })
@@ -146,7 +150,7 @@ struct About {
           // Info section
           Text('应用信息')
             .fontSize(13)
-            .fontColor(ThemeManager.getColors().secondaryText)
+            .fontColor(this.getThemeColors().secondaryText)
             .width('100%')
             .padding({ left: 20, bottom: 12 })
 
@@ -161,7 +165,7 @@ struct About {
 
           Text('一款简洁的本地音乐播放器，支持导入本地音频、播放控制、歌词显示等功能。')
             .fontSize(14)
-            .fontColor(ThemeManager.getColors().secondaryText)
+            .fontColor(this.getThemeColors().secondaryText)
             .textAlign(TextAlign.Center)
             .width('100%')
             .margin({ top: 32, bottom: 40 })
@@ -173,7 +177,7 @@ struct About {
       }
       .layoutWeight(1)
       .scrollBar(BarState.Off)
-      .backgroundColor(ThemeManager.getColors().bg)
+      .backgroundColor(this.getThemeColors().bg)
     }
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;
@@ -186,19 +190,19 @@ struct About {
     Row() {
       Text(label)
         .fontSize(15)
-        .fontColor(ThemeManager.getColors().secondaryText)
+        .fontColor(this.getThemeColors().secondaryText)
         .layoutWeight(1)
         .textAlign(TextAlign.Start)
 
       Text(value)
         .fontSize(15)
-        .fontColor(ThemeManager.getColors().primaryText)
+        .fontColor(this.getThemeColors().primaryText)
         .fontWeight(FontWeight.Medium)
     }
     .width('100%')
     .height(56)
     .padding({ left: 16, right: 16 })
-    .backgroundColor(ThemeManager.getColors().cardBg)
+    .backgroundColor(this.getThemeColors().cardBg)
     .borderRadius(14)
     .margin({ bottom: 2 })
     .scale({ x: this.itemScales[index] ?? 1.0, y: this.itemScales[index] ?? 1.0 })

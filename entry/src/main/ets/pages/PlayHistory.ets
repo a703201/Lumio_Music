@@ -1,5 +1,5 @@
 import { SongItem } from '../models/music';
-import { ThemeManager } from '../utils/ThemeManager';
+import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { MusicStore } from '../services/MusicStore';
 
 @Builder
@@ -13,6 +13,10 @@ struct PlayHistory {
   store: MusicStore = MusicStore.getInstance();
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
+
+  private getThemeColors(): ColorTokens {
+    return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
+  }
 
   @State itemScales: number[] = [];
   @State backScale: number = 1.0;
@@ -35,7 +39,7 @@ struct PlayHistory {
       // Index number
       Text(`${index + 1}`)
         .fontSize(13)
-        .fontColor(this.playingIndex === song.id ? '#FF9500' : ThemeManager.getColors().secondaryText)
+        .fontColor(this.playingIndex === song.id ? '#FF9500' : this.getThemeColors().secondaryText)
         .width(28)
         .textAlign(TextAlign.Center)
 
@@ -51,7 +55,7 @@ struct PlayHistory {
       Column() {
         Text(song.title)
           .fontSize(15)
-          .fontColor(this.playingIndex === song.id ? '#FF9500' : ThemeManager.getColors().primaryText)
+          .fontColor(this.playingIndex === song.id ? '#FF9500' : this.getThemeColors().primaryText)
           .fontWeight(FontWeight.Medium)
           .margin({ bottom: 4 })
           .maxLines(1)
@@ -60,7 +64,7 @@ struct PlayHistory {
 
         Text(song.singer)
           .fontSize(13)
-          .fontColor(ThemeManager.getColors().secondaryText)
+          .fontColor(this.getThemeColors().secondaryText)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
@@ -71,12 +75,12 @@ struct PlayHistory {
       // Time indicator
       Text('')
         .fontSize(12)
-        .fontColor(ThemeManager.getColors().secondaryText)
+        .fontColor(this.getThemeColors().secondaryText)
     }
     .width('100%')
     .height(64)
     .padding({ left: 8, right: 16 })
-    .backgroundColor(this.playingIndex === song.id ? 'rgba(255, 149, 0, 0.05)' : ThemeManager.getColors().cardBg)
+    .backgroundColor(this.playingIndex === song.id ? 'rgba(255, 149, 0, 0.05)' : this.getThemeColors().cardBg)
     .borderRadius(12)
     .margin({ left: 8, right: 8, bottom: 8 })
     .scale({ x: this.itemScales[index] ?? 1.0, y: this.itemScales[index] ?? 1.0 })
@@ -112,7 +116,7 @@ struct PlayHistory {
           Image($r('app.media.ic_back'))
             .width(24)
             .height(24)
-            .fillColor(ThemeManager.getColors().primaryText)
+            .fillColor(this.getThemeColors().primaryText)
             .scale({ x: this.backScale, y: this.backScale })
             .animation({ duration: 150, curve: Curve.EaseOut })
             .onClick(() => {
@@ -129,7 +133,7 @@ struct PlayHistory {
           Text('播放历史')
             .fontSize(20)
             .fontWeight(FontWeight.Bold)
-            .fontColor(ThemeManager.getColors().primaryText)
+            .fontColor(this.getThemeColors().primaryText)
             .margin({ left: 12 })
             .layoutWeight(1)
 
@@ -149,19 +153,19 @@ struct PlayHistory {
             Image($r('app.media.ic_list'))
               .width(72)
               .height(72)
-              .fillColor(ThemeManager.getColors().secondaryText)
+              .fillColor(this.getThemeColors().secondaryText)
               .margin({ bottom: 16 })
               .scale({ x: this.emptyIconScale, y: this.emptyIconScale })
               .animation({ duration: 2000, curve: Curve.EaseInOut })
 
             Text('暂无播放记录')
               .fontSize(16)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .fontWeight(FontWeight.Medium)
 
             Text('播放歌曲后将在这里显示')
               .fontSize(13)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .margin({ top: 8 })
           }
           .layoutWeight(1)
@@ -182,7 +186,7 @@ struct PlayHistory {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor(ThemeManager.getColors().bg)
+      .backgroundColor(this.getThemeColors().bg)
     }
     .hideTitleBar(true)
     .onReady((context: NavDestinationContext) => {

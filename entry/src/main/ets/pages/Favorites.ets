@@ -1,5 +1,5 @@
 import { SongItem } from '../models/music';
-import { ThemeManager } from '../utils/ThemeManager';
+import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { MusicStore } from '../services/MusicStore';
 
 @Builder
@@ -13,6 +13,10 @@ struct Favorites {
   store: MusicStore = MusicStore.getInstance();
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
+
+  private getThemeColors(): ColorTokens {
+    return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
+  }
 
   @State itemScales: number[] = [];
   @State favScales: number[] = [];
@@ -38,7 +42,7 @@ struct Favorites {
       // Index number
       Text(`${index + 1}`)
         .fontSize(13)
-        .fontColor(this.playingIndex === song.id ? '#FA2759' : ThemeManager.getColors().secondaryText)
+        .fontColor(this.playingIndex === song.id ? '#FA2759' : this.getThemeColors().secondaryText)
         .width(28)
         .textAlign(TextAlign.Center)
 
@@ -54,7 +58,7 @@ struct Favorites {
       Column() {
         Text(song.title)
           .fontSize(15)
-          .fontColor(this.playingIndex === song.id ? '#FA2759' : ThemeManager.getColors().primaryText)
+          .fontColor(this.playingIndex === song.id ? '#FA2759' : this.getThemeColors().primaryText)
           .fontWeight(FontWeight.Medium)
           .margin({ bottom: 4 })
           .maxLines(1)
@@ -63,7 +67,7 @@ struct Favorites {
 
         Text(song.singer)
           .fontSize(13)
-          .fontColor(ThemeManager.getColors().secondaryText)
+          .fontColor(this.getThemeColors().secondaryText)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
@@ -82,7 +86,7 @@ struct Favorites {
     .width('100%')
     .height(64)
     .padding({ left: 8, right: 16 })
-    .backgroundColor(this.playingIndex === song.id ? 'rgba(250, 39, 89, 0.05)' : ThemeManager.getColors().cardBg)
+    .backgroundColor(this.playingIndex === song.id ? 'rgba(250, 39, 89, 0.05)' : this.getThemeColors().cardBg)
     .borderRadius(12)
     .margin({ left: 8, right: 8, bottom: 8 })
     .scale({ x: this.itemScales[index] ?? 1.0, y: this.itemScales[index] ?? 1.0 })
@@ -125,7 +129,7 @@ struct Favorites {
           Image($r('app.media.ic_back'))
             .width(24)
             .height(24)
-            .fillColor(ThemeManager.getColors().primaryText)
+            .fillColor(this.getThemeColors().primaryText)
             .scale({ x: this.backScale, y: this.backScale })
             .animation({ duration: 150, curve: Curve.EaseOut })
             .onClick(() => {
@@ -142,7 +146,7 @@ struct Favorites {
           Text('我的收藏')
             .fontSize(20)
             .fontWeight(FontWeight.Bold)
-            .fontColor(ThemeManager.getColors().primaryText)
+            .fontColor(this.getThemeColors().primaryText)
             .margin({ left: 12 })
             .layoutWeight(1)
 
@@ -162,14 +166,14 @@ struct Favorites {
             Image($r('app.media.ic_favorite'))
               .width(72)
               .height(72)
-              .fillColor(ThemeManager.getColors().secondaryText)
+              .fillColor(this.getThemeColors().secondaryText)
               .margin({ bottom: 16 })
               .scale({ x: this.emptyIconScale, y: this.emptyIconScale })
               .animation({ duration: 2000, curve: Curve.EaseInOut })
 
             Text('暂无收藏歌曲')
               .fontSize(16)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .fontWeight(FontWeight.Medium)
 
             Text('在播放页面点击收藏按钮添加')
@@ -195,7 +199,7 @@ struct Favorites {
       }
       .width('100%')
       .height('100%')
-      .backgroundColor(ThemeManager.getColors().bg)
+      .backgroundColor(this.getThemeColors().bg)
     }
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;

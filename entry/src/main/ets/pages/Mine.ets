@@ -1,7 +1,7 @@
 import { MusicStore } from '../services/MusicStore';
 import { getAppVersionDisplay } from '../utils/AppInfoUtil';
 import { SettingsStore } from '../utils/SettingsStore';
-import { ThemeManager } from '../utils/ThemeManager';
+import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 
 @Builder
 export function MineBuilder() {
@@ -15,6 +15,10 @@ export struct Mine {
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('bottomHeight') bottomHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
+
+  private getThemeColors(): ColorTokens {
+    return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
+  }
 
   @State avatarScale: number = 0.8;
   @State avatarOpacity: number = 0;
@@ -68,7 +72,7 @@ export struct Mine {
   }
 
   @Builder
-  buildMenuItem(icon: ResourceStr, title: string, subtitle: string = '', showArrow: boolean = true, index: number = 0, iconColor: string = ThemeManager.getColors().primaryText, onClick: () => void = () => {}) {
+  buildMenuItem(icon: ResourceStr, title: string, subtitle: string = '', showArrow: boolean = true, index: number = 0, iconColor: string = this.getThemeColors().primaryText, onClick: () => void = () => {}) {
     Row() {
       // Icon container
       Stack() {
@@ -92,13 +96,13 @@ export struct Mine {
       Column() {
         Text(title)
           .fontSize(16)
-          .fontColor(ThemeManager.getColors().primaryText)
+          .fontColor(this.getThemeColors().primaryText)
           .fontWeight(FontWeight.Medium)
 
         if (subtitle) {
           Text(subtitle)
             .fontSize(12)
-            .fontColor(ThemeManager.getColors().secondaryText)
+            .fontColor(this.getThemeColors().secondaryText)
             .margin({ top: 2 })
         }
       }
@@ -109,13 +113,13 @@ export struct Mine {
         Image($r('app.media.ic_hm_more'))
           .width(16)
           .height(16)
-          .fillColor(ThemeManager.getColors().secondaryText)
+          .fillColor(this.getThemeColors().secondaryText)
       }
     }
     .width('100%')
     .height(60)
     .padding({ left: 16, right: 16 })
-    .backgroundColor(ThemeManager.getColors().cardBg)
+    .backgroundColor(this.getThemeColors().cardBg)
     .borderRadius(14)
     .margin({ bottom: 8 })
     .scale({ x: this.menuScales[index] ?? 1.0, y: this.menuScales[index] ?? 1.0 })
@@ -172,21 +176,21 @@ export struct Mine {
           Text('本地音乐用户')
             .fontSize(22)
             .fontWeight(FontWeight.Bold)
-            .fontColor(ThemeManager.getColors().primaryText)
+            .fontColor(this.getThemeColors().primaryText)
             .margin({ bottom: 6 })
             .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 10 })))
             .animation({ duration: 400, curve: Curve.EaseOut, delay: 150 })
 
           Text(SettingsStore.getInstance().getPrivacyStats() ? `已收藏 ${this.statsCount[0]} 首 · 共 ${this.statsCount[1]} 首歌曲` : '听歌统计已关闭')
             .fontSize(14)
-            .fontColor(ThemeManager.getColors().secondaryText)
+            .fontColor(this.getThemeColors().secondaryText)
             .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 10 })))
             .animation({ duration: 400, curve: Curve.EaseOut, delay: 200 })
         }
         .width('100%')
         .padding({ top: this.topHeight + 32, bottom: 24 })
         .justifyContent(FlexAlign.Center)
-        .backgroundColor(ThemeManager.getColors().secondaryBg)
+        .backgroundColor(this.getThemeColors().secondaryBg)
 
         // Quick stats
         Row() {
@@ -197,7 +201,7 @@ export struct Mine {
               .fontColor('#FA2759')
             Text('歌曲')
               .fontSize(11)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .margin({ top: 2 })
           }
           .layoutWeight(1)
@@ -209,7 +213,7 @@ export struct Mine {
               .fontColor('#34C759')
             Text('收藏')
               .fontSize(11)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .margin({ top: 2 })
           }
           .layoutWeight(1)
@@ -221,14 +225,14 @@ export struct Mine {
               .fontColor('#FF9500')
             Text('历史')
               .fontSize(11)
-              .fontColor(ThemeManager.getColors().secondaryText)
+              .fontColor(this.getThemeColors().secondaryText)
               .margin({ top: 2 })
           }
           .layoutWeight(1)
         }
         .width('100%')
         .padding({ left: 32, right: 32, top: 20, bottom: 20 })
-        .backgroundColor(ThemeManager.getColors().secondaryBg)
+        .backgroundColor(this.getThemeColors().secondaryBg)
 
         // Menu section
         Column() {
@@ -262,7 +266,7 @@ export struct Mine {
         // Section header
         Text('更多')
           .fontSize(13)
-          .fontColor(ThemeManager.getColors().secondaryText)
+          .fontColor(this.getThemeColors().secondaryText)
           .margin({ top: 16, bottom: 12, left: 16 })
           .textAlign(TextAlign.Start)
           .width('100%')
@@ -274,7 +278,7 @@ export struct Mine {
             '',
             true,
             3,
-            ThemeManager.getColors().secondaryText,
+            this.getThemeColors().secondaryText,
             () => {
               this.pathStack.pushPathByName('Settings', null);
             }
@@ -301,7 +305,8 @@ export struct Mine {
     .height('100%')
     .layoutWeight(1)
     .scrollBar(BarState.Off)
-    .backgroundColor(ThemeManager.getColors().bg)
-    .padding({ bottom: this.bottomHeight + 200 })
+    .backgroundColor(this.getThemeColors().bg)
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
+    .padding({ bottom: this.bottomHeight + 16 })
   }
 }

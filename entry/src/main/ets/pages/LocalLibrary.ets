@@ -1,5 +1,5 @@
 import { curves } from '@kit.ArkUI';
-import { ThemeManager } from '../utils/ThemeManager';
+import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { SongItem } from '../models/music';
 import { MusicStore } from '../services/MusicStore';
 import { picker } from '@kit.CoreFileKit';
@@ -21,6 +21,10 @@ export struct LocalLibrary {
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('bottomHeight') bottomHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
+
+  private getThemeColors(): ColorTokens {
+    return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
+  }
 
   @State searchText: string = '';
   @State filteredSongs: SongItem[] = [];
@@ -187,7 +191,7 @@ export struct LocalLibrary {
         Column() {
           Text(song.title)
             .fontSize(16)
-            .fontColor(this.store.currentIndex === index ? '#FA2759' : ThemeManager.getColors().primaryText)
+            .fontColor(this.store.currentIndex === index ? '#FA2759' : this.getThemeColors().primaryText)
             .fontWeight(FontWeight.Medium)
             .margin({ bottom: 4 })
             .maxLines(1)
@@ -196,7 +200,7 @@ export struct LocalLibrary {
 
           Text(song.singer)
             .fontSize(13)
-            .fontColor(ThemeManager.getColors().secondaryText)
+            .fontColor(this.getThemeColors().secondaryText)
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
         }
@@ -213,21 +217,21 @@ export struct LocalLibrary {
       if (this.store.currentIndex !== index) {
         Text(`${index + 1}`)
           .fontSize(13)
-          .fontColor(ThemeManager.getColors().secondaryText)
+          .fontColor(this.getThemeColors().secondaryText)
           .margin({ right: 4 })
       }
 
       Image($r('app.media.ic_hm_more'))
         .width(20)
         .height(20)
-        .fillColor(ThemeManager.getColors().secondaryText)
+        .fillColor(this.getThemeColors().secondaryText)
         .padding(8)
         .bindMenu(this.buildSongMenu(song))
     }
     .width('100%')
     .height(72)
     .padding({ left: 16, right: 8 })
-    .backgroundColor(this.store.currentIndex === index ? 'rgba(250, 39, 89, 0.05)' : ThemeManager.getColors().cardBg)
+    .backgroundColor(this.store.currentIndex === index ? 'rgba(250, 39, 89, 0.05)' : this.getThemeColors().cardBg)
     .borderRadius(12)
     .margin({ bottom: 8 })
     .scale({ x: this.itemScales[index] ?? 1.0, y: this.itemScales[index] ?? 1.0 })
@@ -252,11 +256,11 @@ export struct LocalLibrary {
       Row() {
         Image($r('app.media.ic_hm_play'))
           .width(18)
-          .fillColor(ThemeManager.getColors().primaryText)
+          .fillColor(this.getThemeColors().primaryText)
           .margin({ right: 12 })
         Text('播放')
           .fontSize(14)
-          .fontColor(ThemeManager.getColors().primaryText)
+          .fontColor(this.getThemeColors().primaryText)
       }
       .width('100%')
       .height(44)
@@ -265,7 +269,7 @@ export struct LocalLibrary {
         this.playSong(song);
       })
 
-      Divider().color(ThemeManager.getColors().separator).strokeWidth(0.5)
+      Divider().color(this.getThemeColors().separator).strokeWidth(0.5)
 
       Row() {
         Image($r('app.media.ic_close'))
@@ -284,7 +288,7 @@ export struct LocalLibrary {
       })
     }
     .width(160)
-    .backgroundColor(ThemeManager.getColors().bg)
+    .backgroundColor(this.getThemeColors().bg)
     .borderRadius(12)
     .shadow({ radius: 8, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 2 })
   }
@@ -296,7 +300,7 @@ export struct LocalLibrary {
         Text('音乐库')
           .fontSize(24)
           .fontWeight(FontWeight.Bold)
-          .fontColor(ThemeManager.getColors().primaryText)
+          .fontColor(this.getThemeColors().primaryText)
           .layoutWeight(1)
           .padding({ left: 16, right: 16, top: this.topHeight + 8, bottom: 12 })
 
@@ -334,12 +338,12 @@ export struct LocalLibrary {
         Image($r('app.media.ic_hm_search'))
           .width(18)
           .height(18)
-          .fillColor(ThemeManager.getColors().secondaryText)
+          .fillColor(this.getThemeColors().secondaryText)
 
         TextInput({ placeholder: '搜索歌曲、艺术家' })
-          .placeholderColor(ThemeManager.getColors().secondaryText)
+          .placeholderColor(this.getThemeColors().secondaryText)
           .backgroundColor(Color.Transparent)
-          .fontColor(ThemeManager.getColors().primaryText)
+          .fontColor(this.getThemeColors().primaryText)
           .fontSize(15)
           .layoutWeight(1)
           .margin({ left: 8 })
@@ -350,7 +354,7 @@ export struct LocalLibrary {
       .width('100%')
       .height(44)
       .padding({ left: 14, right: 14 })
-      .backgroundColor(ThemeManager.getColors().cardBg)
+      .backgroundColor(this.getThemeColors().cardBg)
       .borderRadius(22)
       .margin({ left: 16, right: 16, bottom: 12 })
 
@@ -358,7 +362,7 @@ export struct LocalLibrary {
       Row() {
         Text(`共 ${this.filteredSongs.length} 首歌曲`)
           .fontSize(13)
-          .fontColor(ThemeManager.getColors().secondaryText)
+          .fontColor(this.getThemeColors().secondaryText)
           .layoutWeight(1)
       }
       .width('100%')
@@ -368,7 +372,7 @@ export struct LocalLibrary {
         Column() {
           Text('正在导入...')
             .fontSize(14)
-            .fontColor(ThemeManager.getColors().secondaryText)
+            .fontColor(this.getThemeColors().secondaryText)
             .margin({ top: 100 })
         }
         .layoutWeight(1)
@@ -377,19 +381,19 @@ export struct LocalLibrary {
           Image($r('app.media.ic_hm_library'))
             .width(72)
             .height(72)
-            .fillColor(ThemeManager.getColors().secondaryText)
+            .fillColor(this.getThemeColors().secondaryText)
             .margin({ bottom: 16 })
             .scale({ x: this.emptyIconScale, y: this.emptyIconScale })
             .animation({ duration: 2000, curve: Curve.EaseInOut })
 
           Text('音乐库还是空的')
             .fontSize(16)
-            .fontColor(ThemeManager.getColors().secondaryText)
+            .fontColor(this.getThemeColors().secondaryText)
             .fontWeight(FontWeight.Medium)
 
           Text('点击右上角"导入"添加本地音频')
             .fontSize(13)
-            .fontColor(ThemeManager.getColors().secondaryText)
+            .fontColor(this.getThemeColors().secondaryText)
             .margin({ top: 8 })
             .textAlign(TextAlign.Center)
         }
@@ -411,8 +415,9 @@ export struct LocalLibrary {
     }
     .width('100%')
     .height('100%')
-    .padding({ bottom: this.bottomHeight + 200 })
-    .backgroundColor(ThemeManager.getColors().bg)
+    .padding({ bottom: this.bottomHeight + 16 })
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
+    .backgroundColor(this.getThemeColors().bg)
   }
 }
 
