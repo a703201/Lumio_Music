@@ -117,6 +117,7 @@ export class AudioRendererController {
 
   private setAvSessionCallback(): void {
     this.avSessionController = AVSessionController.getInstance();
+    this.avSessionController.bindAudioRendererController(this);
   }
 
   public async setSilentModeAndMixWithOthers(isSupportSilent: boolean = false): Promise<void> {

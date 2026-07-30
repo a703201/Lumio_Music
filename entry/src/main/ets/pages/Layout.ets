@@ -1,143 +1,159 @@
-import { Mine } from "./Mine"
-import { Moment } from "./Moment"
-import { Songs } from "./Songs"
-import { MusicStore } from "../services/MusicStore"
-import { SongItem } from "../models/music"
+import { curves } from '@kit.ArkUI';
+import {
+  HdsTabs,
+  HdsTabsController,
+  hdsMaterial
+} from '@kit.UIDesignKit';
+import { LocalLibrary } from './LocalLibrary';
+import { Mine } from './Mine';
+import { AudioRendererController } from '../utils/AudioRendererController';
+import { MusicStore } from '../services/MusicStore';
+import { SongItem } from '../models/music';
 
-interface TabClass{
-  text:string
-  icon:ResourceStr
-}
+const ACCENT: string = '#FA2759';
+const PLAYER_COVER_ID: string = 'player_cover';
 
 @Builder
-export function LayoutBuilder(){
+export function LayoutBuilder() {
   Layout()
 }
 
 @Component
-struct Layout{
-  @State currentIndex: number = 0
-  @State tabScale: number[] = [1.0, 1.0, 1.0]
-  @State tabBarOffset: number = 100
-  @State miniPlayerOffset: number = 80
-  @State coverRotation: number = 0
-  @State progressWidth: number = 0
-  @StorageLink('isPlay') isPlaying: boolean = false
-  @StorageLink('songList') songList: SongItem[] = []
-  @StorageLink('selectIndex') selectIndex: number = 0
-  @StorageLink('progress') progress: number = 0
-  @StorageLink('progressMax') progressMax: number = 1
-  @StorageProp('topHeight') topHeight: number = 0
-  @StorageProp('bottomHeight') bottomHeight: number = 0
+struct Layout {
   @Consume('navPathStack') pathStack: NavPathStack;
-  store: MusicStore = MusicStore.getInstance()
-  private rotateInterval: number = -1;
+  @StorageLink('isPlay') isPlaying: boolean = false;
+  @StorageLink('songList') songList: SongItem[] = [];
+  @StorageLink('selectIndex') selectIndex: number = 0;
+  @StorageLink('progress') progress: number = 0;
+  @StorageLink('progressMax') progressMax: number = 1;
+  @StorageProp('imageColor') imageColor: string = 'rgba(0, 0, 0, 0)';
+  @StorageProp('topHeight') topHeight: number = 0;
+  @StorageProp('bottomHeight') bottomHeight: number = 0;
+
+  private controller: HdsTabsController = new HdsTabsController();
+  private store: MusicStore = MusicStore.getInstance();
+  private rotateTimer: number = -1;
+  @State currentIndex: number = 0;
+  @State coverRotation: number = 0;
 
   aboutToAppear(): void {
-    setTimeout(() => {
-      this.tabBarOffset = 0;
-      this.miniPlayerOffset = 0;
-    }, 200);
-    this.rotateInterval = setInterval(() => {
+    AppStorage.setOrCreate('songList', this.store.songs);
+    this.rotateTimer = setInterval(() => {
       if (this.isPlaying) {
-        this.coverRotation = (this.coverRotation + 2) % 360;
+        this.coverRotation = (this.coverRotation + 1.6) % 360;
       }
-    }, 50);
+    }, 40);
   }
 
   aboutToDisappear(): void {
-    if (this.rotateInterval >= 0) {
-      clearInterval(this.rotateInterval);
+    if (this.rotateTimer >= 0) {
+      clearInterval(this.rotateTimer);
     }
   }
 
-  tabData:TabClass[] = [
-    {text:'歌曲',icon:$r('app.media.ic_recommend')},
-    {text:'音乐库',icon:$r('app.media.ic_moment')},
-    {text:'我的',icon:$r('app.media.ic_mine')}
-  ]
-
-  @Builder tabBuilder (item:TabClass, index:number) {
-    Column({space : 4}){
-      Image(item.icon)
-        .width(22)
-        .fillColor(this.currentIndex === index ? '#FA2759':'#8E8E93')
-        .scale({ x: this.tabScale[index], y: this.tabScale[index] })
-      Text(item.text)
-        .fontSize(11)
-        .fontColor(this.currentIndex === index ? '#FA2759':'#8E8E93')
-        .fontWeight(this.currentIndex === index ? FontWeight.Medium : FontWeight.Normal)
+  private togglePlay(): void {
+    const arc: AudioRendererController = AudioRendererController.getInstance();
+    if (this.isPlaying) {
+      arc.pause();
+    } else {
+      if (arc.getFirst()) {
+        arc.play(0);
+      } else {
+        arc.start();
+      }
     }
-    .width(64)
-    .height(44)
-    .justifyContent(FlexAlign.Center)
   }
 
-  build(){
+  // 一镜到底：把进入播放页的压栈包进 animateTo，触发共享元素过渡
+  private openPlayer(): void {
+    this.getUIContext().animateTo(
+      { curve: curves.interpolatingSpring(0, 1, 328, 36) },
+      () => {
+        this.pathStack.pushPathByName('PlayerPage', null);
+      }
+    );
+  }
+
+  // 自定义底部标签栏（兼容当前 SDK：HdsTabs + CustomBuilder tabBar）
+  @Builder
+  tabBarItem(index: number) {
+    Column({ space: 4 }) {
+      SymbolGlyph(index === 0 ? $r('sys.symbol.music_square_stack_fill') : $r('sys.symbol.person'))
+        .fontSize(22)
+        .fontColor([index === this.currentIndex ? ACCENT : '#8E8E93'])
+      Text(index === 0 ? '音乐库' : '我的')
+        .fontSize(10)
+        .fontColor(index === this.currentIndex ? ACCENT : '#8E8E93')
+    }
+  }
+
+  @Builder
+  tabBuilder() {
+    HdsTabs({ controller: this.controller }) {
+      TabContent() {
+        LocalLibrary()
+      }
+      .tabBar(this.tabBarItem(0))
+
+      TabContent() {
+        Mine()
+      }
+      .tabBar(this.tabBarItem(1))
+    }
+    .barOverlap(true)
+    .vertical(false)
+    .barPosition(BarPosition.End)
+    .scrollable(false)
+    .onChange((index: number) => {
+      this.currentIndex = index;
+    })
+    .onAttach(() => {
+      try {
+        this.controller.preloadItems([0, 1]);
+      } catch (error) {
+        console.error(`HdsTabs preload failed: ${error}`);
+      }
+    })
+    // 沉浸光感 + 智感握姿：悬浮玻璃底栏，自动跟随握持手（需设备支持）
+    .barFloatingStyle({
+      adaptToHandedness: true,
+      barBottomMargin: this.bottomHeight + 12,
+      systemMaterialEffect: {
+        materialType: hdsMaterial.MaterialType.ADAPTIVE,
+        materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+      }
+    })
+  }
+
+  build() {
     NavDestination() {
       Stack({ alignContent: Alignment.Bottom }) {
-        Tabs({ barPosition : BarPosition.End, index: this.currentIndex }){
-          TabContent() {
-            Songs()
-          }
-          .tabBar(this.tabBuilder(this.tabData[0], 0))
+        // 主内容（HDS 悬浮底栏）
+        this.tabBuilder()
 
-          TabContent() {
-            Moment()
-          }
-          .tabBar(this.tabBuilder(this.tabData[1], 1))
-
-          TabContent() {
-            Mine()
-          }
-          .tabBar(this.tabBuilder(this.tabData[2], 2))
-        }
-        .onChange((index:number) => {
-          const prev = this.currentIndex;
-          this.currentIndex = index;
-          let oldScales = [...this.tabScale];
-          oldScales[prev] = 1.0;
-          this.tabScale = oldScales;
-          let newScales = [...this.tabScale];
-          newScales[index] = 1.3;
-          this.tabScale = newScales;
-          setTimeout(() => {
-            let resetScales = [...this.tabScale];
-            resetScales[index] = 1.0;
-            this.tabScale = resetScales;
-          }, 150);
-        })
-        .barMode(BarMode.Fixed)
-        .barWidth('100%')
-        .barHeight(0)
-        .scrollable(false)
-        .width('100%')
-        .height('100%')
-
-        // Mini player bar
+        // 迷你播放条：作为"一镜到底"的共享元素（封面带 geometryTransition）
         if (this.songList.length > 0) {
           Column() {
             Row() {
-              // Album cover with rotation when playing
               Stack() {
                 Image(this.songList[this.selectIndex].getLabel())
-                  .width(44)
-                  .height(44)
-                  .borderRadius(this.isPlaying ? 22 : 8)
+                  .width(46)
+                  .height(46)
+                  .borderRadius(this.isPlaying ? 23 : 12)
                   .clip(true)
                   .rotate({ angle: this.isPlaying ? this.coverRotation : 0 })
-                  .animation({ duration: 50, curve: Curve.Linear })
+                  .animation({ duration: 40, curve: Curve.Linear })
                   .shadow({
-                    radius: 6,
-                    color: 'rgba(0, 0, 0, 0.15)',
+                    radius: 8,
+                    color: 'rgba(0, 0, 0, 0.18)',
                     offsetX: 0,
                     offsetY: 2
                   })
+                  .geometryTransition(PLAYER_COVER_ID, { follow: true })
               }
-              .width(44)
-              .height(44)
+              .width(46)
+              .height(46)
 
-              // Song info
               Column() {
                 Text(this.songList[this.selectIndex].title)
                   .fontSize(14)
@@ -157,86 +173,45 @@ struct Layout{
               .alignItems(HorizontalAlign.Start)
               .padding({ left: 12 })
 
-              // Play/Pause button
-              Image(this.isPlaying ? $r('app.media.ic_pause') : $r('app.media.ic_play'))
-                .width(32)
-                .height(32)
-                .fillColor('#FA2759')
-                .padding(2)
-                .animation({ duration: 120, curve: Curve.EaseOut })
+              Image(this.isPlaying ? $r('app.media.ic_hm_pause') : $r('app.media.ic_hm_play'))
+                .width(34)
+                .height(34)
+                .fillColor(ACCENT)
+                .animation({ duration: 140, curve: Curve.EaseOut })
                 .onClick(() => {
-                  this.isPlaying = !this.isPlaying;
+                  this.togglePlay();
                 })
             }
             .width('100%')
-            .height(64)
-            .padding({ left: 14, right: 14 })
+            .height(66)
+            .padding({ left: 14, right: 12 })
 
-            // Progress bar
             Row() {
               Text('')
                 .width(`${this.progressMax > 0 ? (this.progress / this.progressMax) * 100 : 0}%`)
                 .height(2)
-                .backgroundColor('#FA2759')
+                .backgroundColor(ACCENT)
                 .borderRadius(1)
             }
             .width('100%')
             .height(2)
             .backgroundColor('#E5E5EA')
           }
-          .width('100%')
-          .backgroundColor('#F2F2F7')
-          .borderRadius(16)
-          .margin({ left: 16, right: 16, bottom: this.bottomHeight + 76 })
+          .width('92%')
+          .backgroundColor('rgba(255, 255, 255, 0.82)')
+          .backgroundBlurStyle(BlurStyle.COMPONENT_ULTRA_THICK)
+          .borderRadius(20)
           .shadow({
-            radius: 12,
-            color: 'rgba(0, 0, 0, 0.1)',
+            radius: 16,
+            color: 'rgba(0, 0, 0, 0.10)',
             offsetX: 0,
-            offsetY: 4
+            offsetY: 6
           })
-          .translate({ y: this.miniPlayerOffset })
-          .animation({ duration: 400, curve: Curve.EaseOut })
+          .margin({ left: 16, right: 16, bottom: this.bottomHeight + 92 })
           .onClick(() => {
-            this.pathStack.pushPathByName('PlayerPage', null);
+            this.openPlayer();
           })
         }
-
-        // Tab bar
-        Row() {
-          ForEach(this.tabData, (item: TabClass, index: number) => {
-            Column({space: 4}) {
-              Image(item.icon)
-                .width(22)
-                .fillColor(this.currentIndex === index ? '#FA2759' : '#8E8E93')
-                .scale({ x: this.tabScale[index], y: this.tabScale[index] })
-              Text(item.text)
-                .fontSize(11)
-                .fontColor(this.currentIndex === index ? '#FA2759' : '#8E8E93')
-                .fontWeight(this.currentIndex === index ? FontWeight.Medium : FontWeight.Normal)
-            }
-            .width(64)
-            .height(44)
-            .justifyContent(FlexAlign.Center)
-            .animation({ duration: 150, curve: Curve.EaseInOut })
-            .onClick(() => {
-              this.currentIndex = index;
-            })
-          })
-        }
-        .width('85%')
-        .height(52)
-        .backgroundColor(Color.White)
-        .borderRadius(26)
-        .shadow({
-          radius: 12,
-          color: 'rgba(0, 0, 0, 0.08)',
-          offsetX: 0,
-          offsetY: 4
-        })
-        .justifyContent(FlexAlign.SpaceEvenly)
-        .margin({ bottom: this.bottomHeight + 20 })
-        .translate({ y: this.tabBarOffset })
-        .animation({ duration: 400, curve: Curve.EaseOut })
       }
       .width('100%')
       .height('100%')

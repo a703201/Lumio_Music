@@ -119,6 +119,11 @@ export class MusicStore {
     return this.songs.filter(s => this.favorites.has(s.id));
   }
 
+  clearRecentlyPlayed() {
+    this.recentlyPlayed = [];
+    this.saveRecentlyPlayed();
+  }
+
   removeSong(songId: number) {
     this.songs = this.songs.filter(s => s.id !== songId);
     this.playList = this.playList.filter(s => s.id !== songId);

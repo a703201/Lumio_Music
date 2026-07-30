@@ -1,12 +1,5 @@
 {
   "src": [
-    "pages/Index",
-    "pages/Layout",
-    "pages/PlayerPage",
-    "pages/Settings",
-    "pages/About",
-    "pages/LocalLibrary",
-    "pages/PlayHistory",
-    "pages/Favorites"
+    "pages/Index"
   ]
 }

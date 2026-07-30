@@ -63,7 +63,7 @@ struct About {
                 curve: Curve.EaseOut,
               })
 
-            Text('HM_Music')
+            Text('Lumio Music')
               .fontSize(30)
               .fontWeight(FontWeight.Bold)
               .fontColor('#1C1C1E')

@@ -34,6 +34,7 @@ export class AVSessionController {
   private songList: SongItem[] = [];
   private musicIndex: number | undefined = undefined;
   private audioRendererController: AudioRendererController | undefined = undefined;
+  private listenersRegistered: boolean = false;
   // [StartExclude avsession_controller]
   constructor() {
     let list: SongItem[] | undefined = AppStorage.get('songList');
@@ -56,12 +57,7 @@ export class AVSessionController {
   private async initAVSession() {
     this.context = AppStorage.get('context');
     if (!this.context) {
-      Logger.info(TAG, `session create failed : conext is undefined`);
-      return;
-    }
-    this.audioRendererController = AppStorage.get('audioRendererController');
-    if (!this.audioRendererController) {
-      Logger.info(TAG, `session create failed : audioRendererController is undefined`);
+      Logger.info(TAG, `session create failed : context is undefined`);
       return;
     }
     try {
@@ -75,11 +71,35 @@ export class AVSessionController {
     Logger.info(TAG, `session create successed : sessionId : ${this.AVSession.sessionId}`);
     await this.setAVMetadata();
     this.setLaunchAbility();
-    this.setListenerForMesFromController();
+    // 控制中心/通知中心的监听在 AudioRendererController 绑定后再注册，
+    // 避免构造顺序导致会话未创建、监听缺失（控制中心无法控制播放）。
+    if (this.audioRendererController) {
+      this.registerSessionListeners();
+    }
     if (this.musicIndex !== undefined) {
       this.getAndUpdateFavoriteState(this.musicIndex.toString());
     }
     // [EndExclude avsession_controller]
+  }
+
+  /**
+   * 绑定播放控制器。AVSessionController 在 AudioRendererController 构造期间被创建，
+   * 而后者此时尚未写入 AppStorage，故不能在 initAVSession 中依赖它。
+   * 在双向引用就绪后注册控制中心监听，确保系统媒体卡片（通知中心/控制中心）可正常控制播放。
+   */
+  public bindAudioRendererController(controller: AudioRendererController): void {
+    this.audioRendererController = controller;
+    if (this.AVSession) {
+      this.registerSessionListeners();
+    }
+  }
+
+  private registerSessionListeners(): void {
+    if (this.listenersRegistered || !this.AVSession) {
+      return;
+    }
+    this.listenersRegistered = true;
+    this.setListenerForMesFromController();
   }
   // [StartExclude avsession_controller]
   // [Start set_launch_ability]

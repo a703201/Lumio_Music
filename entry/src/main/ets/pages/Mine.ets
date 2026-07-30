@@ -1,10 +1,16 @@
 import { MusicStore } from '../services/MusicStore';
 
+@Builder
+export function MineBuilder() {
+  Mine()
+}
+
 @Component
 export struct Mine {
   @Consume('navPathStack') pathStack: NavPathStack;
   store: MusicStore = MusicStore.getInstance();
   @StorageProp('topHeight') topHeight: number = 0;
+  @StorageProp('bottomHeight') bottomHeight: number = 0;
 
   @State avatarScale: number = 0.8;
   @State avatarOpacity: number = 0;
@@ -94,7 +100,7 @@ export struct Mine {
       .layoutWeight(1)
 
       if (showArrow) {
-        Image($r('app.media.ic_more'))
+        Image($r('app.media.ic_hm_more'))
           .width(16)
           .height(16)
           .fillColor('#C7C7CC')
@@ -124,179 +130,172 @@ export struct Mine {
   }
 
   build() {
-    Column() {
-      // Header section with gradient
+    Scroll() {
       Column() {
-        Stack({ alignContent: Alignment.Center }) {
-          // Outer ring
-          Circle()
-            .width(96)
-            .height(96)
-            .fill(Color.Transparent)
-            .stroke('#FA2759')
-            .strokeWidth(this.avatarStrokeWidth)
-            .animation({ duration: 1000, curve: Curve.EaseInOut })
-
-          // Inner circle
-          Circle()
-            .width(80)
-            .height(80)
-            .fill('#E5E5EA')
-
-          Image($r('app.media.ic_mine'))
-            .width(40)
-            .height(40)
-            .fillColor('#FA2759')
-        }
-        .margin({ bottom: 16 })
-        .scale({ x: this.avatarScale, y: this.avatarScale })
-        .opacity(this.avatarOpacity)
-        .animation({
-          duration: 500,
-          curve: Curve.EaseOut,
-        })
-
-        Text('本地音乐用户')
-          .fontSize(22)
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#1C1C1E')
-          .margin({ bottom: 6 })
-          .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 10 })))
-          .animation({ duration: 400, curve: Curve.EaseOut, delay: 150 })
-
-        Text(`已收藏 ${this.statsCount[0]} 首 · 共 ${this.statsCount[1]} 首歌曲`)
-          .fontSize(14)
-          .fontColor('#8E8E93')
-          .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 10 })))
-          .animation({ duration: 400, curve: Curve.EaseOut, delay: 200 })
-      }
-      .width('100%')
-      .padding({ top: this.topHeight + 32, bottom: 24 })
-      .justifyContent(FlexAlign.Center)
-      .backgroundColor('#FAFAFA')
-
-      // Quick stats
-      Row() {
+        // Header section with gradient
         Column() {
-          Text(`${this.statsCount[1]}`)
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#FA2759')
-          Text('歌曲')
-            .fontSize(11)
-            .fontColor('#8E8E93')
-            .margin({ top: 2 })
-        }
-        .layoutWeight(1)
+          Stack({ alignContent: Alignment.Center }) {
+            // Outer ring
+            Circle()
+              .width(96)
+              .height(96)
+              .fill(Color.Transparent)
+              .stroke('#FA2759')
+              .strokeWidth(this.avatarStrokeWidth)
+              .animation({ duration: 1000, curve: Curve.EaseInOut })
 
-        Column() {
-          Text(`${this.statsCount[0]}`)
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#34C759')
-          Text('收藏')
-            .fontSize(11)
-            .fontColor('#8E8E93')
-            .margin({ top: 2 })
-        }
-        .layoutWeight(1)
+            // Inner circle
+            Circle()
+              .width(80)
+              .height(80)
+              .fill('#E5E5EA')
 
-        Column() {
-          Text(`${this.statsCount[2]}`)
-            .fontSize(20)
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#FF9500')
-          Text('历史')
-            .fontSize(11)
-            .fontColor('#8E8E93')
-            .margin({ top: 2 })
-        }
-        .layoutWeight(1)
-      }
-      .width('100%')
-      .padding({ left: 32, right: 32, top: 20, bottom: 20 })
-      .backgroundColor('#FAFAFA')
-
-      // Menu section
-      Column() {
-        this.buildMenuItem(
-          $r('app.media.ic_favorite'),
-          '我的收藏',
-          `${this.store.getFavoriteSongs().length} 首歌曲`,
-          true,
-          0,
-          '#FA2759',
-          () => {
-            this.pathStack.pushPathByName('Favorites', null);
+            Image($r('app.media.ic_mine'))
+              .width(40)
+              .height(40)
+              .fillColor('#FA2759')
           }
-        )
+          .margin({ bottom: 16 })
+          .scale({ x: this.avatarScale, y: this.avatarScale })
+          .opacity(this.avatarOpacity)
+          .animation({
+            duration: 500,
+            curve: Curve.EaseOut,
+          })
 
-        this.buildMenuItem(
-          $r('app.media.ic_list'),
-          '播放历史',
-          `${this.store.recentlyPlayed.length} 首歌曲`,
-          true,
-          1,
-          '#FF9500',
-          () => {
-            this.pathStack.pushPathByName('PlayHistory', null);
-          }
-        )
+          Text('本地音乐用户')
+            .fontSize(22)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#1C1C1E')
+            .margin({ bottom: 6 })
+            .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 10 })))
+            .animation({ duration: 400, curve: Curve.EaseOut, delay: 150 })
 
-        this.buildMenuItem(
-          $r('app.media.ic_music'),
-          '本地音乐库',
-          `${this.store.songs.length} 首歌曲`,
-          true,
-          2,
-          '#34C759',
-          () => {
-            this.pathStack.pushPathByName('LocalLibrary', null);
-          }
-        )
-      }
-      .width('100%')
-      .padding({ left: 16, right: 16, top: 8 })
-
-      // Section header
-      Text('更多')
-        .fontSize(13)
-        .fontColor('#8E8E93')
-        .margin({ top: 16, bottom: 12, left: 16 })
-        .textAlign(TextAlign.Start)
+          Text(`已收藏 ${this.statsCount[0]} 首 · 共 ${this.statsCount[1]} 首歌曲`)
+            .fontSize(14)
+            .fontColor('#8E8E93')
+            .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 10 })))
+            .animation({ duration: 400, curve: Curve.EaseOut, delay: 200 })
+        }
         .width('100%')
+        .padding({ top: this.topHeight + 32, bottom: 24 })
+        .justifyContent(FlexAlign.Center)
+        .backgroundColor('#FAFAFA')
 
-      Column() {
-        this.buildMenuItem(
-          $r('app.media.ic_code'),
-          '设置',
-          '',
-          true,
-          3,
-          '#8E8E93',
-          () => {
-            this.pathStack.pushPathByName('Settings', null);
+        // Quick stats
+        Row() {
+          Column() {
+            Text(`${this.statsCount[1]}`)
+              .fontSize(20)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#FA2759')
+            Text('歌曲')
+              .fontSize(11)
+              .fontColor('#8E8E93')
+              .margin({ top: 2 })
           }
-        )
+          .layoutWeight(1)
 
-        this.buildMenuItem(
-          $r('app.media.ic_logo'),
-          '关于',
-          'HM_Music v2.0',
-          true,
-          4,
-          '#5856D6',
-          () => {
-            this.pathStack.pushPathByName('About', null);
+          Column() {
+            Text(`${this.statsCount[0]}`)
+              .fontSize(20)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#34C759')
+            Text('收藏')
+              .fontSize(11)
+              .fontColor('#8E8E93')
+              .margin({ top: 2 })
           }
-        )
+          .layoutWeight(1)
+
+          Column() {
+            Text(`${this.statsCount[2]}`)
+              .fontSize(20)
+              .fontWeight(FontWeight.Bold)
+              .fontColor('#FF9500')
+            Text('历史')
+              .fontSize(11)
+              .fontColor('#8E8E93')
+              .margin({ top: 2 })
+          }
+          .layoutWeight(1)
+        }
+        .width('100%')
+        .padding({ left: 32, right: 32, top: 20, bottom: 20 })
+        .backgroundColor('#FAFAFA')
+
+        // Menu section
+        Column() {
+          this.buildMenuItem(
+            $r('app.media.ic_hm_favorite'),
+            '我的收藏',
+            `${this.store.getFavoriteSongs().length} 首歌曲`,
+            true,
+            0,
+            '#FA2759',
+            () => {
+              this.pathStack.pushPathByName('Favorites', null);
+            }
+          )
+
+          this.buildMenuItem(
+            $r('app.media.ic_hm_list'),
+            '播放历史',
+            `${this.store.recentlyPlayed.length} 首歌曲`,
+            true,
+            1,
+            '#FF9500',
+            () => {
+              this.pathStack.pushPathByName('PlayHistory', null);
+            }
+          )
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16, top: 8 })
+
+        // Section header
+        Text('更多')
+          .fontSize(13)
+          .fontColor('#8E8E93')
+          .margin({ top: 16, bottom: 12, left: 16 })
+          .textAlign(TextAlign.Start)
+          .width('100%')
+
+        Column() {
+          this.buildMenuItem(
+            $r('app.media.ic_hm_settings'),
+            '设置',
+            '',
+            true,
+            3,
+            '#8E8E93',
+            () => {
+              this.pathStack.pushPathByName('Settings', null);
+            }
+          )
+
+          this.buildMenuItem(
+            $r('app.media.ic_logo'),
+            '关于',
+            'Lumio Music v2.0',
+            true,
+            4,
+            '#5856D6',
+            () => {
+              this.pathStack.pushPathByName('About', null);
+            }
+          )
+        }
+        .width('100%')
+        .padding({ left: 16, right: 16 })
       }
       .width('100%')
-      .padding({ left: 16, right: 16 })
-      .layoutWeight(1)
     }
     .width('100%')
     .height('100%')
+    .layoutWeight(1)
+    .scrollBar(BarState.Off)
     .backgroundColor(Color.White)
+    .padding({ bottom: this.bottomHeight + 200 })
   }
 }

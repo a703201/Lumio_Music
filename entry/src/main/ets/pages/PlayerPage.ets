@@ -1,9 +1,12 @@
+import { curves } from '@kit.ArkUI';
 import { AudioRendererController } from '../utils/AudioRendererController';
 import { BreakpointConstants } from '../common/constants/BreakpointConstants';
 import { BreakpointSystem } from '../common/utils/BreakpointSystem';
 import { PlayerInfoComponent } from '../components/PlayerInfoComponent';
 import { MusicStore } from '../services/MusicStore';
 import { SongItem } from '../models/music';
+
+const PLAYER_COVER_ID: string = 'player_cover';
 
 @Builder
 export function PlayerPageBuilder() {
@@ -16,9 +19,6 @@ struct PlayerPage {
   @StorageLink('selectIndex') selectIndex: number = 0;
   @StorageLink('songList') songList: SongItem[] = [];
   @State isShowPlay: boolean = false;
-  @State contentOpacity: number = 0;
-  @State contentTranslateY: number = 60;
-  @State coverScale: number = 0.85;
   @StorageProp('currentBreakpoint') currentBreakpoint: string = BreakpointConstants.BREAKPOINT_SM;
   private breakpointSystem: BreakpointSystem = new BreakpointSystem();
 
@@ -32,37 +32,32 @@ struct PlayerPage {
     AppStorage.setOrCreate('selectIndex', store.currentIndex);
     AudioRendererController.getInstance();
     this.breakpointSystem.register();
-    // Entrance animation
-    setTimeout(() => {
-      this.contentOpacity = 1;
-      this.contentTranslateY = 0;
-      this.coverScale = 1.0;
-    }, 50);
   }
 
   aboutToDisappear(): void {
     this.breakpointSystem.unregister();
-    AudioRendererController.getInstance().release();
+  }
+
+  // 一镜到底：退出时把出栈包进 animateTo，触发共享元素反向收起
+  private back(): void {
+    this.getUIContext().animateTo(
+      { curve: curves.interpolatingSpring(0, 1, 342, 38) },
+      () => {
+        this.pathStack.pop(false);
+      }
+    );
   }
 
   build() {
     NavDestination() {
       PlayerInfoComponent({ isShowPlay: this.isShowPlay })
-        .opacity(this.contentOpacity)
-        .translate({ y: this.contentTranslateY })
-        .scale({ x: this.coverScale, y: this.coverScale })
-        .animation({
-          duration: 400,
-          curve: Curve.EaseOut
-        })
+        .geometryTransition(PLAYER_COVER_ID)
     }
     .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP, LayoutSafeAreaEdge.BOTTOM])
     .hideTitleBar(true)
-    .onWillDisappear(() => {
-      // Exit animation
-      this.contentOpacity = 0;
-      this.contentTranslateY = 60;
-      this.coverScale = 0.85;
+    .onBackPressed(() => {
+      this.back();
+      return true;
     })
   }
 }

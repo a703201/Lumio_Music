@@ -33,14 +33,6 @@
       }
     },
     {
-      "name": "LocalLibrary",
-      "pageSourceFile": "src/main/ets/pages/LocalLibrary.ets",
-      "buildFunction": "LocalLibraryBuilder",
-      "data": {
-        "description": "this is LocalLibrary"
-      }
-    },
-    {
       "name": "PlayHistory",
       "pageSourceFile": "src/main/ets/pages/PlayHistory.ets",
       "buildFunction": "PlayHistoryBuilder",

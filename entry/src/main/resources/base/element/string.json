@@ -25,6 +25,10 @@
       "value": "用于后台播放音乐"
     },
     {
+      "name": "gesture_reason",
+      "value": "用于感知握持手状态，实现智感握姿跟随"
+    },
+    {
       "name": "sequential_playback",
       "value": "顺序播放"
     },

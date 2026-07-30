@@ -1,0 +1,1549 @@
+{
+  "target": "D:/Codes/Project/HM_Player",
+  "files": [
+    {
+      "file": "D:/Codes/Project/HM_Player\\hvigorfile.ts",
+      "importedModules": [
+        "@ohos/hvigor-ohos-plugin"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\hvigorfile.ts",
+      "importedModules": [
+        "@ohos/hvigor-ohos-plugin"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\common\\constants\\BreakpointConstants.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\common\\constants\\ContentConstants.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\common\\constants\\PlayerConstants.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\common\\constants\\RouterConstants.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\common\\constants\\StyleConstants.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\common\\utils\\BreakpointSystem.ets",
+      "importedModules": [
+        "../constants/BreakpointConstants",
+        "@kit.ArkUI"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": [
+        {
+          "apiId": "componentSnapshot-get",
+          "api": "componentSnapshot.get",
+          "method": "get",
+          "module": "@kit.ArkUI",
+          "line": 46,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\common\\utils\\ColorConversion.ets",
+      "importedModules": [
+        "../../utils/Logger",
+        "@kit.ArkUI"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": [
+        {
+          "apiId": "componentSnapshot-get",
+          "api": "componentSnapshot.get",
+          "method": "get",
+          "module": "@kit.ArkUI",
+          "line": 106,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\common\\utils\\ResourceConversion.ets",
+      "importedModules": [
+        "@kit.AbilityKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\components\\ControlAreaComponent.ets",
+      "importedModules": [
+        "../common/constants/BreakpointConstants",
+        "../common/constants/ContentConstants",
+        "../common/constants/PlayerConstants",
+        "../common/constants/StyleConstants",
+        "../common/utils/BreakpointSystem",
+        "../common/utils/ResourceConversion",
+        "../datasource/SongDataSource",
+        "../songdatacontroller/PlayerData",
+        "../songdatacontroller/SongData",
+        "../utils/AVSessionController",
+        "../utils/AudioRendererController",
+        "../utils/Logger",
+        "@kit.ArkUI"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [
+        [
+          72,
+          263
+        ],
+        [
+          347,
+          392
+        ]
+      ],
+      "usages": [
+        {
+          "apiId": "promptAction-showToast",
+          "api": "promptAction.showToast",
+          "method": "showToast",
+          "module": "@kit.ArkUI",
+          "line": 62,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\components\\LyricsComponent.ets",
+      "importedModules": [
+        "../common/constants/BreakpointConstants",
+        "../common/constants/PlayerConstants",
+        "../common/constants/StyleConstants",
+        "../common/utils/BreakpointSystem",
+        "../lyric/LrcEntry",
+        "../lyric/LrcUtils",
+        "../lyric/LrcView",
+        "../lyric/LyricConst",
+        "../songdatacontroller/SongData",
+        "./ControlAreaComponent",
+        "@kit.AbilityKit",
+        "@kit.ArkTS"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "aboutToAppear": true
+      },
+      "buildBlocks": [
+        [
+          73,
+          231
+        ]
+      ],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\components\\MusicInfoComponent.ets",
+      "importedModules": [
+        "../common/constants/BreakpointConstants",
+        "../common/constants/PlayerConstants",
+        "../common/constants/StyleConstants",
+        "../songdatacontroller/SongData",
+        "./ControlAreaComponent"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [
+        [
+          32,
+          61
+        ]
+      ],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\components\\PlayerInfoComponent.ets",
+      "importedModules": [
+        "../common/constants/BreakpointConstants",
+        "../common/constants/PlayerConstants",
+        "../common/constants/StyleConstants",
+        "../common/utils/ColorConversion",
+        "../songdatacontroller/SongData",
+        "../utils/Logger",
+        "./ControlAreaComponent",
+        "./LyricsComponent",
+        "./MusicInfoComponent",
+        "./TopAreaComponent",
+        "@kit.AbilityKit",
+        "@kit.ArkGraphics2D",
+        "@kit.ArkUI",
+        "@kit.BasicServicesKit",
+        "@kit.ImageKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "aboutToAppear": true,
+        "aboutToDisappear": true
+      },
+      "buildBlocks": [
+        [
+          85,
+          246
+        ]
+      ],
+      "usages": [
+        {
+          "apiId": "componentSnapshot-get",
+          "api": "componentSnapshot.get",
+          "method": "get",
+          "module": "@kit.ArkUI",
+          "line": 49,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\components\\TopAreaComponent.ets",
+      "importedModules": [
+        "../common/constants/StyleConstants",
+        "../common/utils/BreakpointSystem",
+        "../songdatacontroller/SongData",
+        "@kit.AVSessionKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [
+        [
+          35,
+          52
+        ]
+      ],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\datasource\\SongDataSource.ets",
+      "importedModules": [
+        "../songdatacontroller/SongData"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\datasource\\SongListData.ets",
+      "importedModules": [
+        "../songdatacontroller/SongData"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\entryability\\EntryAbility.ets",
+      "importedModules": [
+        "../common/constants/BreakpointConstants",
+        "../services/MusicStore",
+        "@kit.AbilityKit",
+        "@kit.ArkUI",
+        "@kit.PerformanceAnalysisKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": true,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "onCreate": true,
+        "onWindowStageCreate": true,
+        "onDestroy": true
+      },
+      "buildBlocks": [],
+      "usages": [
+        {
+          "apiId": "UIAbility-onWindowStageCreate",
+          "api": "UIAbility.onWindowStageCreate",
+          "method": "onWindowStageCreate",
+          "module": "@kit.AbilityKit",
+          "line": 36,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "UIAbility-onCreate",
+          "api": "UIAbility.onCreate",
+          "method": "onCreate",
+          "module": "@kit.AbilityKit",
+          "line": 27,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\entrybackupability\\EntryBackupAbility.ets",
+      "importedModules": [
+        "@kit.CoreFileKit",
+        "@kit.PerformanceAnalysisKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\lyric\\LrcEntry.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\lyric\\LrcUtils.ets",
+      "importedModules": [
+        "../utils/Logger",
+        "./LrcEntry",
+        "@kit.ArkTS"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\lyric\\LrcView.ets",
+      "importedModules": [
+        "../utils/Logger",
+        "./LrcEntry",
+        "./LrcUtils",
+        "./LyricConst",
+        "@kit.ArkUI",
+        "@ohos/hypium/src/main/Constant"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [
+        [
+          687,
+          705
+        ]
+      ],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\lyric\\LyricConst.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\models\\lyric.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\models\\music.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\pages\\About.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "aboutToAppear": true
+      },
+      "buildBlocks": [
+        [
+          43,
+          176
+        ]
+      ],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\pages\\Favorites.ets",
+      "importedModules": [
+        "../models/music",
+        "../services/MusicStore"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "aboutToAppear": true
+      },
+      "buildBlocks": [
+        [
+          118,
+          202
+        ]
+      ],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\pages\\Find.ets",
+      "importedModules": [
+        "../models/music",
+        "../services/MusicStore"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "aboutToAppear": true
+      },
+      "buildBlocks": [
+        [
+          90,
+          172
+        ]
+      ],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\pages\\Index.ets",
+      "importedModules": [
+        "@kit.UIDesignKit"
+      ],
+      "flags": {
+        "hasEntry": true,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "onAppear": true
+      },
+      "buildBlocks": [
+        [
+          8,
+          17
+        ]
+      ],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\pages\\Layout.ets",
+      "importedModules": [
+        "../models/music",
+        "../services/MusicStore",
+        "../utils/AudioRendererController",
+        "./LocalLibrary",
+        "./Mine",
+        "@kit.ArkUI",
+        "@kit.MultimodalAwarenessKit",
+        "@kit.UIDesignKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "aboutToAppear": true,
+        "aboutToDisappear": true
+      },
+      "buildBlocks": [
+        [
+          155,
+          248
+        ]
+      ],
+      "usages": [
+        {
+          "apiId": "animateTo",
+          "api": "animateTo",
+          "method": "animateTo",
+          "module": "@kit.ArkUI",
+          "line": 100,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\pages\\LocalLibrary.ets",
+      "importedModules": [
+        "../models/music",
+        "../services/MusicStore",
+        "@kit.AbilityKit",
+        "@kit.ArkUI",
+        "@kit.CoreFileKit",
+        "@ohos.file.fs"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "aboutToAppear": true,
+        "aboutToDisappear": true
+      },
+      "buildBlocks": [
+        [
+          289,
+          413
+        ]
+      ],
+      "usages": [
+        {
+          "apiId": "promptAction-showToast",
+          "api": "promptAction.showToast",
+          "method": "showToast",
+          "module": "@kit.ArkUI",
+          "line": 122,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "promptAction-showToast",
+          "api": "promptAction.showToast",
+          "method": "showToast",
+          "module": "@kit.ArkUI",
+          "line": 124,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "animateTo",
+          "api": "animateTo",
+          "method": "animateTo",
+          "module": "@kit.ArkUI",
+          "line": 141,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "picker-file",
+          "api": "picker (FileSelector/PhotoViewPicker)",
+          "method": "select",
+          "module": "@kit.CoreFileKit",
+          "line": 75,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\pages\\Mine.ets",
+      "importedModules": [
+        "../services/MusicStore"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "aboutToAppear": true,
+        "aboutToDisappear": true
+      },
+      "buildBlocks": [
+        [
+          131,
+          299
+        ]
+      ],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\pages\\PlayerPage.ets",
+      "importedModules": [
+        "../common/constants/BreakpointConstants",
+        "../common/utils/BreakpointSystem",
+        "../components/PlayerInfoComponent",
+        "../models/music",
+        "../services/MusicStore",
+        "../utils/AudioRendererController",
+        "@kit.ArkUI"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "aboutToAppear": true,
+        "aboutToDisappear": true
+      },
+      "buildBlocks": [
+        [
+          51,
+          62
+        ]
+      ],
+      "usages": [
+        {
+          "apiId": "router-back",
+          "api": "router.back",
+          "method": "back",
+          "module": "@kit.ArkUI",
+          "line": 42,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "router-back",
+          "api": "router.back",
+          "method": "back",
+          "module": "@kit.ArkUI",
+          "line": 59,
+          "inBuild": true,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "animateTo",
+          "api": "animateTo",
+          "method": "animateTo",
+          "module": "@kit.ArkUI",
+          "line": 43,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "componentSnapshot-get",
+          "api": "componentSnapshot.get",
+          "method": "get",
+          "module": "@kit.ArkUI",
+          "line": 27,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\pages\\PlayHistory.ets",
+      "importedModules": [
+        "../models/music",
+        "../services/MusicStore"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {
+        "aboutToAppear": true
+      },
+      "buildBlocks": [
+        [
+          105,
+          189
+        ]
+      ],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\pages\\Settings.ets",
+      "importedModules": [
+        "../services/MusicStore",
+        "@kit.AbilityKit",
+        "@kit.ArkUI"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": true,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [
+        [
+          103,
+          213
+        ]
+      ],
+      "usages": [
+        {
+          "apiId": "promptAction-showToast",
+          "api": "promptAction.showToast",
+          "method": "showToast",
+          "module": "@kit.ArkUI",
+          "line": 153,
+          "inBuild": true,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "getContext",
+          "api": "getContext",
+          "method": "getContext",
+          "module": "@kit.AbilityKit",
+          "line": 94,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "AbilityContext-startAbility",
+          "api": "AbilityContext.startAbility",
+          "method": "startAbility",
+          "module": "@kit.AbilityKit",
+          "line": 95,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\services\\MusicStore.ets",
+      "importedModules": [
+        "../models/music",
+        "@ohos.data.preferences"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": [
+        {
+          "apiId": "preferences-getPreferences",
+          "api": "preferences.getPreferences",
+          "method": "getPreferences",
+          "module": "@kit.ArkData",
+          "line": 46,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\songdatacontroller\\PlayerData.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\songdatacontroller\\SongData.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\songdatacontroller\\SongItemBuilder.ets",
+      "importedModules": [
+        "../utils/Logger",
+        "./SongData",
+        "@kit.AbilityKit",
+        "@kit.BasicServicesKit",
+        "@kit.CoreFileKit",
+        "@kit.LocalizationKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\utils\\AudioRendererController.ets",
+      "importedModules": [
+        "../songdatacontroller/PlayerData",
+        "../songdatacontroller/SongData",
+        "../songdatacontroller/SongItemBuilder",
+        "./AVSessionController",
+        "./BackgroundUtil",
+        "./Logger",
+        "./MediaTools",
+        "./PreferencesUtil",
+        "@kit.AbilityKit",
+        "@kit.BasicServicesKit",
+        "@kit.CoreFileKit",
+        "@kit.MediaKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": [
+        {
+          "apiId": "media-createAVPlayer",
+          "api": "media.createAVPlayer",
+          "method": "createAVPlayer",
+          "module": "@kit.MediaKit",
+          "line": 64,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\utils\\AVSessionController.ets",
+      "importedModules": [
+        "../songdatacontroller/PlayerData",
+        "../songdatacontroller/SongData",
+        "./AudioRendererController",
+        "./Logger",
+        "./MediaTools",
+        "./PreferencesUtil",
+        "@kit.AVSessionKit",
+        "@kit.AbilityKit",
+        "@kit.BasicServicesKit",
+        "@kit.LocalizationKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\utils\\BackgroundUtil.ets",
+      "importedModules": [
+        "./Logger",
+        "@kit.AbilityKit",
+        "@kit.BackgroundTasksKit",
+        "@kit.BasicServicesKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\utils\\Logger.ets",
+      "importedModules": [
+        "@kit.PerformanceAnalysisKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\utils\\MediaTools.ets",
+      "importedModules": [
+        "../songdatacontroller/PlayerData",
+        "./Logger",
+        "@kit.AbilityKit",
+        "@kit.ArkTS",
+        "@kit.ImageKit",
+        "@kit.LocalizationKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\utils\\NativeModule.ets",
+      "importedModules": [
+        "libnative_module.so"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\main\\ets\\utils\\PreferencesUtil.ets",
+      "importedModules": [
+        "./Logger",
+        "@kit.ArkData",
+        "@kit.BasicServicesKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": [
+        {
+          "apiId": "preferences-getPreferences",
+          "api": "preferences.getPreferences",
+          "method": "getPreferences",
+          "module": "@kit.ArkData",
+          "line": 34,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "preferences-getPreferences",
+          "api": "preferences.getPreferences",
+          "method": "getPreferences",
+          "module": "@kit.ArkData",
+          "line": 36,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "preferences-getPreferences",
+          "api": "preferences.getPreferences",
+          "method": "getPreferences",
+          "module": "@kit.ArkData",
+          "line": 97,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "preferences-getPreferences",
+          "api": "preferences.getPreferences",
+          "method": "getPreferences",
+          "module": "@kit.ArkData",
+          "line": 124,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "preferences-getPreferences",
+          "api": "preferences.getPreferences",
+          "method": "getPreferences",
+          "module": "@kit.ArkData",
+          "line": 153,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\ohosTest\\ets\\test\\Ability.test.ets",
+      "importedModules": [
+        "@kit.PerformanceAnalysisKit",
+        "@ohos/hypium"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\ohosTest\\ets\\test\\List.test.ets",
+      "importedModules": [
+        "./Ability.test"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\test\\List.test.ets",
+      "importedModules": [
+        "./LocalUnit.test"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\entry\\src\\test\\LocalUnit.test.ets",
+      "importedModules": [
+        "@ohos/hypium"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\MediaService\\hvigorfile.ts",
+      "importedModules": [
+        "@ohos/hvigor-ohos-plugin"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\MediaService\\Index.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\MediaService\\src\\main\\ets\\songdatacontroller\\PlayerData.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\MediaService\\src\\main\\ets\\songdatacontroller\\SongData.ets",
+      "importedModules": [],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\MediaService\\src\\main\\ets\\songdatacontroller\\SongItemBuilder.ets",
+      "importedModules": [
+        "../utils/Logger",
+        "./SongData",
+        "@kit.AbilityKit",
+        "@kit.BasicServicesKit",
+        "@kit.CoreFileKit",
+        "@kit.LocalizationKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\MediaService\\src\\main\\ets\\utils\\AudioRendererController.ets",
+      "importedModules": [
+        "../songdatacontroller/PlayerData",
+        "../songdatacontroller/SongData",
+        "../songdatacontroller/SongItemBuilder",
+        "./AVSessionController",
+        "./BackgroundUtil",
+        "./Logger",
+        "./MediaTools",
+        "./PreferencesUtil",
+        "@kit.AbilityKit",
+        "@kit.BasicServicesKit",
+        "@kit.CoreFileKit",
+        "@kit.MediaKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": [
+        {
+          "apiId": "media-createAVPlayer",
+          "api": "media.createAVPlayer",
+          "method": "createAVPlayer",
+          "module": "@kit.MediaKit",
+          "line": 64,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\MediaService\\src\\main\\ets\\utils\\AVSessionController.ets",
+      "importedModules": [
+        "../songdatacontroller/PlayerData",
+        "../songdatacontroller/SongData",
+        "./AudioRendererController",
+        "./Logger",
+        "./MediaTools",
+        "./PreferencesUtil",
+        "@kit.AVSessionKit",
+        "@kit.AbilityKit",
+        "@kit.BasicServicesKit",
+        "@kit.LocalizationKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\MediaService\\src\\main\\ets\\utils\\BackgroundUtil.ets",
+      "importedModules": [
+        "./Logger",
+        "@kit.AbilityKit",
+        "@kit.BackgroundTasksKit",
+        "@kit.BasicServicesKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\MediaService\\src\\main\\ets\\utils\\Logger.ets",
+      "importedModules": [
+        "@kit.PerformanceAnalysisKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\MediaService\\src\\main\\ets\\utils\\MediaTools.ets",
+      "importedModules": [
+        "../songdatacontroller/PlayerData",
+        "./Logger",
+        "@kit.AbilityKit",
+        "@kit.ArkTS",
+        "@kit.ImageKit",
+        "@kit.LocalizationKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": []
+    },
+    {
+      "file": "D:/Codes/Project/HM_Player\\MediaService\\src\\main\\ets\\utils\\PreferencesUtil.ets",
+      "importedModules": [
+        "./Logger",
+        "@kit.ArkData",
+        "@kit.BasicServicesKit"
+      ],
+      "flags": {
+        "hasEntry": false,
+        "hasComponent": false,
+        "hasCustomDialog": false,
+        "hasAbility": false,
+        "isWorkerFile": false
+      },
+      "lifecycle": {},
+      "buildBlocks": [],
+      "usages": [
+        {
+          "apiId": "preferences-getPreferences",
+          "api": "preferences.getPreferences",
+          "method": "getPreferences",
+          "module": "@kit.ArkData",
+          "line": 34,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "preferences-getPreferences",
+          "api": "preferences.getPreferences",
+          "method": "getPreferences",
+          "module": "@kit.ArkData",
+          "line": 36,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "preferences-getPreferences",
+          "api": "preferences.getPreferences",
+          "method": "getPreferences",
+          "module": "@kit.ArkData",
+          "line": 92,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "preferences-getPreferences",
+          "api": "preferences.getPreferences",
+          "method": "getPreferences",
+          "module": "@kit.ArkData",
+          "line": 118,
+          "inBuild": false,
+          "inBuildDirect": false
+        },
+        {
+          "apiId": "preferences-getPreferences",
+          "api": "preferences.getPreferences",
+          "method": "getPreferences",
+          "module": "@kit.ArkData",
+          "line": 146,
+          "inBuild": false,
+          "inBuildDirect": false
+        }
+      ]
+    }
+  ],
+  "moduleJson5": {
+    "requestPermissions": [
+      "ohos.permission.READ_MEDIA",
+      "ohos.permission.WRITE_MEDIA",
+      "ohos.permission.KEEP_BACKGROUND_RUNNING",
+      "ohos.permission.DETECT_GESTURE"
+    ],
+    "deviceTypes": [
+      "phone"
+    ],
+    "apiReleaseType": "",
+    "name": "entry"
+  },
+  "buildProfile": {
+    "compileSdkVersion": null,
+    "compatibleSdkVersion": null,
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "targetSdkVersion": "26.0.0",
+        "compatibleSdkVersion": "6.1.0(23)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": false
+          },
+          "nativeCompiler": "BiSheng"
+        }
+      }
+    ]
+  },
+  "configFound": {
+    "moduleJson5": "D:/Codes/Project/HM_Player\\entry\\src\\main\\module.json5",
+    "buildProfile": "D:/Codes/Project/HM_Player\\build-profile.json5"
+  }
+}

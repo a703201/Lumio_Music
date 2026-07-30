@@ -1,4 +1,5 @@
-import { common, wantConstant, Want } from '@kit.AbilityKit';
+import { common, Want } from '@kit.AbilityKit';
+import { promptAction } from '@kit.ArkUI';
 import { MusicStore } from '../services/MusicStore';
 
 @Builder
@@ -12,16 +13,8 @@ struct Settings {
   store: MusicStore = MusicStore.getInstance();
   @StorageProp('topHeight') topHeight: number = 0;
 
-  @State scanProgress: number = 0;
-  @State isScanning: boolean = false;
   @State itemScales: number[] = [1.0, 1.0, 1.0, 1.0];
   @State backScale: number = 1.0;
-  @State repeatModeIndex: number = 0;
-
-  aboutToAppear(): void {
-    const modes: ('none' | 'list' | 'single')[] = ['none', 'list', 'single'];
-    this.repeatModeIndex = modes.indexOf(this.store.repeatMode);
-  }
 
   @Builder
   buildSettingItem(icon: ResourceStr, title: string, subtitle: string = '', index: number = 0, iconColor: string = '#FA2759', onClick: () => void = () => {}) {
@@ -62,7 +55,7 @@ struct Settings {
         .alignItems(HorizontalAlign.Start)
         .layoutWeight(1)
 
-        Image($r('app.media.ic_more'))
+        Image($r('app.media.ic_hm_more'))
           .width(16)
           .fillColor('#C7C7CC')
       }
@@ -91,12 +84,29 @@ struct Settings {
     })
   }
 
+  private openDeveloper(): void {
+    try {
+      const want: Want = {
+        action: 'ohos.want.action.viewData',
+        uri: 'https://www.a703201sworld.top/resume/'
+      };
+      const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
+      context.startAbility(want).catch((err: Error) => {
+        console.error('Failed to open resume page:', err);
+        promptAction.showToast({ message: '无法打开网页' });
+      });
+    } catch (err) {
+      console.error('Failed to open resume page:', err);
+      promptAction.showToast({ message: '无法打开网页' });
+    }
+  }
+
   build() {
     NavDestination() {
       Column() {
         // Header
         Row() {
-          Image($r('app.media.ic_back'))
+          Image($r('app.media.ic_hm_back'))
             .width(24)
             .height(24)
             .fillColor('#1C1C1E')
@@ -125,7 +135,7 @@ struct Settings {
 
         Scroll() {
           Column() {
-            // Scan section
+            // 音乐管理
             Text('音乐管理')
               .fontSize(13)
               .fontColor('#8E8E93')
@@ -134,83 +144,20 @@ struct Settings {
 
             Column() {
               this.buildSettingItem(
-                $r('app.media.ic_music'),
-                '扫描本地音乐',
-                '扫描设备中的音频文件',
+                $r('app.media.ic_hm_list'),
+                '清空播放历史',
+                `共 ${this.store.recentlyPlayed.length} 首`,
                 0,
-                '#FA2759',
-                () => {
-                  this.isScanning = true;
-                  this.scanProgress = 0;
-                  const interval = setInterval(() => {
-                    this.scanProgress += 8;
-                    if (this.scanProgress >= 100) {
-                      clearInterval(interval);
-                      setTimeout(() => {
-                        this.isScanning = false;
-                        this.scanProgress = 0;
-                      }, 300);
-                    }
-                  }, 100);
-                }
-              )
-            }
-            .margin({ bottom: 8 })
-
-            // Scan progress
-            if (this.isScanning) {
-              Column() {
-                Row() {
-                  Text('扫描中...')
-                    .fontSize(13)
-                    .fontColor('#8E8E93')
-                  Text(`${this.scanProgress}%`)
-                    .fontSize(13)
-                    .fontColor('#FA2759')
-                    .fontWeight(FontWeight.Medium)
-                }
-                .width('100%')
-                .justifyContent(FlexAlign.SpaceBetween)
-                .margin({ bottom: 8 })
-
-                Progress({ style: ProgressStyle.Linear, value: this.scanProgress })
-                  .width('100%')
-                  .height(4)
-                  .color('#FA2759')
-                  .animation({ duration: 100, curve: Curve.Linear })
-              }
-              .width('100%')
-              .padding({ left: 16, right: 16, bottom: 12 })
-              .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: -10 })))
-              .animation({ duration: 300, curve: Curve.EaseOut })
-            }
-
-            // Playback section
-            Text('播放设置')
-              .fontSize(13)
-              .fontColor('#8E8E93')
-              .width('100%')
-              .padding({ left: 4, top: 16, bottom: 10 })
-
-            Column() {
-              this.buildSettingItem(
-                $r('app.media.ic_repeat'),
-                '播放模式',
-                `当前: ${this.store.repeatMode === 'list' ? '列表循环' : this.store.repeatMode === 'single' ? '单曲循环' : '顺序播放'}`,
-                1,
                 '#FF9500',
                 () => {
-                  const modes: ('none' | 'list' | 'single')[] = ['none', 'list', 'single'];
-                  const currentIndex: number = modes.indexOf(this.store.repeatMode);
-                  const nextIndex: number = (currentIndex + 1) % modes.length;
-                  this.store.setRepeatMode(modes[nextIndex]);
-                  this.repeatModeIndex = nextIndex;
+                  this.store.clearRecentlyPlayed();
+                  promptAction.showToast({ message: '已清空播放历史' });
                 }
               )
             }
             .margin({ bottom: 8 })
 
-            // About section
+            // 关于
             Text('关于')
               .fontSize(13)
               .fontColor('#8E8E93')
@@ -219,45 +166,32 @@ struct Settings {
 
             Column() {
               this.buildSettingItem(
-                $r('app.media.ic_logo'),
+                $r('app.media.ic_hm_settings'),
                 '版本信息',
-                'HM_Music v2.0',
-                2,
+                'Lumio Music v2.0',
+                1,
                 '#5856D6',
                 () => {
                   this.pathStack.pushPathByName('About', null);
                 }
               )
             }
-            .margin({ bottom: 2 })
+            .margin({ bottom: 8 })
 
             Column() {
               this.buildSettingItem(
-                $r('app.media.ic_code'),
+                $r('app.media.ic_hm_profile'),
                 '开发者',
-                'Lumio',
-                3,
+                '何宇翔',
+                2,
                 '#34C759',
                 () => {
-                  try {
-                    const want: Want = {
-                      action: 'ohos.want.action.viewData',
-                      uri: 'https://www.a703201sworld.top/resume/',
-                      flags: wantConstant.Flags.FLAG_AUTH_READ_URI_PERMISSION
-                    };
-                    let context = getContext(this) as common.UIAbilityContext;
-                    context.startAbility(want).catch((err: Error) => {
-                      console.error('Failed to start ability:', err);
-                    });
-                  } catch (err) {
-                    console.error('Failed to start ability:', err);
-                  }
+                  this.openDeveloper();
                 }
               )
             }
             .margin({ bottom: 8 })
 
-            // Footer
             Text('Made with HarmonyOS SDK')
               .fontSize(12)
               .fontColor('#C7C7CC')

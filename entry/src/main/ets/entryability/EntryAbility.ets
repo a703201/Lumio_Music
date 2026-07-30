@@ -17,9 +17,7 @@ import { UIAbility } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { display, window } from '@kit.ArkUI';
 import { BreakpointConstants } from '../common/constants/BreakpointConstants';
-import { scanLocalMusic } from '../services/MusicScanner';
 import { MusicStore } from '../services/MusicStore';
-import { SongItem } from '../models/music';
 
 const DOMAIN = 0x0000;
 
@@ -100,9 +98,7 @@ export default class EntryAbility extends UIAbility {
       const store: MusicStore = MusicStore.getInstance();
       await store.init(this.context);
       if (store.songs.length === 0) {
-        const songs: SongItem[] = await scanLocalMusic(this.context);
-        store.setSongs(songs);
-        hilog.info(DOMAIN, 'testTag', `Scanned ${songs.length} songs`);
+        hilog.info(DOMAIN, 'testTag', 'No local songs yet, import from 音乐库');
       } else {
         hilog.info(DOMAIN, 'testTag', `Loaded ${store.songs.length} songs from storage`);
       }

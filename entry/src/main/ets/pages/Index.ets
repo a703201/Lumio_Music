@@ -1,10 +1,12 @@
+import { HdsNavigation } from '@kit.UIDesignKit';
+
 @Entry
 @Component
 struct Index {
   @Provide('navPathStack') pathStack: NavPathStack = new NavPathStack()
 
   build() {
-    Navigation(this.pathStack) {
+    HdsNavigation(this.pathStack) {
     }
     .onAppear(() => {
       this.pathStack.pushPathByName('Layout', null, false);
