@@ -1,4 +1,5 @@
 import { common, Want } from '@kit.AbilityKit';
+import { getAppVersionDisplay } from '../utils/AppInfoUtil';
 import { promptAction } from '@kit.ArkUI';
 import { MusicStore } from '../services/MusicStore';
 
@@ -15,6 +16,7 @@ struct Settings {
 
   @State itemScales: number[] = [1.0, 1.0, 1.0, 1.0];
   @State backScale: number = 1.0;
+  @State appVersionDisplay: string = 'Lumio Music';
 
   @Builder
   buildSettingItem(icon: ResourceStr, title: string, subtitle: string = '', index: number = 0, iconColor: string = '#FA2759', onClick: () => void = () => {}) {
@@ -101,6 +103,10 @@ struct Settings {
     }
   }
 
+  aboutToAppear(): void {
+    this.appVersionDisplay = getAppVersionDisplay();
+  }
+
   build() {
     NavDestination() {
       Column() {
@@ -168,7 +174,7 @@ struct Settings {
               this.buildSettingItem(
                 $r('app.media.ic_hm_settings'),
                 '版本信息',
-                'Lumio Music v2.0',
+                this.appVersionDisplay,
                 1,
                 '#5856D6',
                 () => {

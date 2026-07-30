@@ -1,7 +1,7 @@
 # 更新日志 · CHANGELOG
 
 本文件记录 HM Music（鸿蒙音乐播放器）的版本演进。
-代码当前 `versionName` 为 `2.0.0`（见 `AppScope/app.json5`）；下方里程碑按功能迭代划分，如需同步版本号可自行 bump。
+代码当前 `versionName` 为 `2.1.0`（见 `AppScope/app.json5`）；应用内「关于 / 设置 / 我的」页的版本展示通过 `bundleManager` 运行时读取，**自动跟随该配置**，无需硬编码。下方里程碑按功能迭代划分。
 
 ---
 
@@ -33,6 +33,10 @@
 - `main_pages.json` 精简为仅注册 `Index`，其余页面经 `route_map.json` 以 `NavDestination` 推送。
 - 对照官方 `Spatialization` 示例修正 API 用法（`SymbolGlyphModifier` 导入源、`labelStyle` 键名等）。
 - 经 `harmonyos-reviewer` 审查：**0 ERROR / 0 WARNING**，release HAP 编译通过。
+
+### 版本
+- `AppScope/app.json5` 版本号同步至 **`2.1.0`**（`versionCode` 2010000）。
+- 新增 `utils/AppInfoUtil.ets`：通过 `bundleManager.getBundleInfoForSelfSync` 运行时读取 `versionName`，关于页 / 设置页「版本信息」/ 我的页「关于」的版本文案均改为引用该值，**自动跟随工程配置**，不再硬编码。
 
 ---
 

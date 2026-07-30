@@ -1,3 +1,5 @@
+import { getAppVersionName } from '../utils/AppInfoUtil';
+
 @Builder
 export function AboutBuilder() {
   About()
@@ -15,8 +17,10 @@ struct About {
   @State itemScales: number[] = [1.0, 1.0, 1.0, 1.0];
   @State featureScales: number[] = [0.9, 0.9, 0.9];
   @State featureOpacities: number[] = [0, 0, 0];
+  @State appVersion: string = '';
 
   aboutToAppear(): void {
+    this.appVersion = getAppVersionName();
     setTimeout(() => {
       this.logoScale = 1.0;
       this.logoOpacity = 1.0;
@@ -145,15 +149,15 @@ struct About {
             .padding({ left: 20, bottom: 12 })
 
           Column() {
-            this.buildAboutItem('应用版本', '2.0', 0)
-            this.buildAboutItem('开发者', 'Lumio', 1)
+            this.buildAboutItem('应用版本', this.appVersion, 0)
+            this.buildAboutItem('开发者', '何宇翔', 1)
             this.buildAboutItem('技术支持', 'HarmonyOS SDK', 2)
             this.buildAboutItem('架构', 'ArkTS + C++ Native', 3)
           }
           .width('100%')
           .padding({ left: 16, right: 16 })
 
-          Text('一款简洁的本地音乐播放器，支持扫描设备音频文件、播放控制、歌词显示等功能。')
+          Text('一款简洁的本地音乐播放器，支持导入本地音频、播放控制、歌词显示等功能。')
             .fontSize(14)
             .fontColor('#636366')
             .textAlign(TextAlign.Center)

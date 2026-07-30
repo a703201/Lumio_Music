@@ -1,4 +1,5 @@
 import { MusicStore } from '../services/MusicStore';
+import { getAppVersionDisplay } from '../utils/AppInfoUtil';
 
 @Builder
 export function MineBuilder() {
@@ -18,10 +19,12 @@ export struct Mine {
   @State avatarRotation: number = 0;
   @State menuScales: number[] = [1.0, 1.0, 1.0, 1.0, 1.0];
   @State statsCount: number[] = [0, 0, 0];
+  @State appVersionDisplay: string = 'Lumio Music';
   private breatheInterval: number = -1;
   private rotateInterval: number = -1;
 
   aboutToAppear(): void {
+    this.appVersionDisplay = getAppVersionDisplay();
     setTimeout(() => {
       this.avatarScale = 1.0;
       this.avatarOpacity = 1.0;
@@ -277,7 +280,7 @@ export struct Mine {
           this.buildMenuItem(
             $r('app.media.ic_logo'),
             '关于',
-            'Lumio Music v2.0',
+            this.appVersionDisplay,
             true,
             4,
             '#5856D6',
