@@ -20,6 +20,7 @@ import { avSession } from '@kit.AVSessionKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { resourceManager } from '@kit.LocalizationKit';
 import { fileIo } from '@kit.CoreFileKit';
+import { formProvider, formBindingData } from '@kit.FormKit';
 import { SongItem } from '../songdatacontroller/SongData';
 import { Logger } from './Logger';
 import { MediaTools } from './MediaTools';
@@ -33,6 +34,17 @@ export class AVSessionController {
   private context: common.UIAbilityContext | undefined = undefined;
   private AVSession: avSession.AVSession | undefined = undefined;
   private songList: SongItem[] = [];
+
+  /**
+   * 由 AudioRendererController 在队列变更（切歌/排序/增删）后同步元数据源，
+   * 保证锁屏/桌面卡片的封面与标题与实际播放队列一致。
+   */
+  public setSongList(list: SongItem[], index?: number): void {
+    this.songList = list;
+    if (index !== undefined) {
+      this.musicIndex = index;
+    }
+  }
   private musicIndex: number | undefined = undefined;
   private audioRendererController: AudioRendererController | undefined = undefined;
   private listenersRegistered: boolean = false;
@@ -200,6 +212,8 @@ export class AVSessionController {
     if (this.isCasting) {
       this.castCurrentSong(0);
     }
+    // 同步推送桌面卡片状态
+    this.pushFormUpdate();
   }
   // [End set_avmetadata]
 
@@ -555,7 +569,69 @@ export class AVSessionController {
         }
       });
     }
+    // 同步推送桌面卡片状态
+    this.pushFormUpdate();
   }
+
+  // [StartExclude form_card]
+  /**
+   * 向所有已添加的桌面卡片推送当前播放状态（标题/艺术家/是否播放中）。
+   * 由 setAVMetadata / setPlayState 触发；卡片进程与主应用独立，经 formProvider 跨进程更新。
+   */
+  public pushFormUpdate(): void {
+    if (!this.context) {
+      return;
+    }
+    let song: SongItem | undefined = this.songList[this.musicIndex ?? -1];
+    let title: string = song?.title ?? '';
+    let artist: string = song?.singer ?? '';
+    let isPlaying: boolean = (AppStorage.get('isPlay') as boolean) ?? false;
+    PreferencesUtil.getInstance().getFormIds(this.context)
+      .then((formIds: Array<string>) => {
+        formIds.forEach((formId: string) => {
+          if (!formId) {
+            return;
+          }
+          formProvider.updateForm(formId, formBindingData.createFormBindingData({
+            title: title,
+            artist: artist,
+            isPlaying: isPlaying
+          }))
+            .catch((err: BusinessError) => {
+              Logger.error(TAG, `pushFormUpdate updateForm failed: ${err.message}`);
+            });
+        });
+      })
+      .catch((err: BusinessError) => {
+        Logger.error(TAG, `pushFormUpdate getFormIds failed: ${err.message}`);
+      });
+  }
+
+  /**
+   * 供桌面卡片（FormAbility.onFormEvent）跨进程回控播放。
+   * @param cmd 'play' | 'pause' | 'next' | 'prev'
+   */
+  public remoteControl(cmd: string): void {
+    Logger.info(TAG, `remoteControl: ${cmd}`);
+    switch (cmd) {
+      case 'play':
+        this.onPlay();
+        break;
+      case 'pause':
+        this.onPause();
+        break;
+      case 'next':
+        this.onPlayNext();
+        break;
+      case 'prev':
+        this.onPlayPrevious();
+        break;
+      default:
+        Logger.error(TAG, `remoteControl unknown cmd: ${cmd}`);
+        break;
+    }
+  }
+  // [EndExclude form_card]
 
   // [StartExclude set_lock_screen]
   /**

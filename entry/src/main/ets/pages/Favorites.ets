@@ -1,6 +1,7 @@
 import { SongItem } from '../models/music';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { MusicStore } from '../services/MusicStore';
+import { AudioRendererController } from '../utils/AudioRendererController';
 
 @Builder
 export function FavoritesBuilder() {
@@ -96,8 +97,7 @@ struct Favorites {
       const globalIndex = this.store.songs.findIndex(s => s.id === song.id);
       if (globalIndex >= 0) {
         this.store.currentIndex = globalIndex;
-        AppStorage.setOrCreate('selectIndex', globalIndex);
-        AppStorage.setOrCreate('songList', this.store.songs);
+        AudioRendererController.getInstance().playFromList(this.store.songs, globalIndex);
       }
       this.pathStack.pushPathByName('PlayerPage', null);
     })
@@ -180,6 +180,17 @@ struct Favorites {
               .fontSize(13)
               .fontColor('#636366')
               .margin({ top: 8 })
+
+            Button($r('app.string.empty_go_library'))
+              .fontSize(14)
+              .fontColor('#FFFFFF')
+              .backgroundColor('#FA2759')
+              .borderRadius(20)
+              .height(36)
+              .margin({ top: 20 })
+              .onClick(() => {
+                this.pathStack.pushPathByName('LocalLibrary', null);
+              })
           }
           .layoutWeight(1)
           .justifyContent(FlexAlign.Center)

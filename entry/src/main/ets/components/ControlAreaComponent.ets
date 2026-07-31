@@ -22,9 +22,9 @@ import { StyleConstants } from '../common/constants/StyleConstants';
 import { BreakpointConstants } from '../common/constants/BreakpointConstants';
 import { PlayerConstants } from '../common/constants/PlayerConstants';
 import { BreakpointType } from '../common/utils/BreakpointSystem'
-import { SongDataSource } from '../datasource/SongDataSource';
 import { ContentConstants } from '../common/constants/ContentConstants';
 import { ResourceConversion } from '../common/utils/ResourceConversion';
+import { MusicStore } from '../services/MusicStore';
 
 const TAG = 'ControlAreaComponent'
 
@@ -41,6 +41,8 @@ export struct ControlAreaComponent {
   @StorageLink('pageShowTime') pageShowTime: number = 0;
   @StorageLink('songList') songList: SongItem[] = [];
   @State isShowPlayList: boolean = false;
+  @State currentIndex: number = 0;
+  @State sortMode: number = 0;
   @StorageLink('playMode') playMode: MusicPlayMode = PlayModeSwitchList[this.playModeIndex];
   @State prevScale: number = 1.0;
   @State playBtnScale: number = 1.0;
@@ -102,7 +104,8 @@ export struct ControlAreaComponent {
             preferType: SheetType.CENTER,
             onWillAppear: () => {
               Logger.info(TAG, 'musicListBuilder');
-              this.scroller.scrollToIndex(this.selectIndex, false, ScrollAlign.CENTER);
+              this.refreshQueue();
+              this.scroller.scrollToIndex(this.currentIndex, false, ScrollAlign.CENTER);
             }
           })
         Image(this.isSilentMode ? $r('app.media.silence') : $r('app.media.ic_ring'))
@@ -266,32 +269,141 @@ export struct ControlAreaComponent {
   musicListBuilder() {
     Column() {
       this.playListTitle();
-      List({ scroller: this.scroller }) {
-        LazyForEach(new SongDataSource(this.songList), (item: SongItem, index: number) => {
-          ListItem() {
-            MusicListContainer({ item: item, index: index }).reuseId(item.title);
-          }
-        }, (item: SongItem, index: number) => item.toString() + index.toString())
+      this.sortBar();
+      if (this.songList.length === 0) {
+        Text($r('app.string.queue_empty'))
+          .width(StyleConstants.FULL_WIDTH)
+          .textAlign(TextAlign.Center)
+          .fontColor(Color.Gray)
+          .fontSize(15)
+          .layoutWeight(1)
+      } else {
+        List({ scroller: this.scroller }) {
+          ForEach(this.songList, (item: SongItem, index: number) => {
+            ListItem() {
+              MusicListContainer({
+                item: item,
+                index: index,
+                isCurrent: index === this.currentIndex,
+                onQueueChanged: () => this.refreshQueue()
+              }).reuseId(item.id + '_' + index);
+            }
+          }, (item: SongItem, index: number) => item.id + '_' + index)
+        }
+        .height(StyleConstants.FULL_HEIGHT)
+        .width(StyleConstants.FULL_WIDTH)
+        .backgroundColor(Color.White)
+        .margin({ top: $r('app.float.list_area_margin_top') })
+        .lanes(this.currentBreakpoint === BreakpointConstants.BREAKPOINT_LG ?
+        ContentConstants.COL_TWO : ContentConstants.COL_ONE)
+        .layoutWeight(1)
+        .divider({
+          color: $r('app.color.list_divider'),
+          strokeWidth: $r('app.float.stroke_width'),
+          startMargin: $r('app.float.list_item_padding'),
+          endMargin: $r('app.float.list_item_padding')
+        })
       }
-      .height(StyleConstants.FULL_HEIGHT)
-      .width(StyleConstants.FULL_WIDTH)
-      .backgroundColor(Color.White)
-      .margin({ top: $r('app.float.list_area_margin_top') })
-      .lanes(this.currentBreakpoint === BreakpointConstants.BREAKPOINT_LG ?
-      ContentConstants.COL_TWO : ContentConstants.COL_ONE)
-      .layoutWeight(1)
-      .divider({
-        color: $r('app.color.list_divider'),
-        strokeWidth: $r('app.float.stroke_width'),
-        startMargin: $r('app.float.list_item_padding'),
-        endMargin: $r('app.float.list_item_padding')
-      })
     }
     .padding({
       top: this.currentBreakpoint === BreakpointConstants.BREAKPOINT_SM ? 0 : $r('app.float.list_area_padding_top'),
       bottom: $r('app.float.list_area_padding_bottom')
     })
     .backgroundColor(Color.White)
+  }
+
+  private refreshQueue(): void {
+    const ctrl = AudioRendererController.getInstance();
+    this.currentIndex = ctrl.getCurrentIndex();
+  }
+
+  private applySort(mode: number): void {
+    this.sortMode = mode;
+    const ctrl = AudioRendererController.getInstance();
+    const store = MusicStore.getInstance();
+    let sorted: SongItem[] = [];
+    switch (mode) {
+      case 1:
+        sorted = [...this.songList].sort((a: SongItem, b: SongItem) => a.title.localeCompare(b.title, 'zh'));
+        break;
+      case 2:
+        sorted = [...this.songList].sort((a: SongItem, b: SongItem) => a.singer.localeCompare(b.singer, 'zh'));
+        break;
+      case 3: {
+        const order: Map<number, number> = new Map();
+        store.recentlyPlayed.forEach((s: SongItem, i: number) => {
+          order.set(s.id, i);
+        });
+        sorted = [...this.songList].sort((a: SongItem, b: SongItem) => {
+          const ia: number = order.has(a.id) ? order.get(a.id)! : Number.MAX_SAFE_INTEGER;
+          const ib: number = order.has(b.id) ? order.get(b.id)! : Number.MAX_SAFE_INTEGER;
+          return ia - ib;
+        });
+        break;
+      }
+      case 4:
+        sorted = [...this.songList];
+        for (let i: number = sorted.length - 1; i > 0; i--) {
+          const j: number = Math.floor(Math.random() * (i + 1));
+          const tmp: SongItem = sorted[i];
+          sorted[i] = sorted[j];
+          sorted[j] = tmp;
+        }
+        break;
+      default:
+        sorted = [...store.songs];
+    }
+    const cur: SongItem | undefined = ctrl.getCurrentSong();
+    let newIndex: number = 0;
+    if (cur) {
+      const found: number = sorted.findIndex((s: SongItem) => s.id === cur.id);
+      if (found >= 0) {
+        newIndex = found;
+      }
+    }
+    ctrl.setQueue(sorted, newIndex, false);
+    this.refreshQueue();
+  }
+
+  @Builder
+  sortBar() {
+    Row() {
+      ForEach([0, 1, 2, 3, 4], (mode: number) => {
+        Text(this.sortLabel(mode))
+          .fontSize(13)
+          .fontColor(this.sortMode === mode ? Color.White : Color.Gray)
+          .backgroundColor(this.sortMode === mode ? '#FA2759' : 'rgba(0, 0, 0, 0.05)')
+          .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+          .borderRadius(14)
+          .margin({ right: 8 })
+          .onClick(() => {
+            this.applySort(mode);
+          })
+      }, (mode: number) => 'sort_' + mode.toString())
+    }
+    .width(StyleConstants.FULL_WIDTH)
+    .padding({
+      left: $r('app.float.play_all_area_padding'),
+      right: $r('app.float.play_all_area_padding'),
+      top: 8,
+      bottom: 8
+    })
+    .backgroundColor(Color.White)
+  }
+
+  private sortLabel(mode: number): Resource {
+    switch (mode) {
+      case 1:
+        return $r('app.string.sort_title');
+      case 2:
+        return $r('app.string.sort_artist');
+      case 3:
+        return $r('app.string.sort_recent');
+      case 4:
+        return $r('app.string.sort_random');
+      default:
+        return $r('app.string.sort_default');
+    }
   }
 
   @Builder
@@ -341,15 +453,17 @@ struct MusicListContainer {
   @StorageLink('isPlay') isPlay: boolean = false;
   @StorageProp('currentBreakpoint') currentBreakpoint: string = BreakpointConstants.BREAKPOINT_SM;
   @StorageLink('selectIndex') selectIndex: number = 0;
+  @Prop isCurrent: boolean = false;
   item: SongItem | undefined = undefined;
   index: number | undefined = undefined;
+  onQueueChanged: () => void = () => {};
 
   build() {
     Column() {
       Row() {
         Column() {
           Text(this.item!.title)
-            .fontColor(this.selectIndex === this.index && this.isPlay ? Color.Red : Color.Black)
+            .fontColor(this.isCurrent && this.isPlay ? Color.Red : Color.Black)
             .fontSize(new BreakpointType({
               sm: $r('app.float.item_font_sm'),
               md: $r('app.float.item_font_md'),
@@ -363,7 +477,7 @@ struct MusicListContainer {
               .margin({ right: $r('app.float.list_item_image_margin') })
             Text(this.item!.singer)
               .opacity($r('app.float.singer_opacity'))
-              .fontColor(this.selectIndex === this.index && this.isPlay ? Color.Red : Color.Black)
+              .fontColor(this.isCurrent && this.isPlay ? Color.Red : Color.Black)
               .fontSize(new BreakpointType({
                 sm: $r('app.float.singer_title_sm'),
                 md: $r('app.float.singer_title_md'),
@@ -374,20 +488,48 @@ struct MusicListContainer {
         .alignItems(HorizontalAlign.Start)
       }
       .onClick(() => {
-        if (this.selectIndex === this.index) {
-          if (!this.isPlay) {
-            AudioRendererController.getInstance().play(this.index)
-          }
-        } else {
-          AudioRendererController.getInstance().play(this.index)
+        if (this.index === undefined) {
+          return;
         }
+        if (this.index === this.selectIndex && this.isPlay) {
+          return;
+        }
+        AudioRendererController.getInstance().play(this.index);
       })
       .height($r('app.float.list_item_height'))
       .width(StyleConstants.FULL_WIDTH)
+      .bindMenu(this.buildRowMenu)
     }
     .padding({
       left: $r('app.float.list_item_padding'),
       right: $r('app.float.list_item_padding')
     })
+  }
+
+  @Builder
+  buildRowMenu() {
+    Menu() {
+      MenuItem({ content: $r('app.string.queue_play') })
+        .onClick(() => {
+          if (this.index !== undefined) {
+            AudioRendererController.getInstance().play(this.index);
+          }
+          this.onQueueChanged();
+        })
+      MenuItem({ content: $r('app.string.queue_play_next') })
+        .onClick(() => {
+          if (this.index !== undefined) {
+            AudioRendererController.getInstance().moveToPlayNext(this.index);
+          }
+          this.onQueueChanged();
+        })
+      MenuItem({ content: $r('app.string.queue_remove') })
+        .onClick(() => {
+          if (this.index !== undefined) {
+            AudioRendererController.getInstance().removeFromQueue(this.index);
+          }
+          this.onQueueChanged();
+        })
+    }
   }
 }

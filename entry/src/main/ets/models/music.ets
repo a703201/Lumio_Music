@@ -1,3 +1,6 @@
+import { image } from '@kit.ImageKit';
+import { CoverCache } from '../utils/CoverCache';
+
 /**
  * Music information entity class.
  * Single source of truth for SongItem across the project.
@@ -13,12 +16,12 @@ export class SongItem {
   lyric: string = '';
   isDarkBackground: boolean = false;
 
-  getMark(): Resource {
-    return this.mark ?? $r('app.media.ic_cd');
+  getMark(): Resource | image.PixelMap {
+    return CoverCache.getInstance().get(this.src) ?? this.mark ?? $r('app.media.ic_default_cover');
   }
 
-  getLabel(): Resource {
-    return this.label ?? $r('app.media.ic_cd');
+  getLabel(): Resource | image.PixelMap {
+    return CoverCache.getInstance().get(this.src) ?? this.label ?? $r('app.media.ic_default_cover');
   }
 }
 

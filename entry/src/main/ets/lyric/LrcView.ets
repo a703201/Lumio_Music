@@ -14,11 +14,12 @@
  */
 
 import { Animator, AnimatorResult } from '@kit.ArkUI';
-import { TAG } from '@ohos/hypium/src/main/Constant';
 import { Logger } from '../utils/Logger';
 import { LrcEntry } from './LrcEntry';
 import { angleToRadian } from './LrcUtils';
 import { Rectangle, LyricTopPosition, LyricScrollEffect } from './LyricConst';
+
+const TAG: string = 'LrcView';
 
 /**
  * Default number of rows.

@@ -1,6 +1,7 @@
 import { Logger } from '../utils/Logger';
 import { SongItem } from '../models/music';
 import { MusicStore } from '../services/MusicStore';
+import { AudioRendererController } from '../utils/AudioRendererController';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 
 @Builder
@@ -64,6 +65,7 @@ struct ManageSongs {
     if (this.pendingDelete) {
       const id: number = this.pendingDelete.id;
       this.store.removeSong(id);
+      AudioRendererController.getInstance().reconcileWithLibrary(this.store.songs);
       this.pendingDelete = null;
       this.reload();
       this.toast('已移除歌曲');

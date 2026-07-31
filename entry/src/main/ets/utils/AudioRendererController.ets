@@ -204,6 +204,154 @@ export class AudioRendererController {
     return this.curMs;
   }
 
+  // ===== 播放队列管理（队列权威持有者）=====
+  public getQueue(): SongItem[] {
+    return [...this.songList];
+  }
+
+  public getCurrentIndex(): number {
+    return this.musicIndex;
+  }
+
+  /**
+   * 覆盖当前播放队列并（可选）立即起播。
+   * 用于：从列表/历史/收藏切歌时统一设置队列，以及智能排序后重排队列。
+   * autoPlay=false 时仅重排队列与索引，不重载当前正在播放的音频（排序场景）。
+   */
+  public setQueue(songs: SongItem[], startIndex: number, autoPlay: boolean = true): void {
+    if (!songs || songs.length === 0) {
+      Logger.error(TAG, 'setQueue: empty songs');
+      return;
+    }
+    if (startIndex < 0 || startIndex >= songs.length) {
+      startIndex = 0;
+    }
+    this.songList = [...songs];
+    this.musicIndex = startIndex;
+    this.syncQueue();
+    if (autoPlay) {
+      this.play(startIndex);
+    } else {
+      AppStorage.setOrCreate('selectIndex', startIndex);
+    }
+  }
+
+  /**
+   * 点歌即播：以给定列表作为播放队列，立即播放指定位置歌曲并进入播放页。
+   * 用于库/收藏/历史列表行点击——统一取代原先「只跳转不播放」的行为。
+   * 等价于 setQueue(list, index, true)（设队列 + 索引 + syncQueue + 起播）。
+   */
+  public playFromList(list: SongItem[], index: number): void {
+    this.setQueue(list, index, true);
+  }
+
+  /**
+   * 从队列移除指定位置歌曲，并维持当前播放位置正确：
+   * - 移除位于当前之前的项：current 前移
+   * - 移除当前项：停止并续播相邻项（若有）
+   */
+  public removeFromQueue(index: number): void {
+    if (index < 0 || index >= this.songList.length) {
+      return;
+    }
+    this.songList.splice(index, 1);
+    if (index < this.musicIndex) {
+      this.musicIndex--;
+    } else if (index === this.musicIndex) {
+      if (this.songList.length === 0) {
+        this.musicIndex = 0;
+        this.stop();
+      } else {
+        const idx: number = Math.min(this.musicIndex, this.songList.length - 1);
+        this.musicIndex = idx;
+        this.updateMusicIndex(idx);
+        this.play(idx);
+      }
+    }
+    this.syncQueue();
+  }
+
+  /**
+   * 将指定位置歌曲移动到"当前歌曲的下一首"，实现"下一首播放"。
+   * 不改变当前正在播放的曲目，仅影响后续播放顺序。
+   */
+  public moveToPlayNext(index: number): void {
+    if (index < 0 || index >= this.songList.length) {
+      return;
+    }
+    if (index === this.musicIndex) {
+      return;
+    }
+    const item: SongItem | undefined = this.songList.splice(index, 1)[0];
+    if (!item) {
+      return;
+    }
+    if (index < this.musicIndex) {
+      this.musicIndex--;
+    }
+    const insertAt: number = this.musicIndex + 1;
+    this.songList.splice(insertAt, 0, item);
+    this.syncQueue();
+  }
+
+  private syncQueue(): void {
+    AppStorage.setOrCreate('songList', [...this.songList]);
+    AppStorage.setOrCreate('selectIndex', this.musicIndex);
+    if (this.avSessionController) {
+      this.avSessionController.setSongList([...this.songList], this.musicIndex);
+    }
+  }
+
+  /**
+   * 将引擎内部播放队列与真实曲库对齐（差量合并，保留用户在队列弹窗里的手动排序/下一首播放/移除结果）：
+   * - 移除队列中已在曲库中被删除的歌曲，并修正当前播放索引，避免 next/prev 跳到已删除文件。
+   * - 把新导入的歌曲追加到队列尾部，使"下一首"能逐步覆盖到新歌。
+   * 仅在导入/删除歌曲后调用，不在进入播放页时调用，以免覆盖用户在队列弹窗里的手动移除。
+   */
+  public reconcileWithLibrary(library: SongItem[]): void {
+    if (!library || library.length === 0) {
+      return;
+    }
+    const libIds: Set<number> = new Set<number>();
+    library.forEach((s: SongItem) => libIds.add(s.id));
+
+    const cur: SongItem | undefined = this.songList[this.musicIndex];
+    const curId: number | undefined = cur ? cur.id : undefined;
+
+    // 1. 移除已删除项
+    this.songList = this.songList.filter((s: SongItem) => libIds.has(s.id));
+
+    // 2. 修正当前索引（当前曲被删除时选相邻曲目续播）
+    let newIndex: number = 0;
+    if (curId !== undefined) {
+      const found: number = this.songList.findIndex((s: SongItem) => s.id === curId);
+      newIndex = found >= 0 ? found : Math.max(0, Math.min(this.musicIndex, this.songList.length - 1));
+    } else {
+      newIndex = Math.max(0, Math.min(this.musicIndex, this.songList.length - 1));
+    }
+    this.musicIndex = newIndex;
+
+    // 3. 追加新导入的歌曲到队尾
+    const queueIds: Set<number> = new Set<number>();
+    this.songList.forEach((s: SongItem) => queueIds.add(s.id));
+    for (const s of library) {
+      if (!queueIds.has(s.id)) {
+        this.songList.push(s);
+      }
+    }
+
+    this.syncQueue();
+
+    // 当前正在播放的歌曲被删除：续播相邻曲目，空队列则停止
+    if (curId !== undefined && this.songList.findIndex((s: SongItem) => s.id === curId) < 0) {
+      if (this.songList.length === 0) {
+        this.stop();
+      } else {
+        this.play(newIndex);
+      }
+    }
+  }
+
   public setCastActive(active: boolean): void {
     this.castActive = active;
   }

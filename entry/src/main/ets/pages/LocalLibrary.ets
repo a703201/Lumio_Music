@@ -3,6 +3,8 @@ import { curves } from '@kit.ArkUI';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { SongItem } from '../models/music';
 import { MusicStore } from '../services/MusicStore';
+import { AudioRendererController } from '../utils/AudioRendererController';
+import { CoverCache } from '../utils/CoverCache';
 import { picker } from '@kit.CoreFileKit';
 import fs from '@ohos.file.fs';
 import { common } from '@kit.AbilityKit';
@@ -125,8 +127,17 @@ export struct LocalLibrary {
         }
         if (newSongs.length > 0) {
           this.store.setSongs([...this.store.songs, ...newSongs]);
+          AudioRendererController.getInstance().reconcileWithLibrary(this.store.songs);
           this.filteredSongs = [...this.store.songs];
           this.itemScales = this.filteredSongs.map(() => 1.0);
+          // 后台抽取新导入歌曲的内嵌封面，完成后刷新列表与全局 songList
+          CoverCache.getInstance().preload(newSongs).then(() => {
+            this.filteredSongs = [...this.store.songs];
+            AppStorage.setOrCreate('songList', [...this.store.songs]);
+            AppStorage.setOrCreate('coverRefreshToken', Date.now());
+          }).catch((err: Error) => {
+            Logger.error('LocalLibrary cover preload failed', err.message);
+          });
           this.getUIContext().getPromptAction().showToast({ message: `已导入 ${newSongs.length} 首音乐` });
         } else {
           this.getUIContext().getPromptAction().showToast({ message: '没有新的音乐文件' });
@@ -144,8 +155,7 @@ export struct LocalLibrary {
     const index = this.store.songs.findIndex(s => s.id === song.id);
     if (index >= 0) {
       this.store.currentIndex = index;
-      AppStorage.setOrCreate('selectIndex', index);
-      AppStorage.setOrCreate('songList', this.store.songs);
+      AudioRendererController.getInstance().playFromList(this.store.songs, index);
       this.getUIContext().animateTo(
         { curve: curves.interpolatingSpring(0, 1, 328, 36) },
         () => {
@@ -157,6 +167,7 @@ export struct LocalLibrary {
 
   deleteSong(song: SongItem): void {
     this.store.removeSong(song.id);
+    AudioRendererController.getInstance().reconcileWithLibrary(this.store.songs);
     this.filteredSongs = [...this.store.songs];
     this.itemScales = this.filteredSongs.map(() => 1.0);
   }

@@ -4,6 +4,8 @@ import { LocalLibrary } from './LocalLibrary';
 import { Mine } from './Mine';
 import { MusicStore } from '../services/MusicStore';
 import { SongItem } from '../models/music';
+import { common } from '@kit.AbilityKit';
+import { PreferencesUtil } from '../utils/PreferencesUtil';
 
 const ACCENT: string = '#FA2759';
 const PLAYER_COVER_ID: string = 'player_cover';
@@ -50,6 +52,36 @@ struct Layout {
         this.coverRotation = (this.coverRotation + 1.6) % 360;
       }
     }, 40);
+    this.maybeShowPermissionGuide();
+  }
+
+  // 首次启动展示权限用途说明，仅弹一次（持久化标记）
+  private maybeShowPermissionGuide(): void {
+    const context: common.UIAbilityContext | undefined =
+      AppStorage.get('context') as common.UIAbilityContext;
+    if (!context) {
+      return;
+    }
+    PreferencesUtil.getInstance().isPermGuideShown(context)
+      .then((shown: boolean) => {
+        if (shown) {
+          return;
+        }
+        // 延迟一点，避免与首屏转场抢弹窗
+        setTimeout(() => {
+          this.getUIContext().showAlertDialog({
+            title: $r('app.string.perm_guide_title'),
+            message: $r('app.string.perm_guide_message'),
+            primaryButton: {
+              value: $r('app.string.perm_guide_ok'),
+              action: () => {
+                PreferencesUtil.getInstance().markPermGuideShown(context);
+              }
+            }
+          });
+        }, 400);
+      })
+      .catch(() => {});
   }
 
   aboutToDisappear(): void {

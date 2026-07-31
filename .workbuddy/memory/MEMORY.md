@@ -23,7 +23,9 @@
 - product=`default`，签名已就绪，SDK 版本 `6.1.1(24)`。
 
 ### 沙箱注意
-- 本会话迭代构建多次后，沙箱 `[safe-delete]` 守卫（turn 级、阈值 50 文件）会拦截 hvigor 的 `.cxx`/cmake 缓存/报告批量清理，导致 assembleHap 在末段 FAIL，**无法在本会话产出 HAP**。该守卫只拦 hvigor 子进程批量删除；用户直接在 DevEco 构建正常。代码层编译请用 BuildNativeWithCmake/BuildNativeWithNinja/CompileArkTS 三段是否 Finished 判定。
+- 本会话迭代构建多次后，沙箱 `[safe-delete]` 守卫（turn 级、阈值 50 文件）会拦截 hvigor 清理 `.cxx`/cmake 缓存/报告（如 `BuildNativeWithCmake` 阶段删 `configure_fingerprint.json`、末段 report trash），导致 `assembleHap` FAIL，**无法在本会话产出 HAP**。该守卫只拦 hvigor 子进程批量删除；用户直接在 DevEco 构建正常。
+- **构建命令补充**：守护进程（`--daemon`）在沙箱起不来（client 打印 "Starting hvigor daemon" 即退出码 1）；改用 `--no-daemon` 可跑过前序阶段（元数据/配置/CompileResource 等），但 native 清理仍被 `[safe-delete]` 拦在 `BuildNativeWithCmake`。代码层编译请用 `CompileArkTS` 阶段是否 Finished 判定（但 native 步骤先失败时 CompileArkTS 不会执行，故本会话无法代验 ArkTS 编译，需用户在 DevEco 验证）。
+- 托管 node 用 `C:/Users/a7032/.workbuddy/binaries/node/versions/22.12.0/node.exe`；`hvigorw.js --version` 正常（6.24.3）。
 
 ### 日志规范（统一出口，长效约定）
 - 全工程日志统一走 `utils/Logger.ets` 封装（`Logger.debug/info/warn/error(...args: string[])` → `hilog.xxx(0xFF00, 'MusicPlay', '%{public}s', args.join(' '))`）。domain=0xFF00、prefix='MusicPlay'。**禁止**在业务代码直接 `console.*` 或裸调 `hilog`（EntryAbility/EntryBackupAbility 已迁到 Logger）。
@@ -40,3 +42,21 @@
 - **监听竞态已修复**：原 `registerSessionListeners()` 在 initAVSession(`if(audioRendererController)`) 与 bindAudioRendererController(`if(AVSession)`) 两处守门，构造顺序下任一未就绪即跳过 → 系统卡片 play/pause/seek 无响应。改为单一 `ensureListenersRegistered()`：仅当 `AVSession && audioRendererController` 同时就绪才注册、`listenersRegistered` 去重；init 收尾与 bind 收尾都调用。
 - **投播状态机要点**：`startCast` 置 `isCasting=true` + `audioRendererController.setCastActive(true)`（让本地 AVPlayer 在 'prepared' 后不自动起播、保持静音）+ `pause()` 本地；`setAVMetadata` 末尾若 `isCasting` 则 `castCurrentSong(0)` 自动重投新曲；`stopCast` 释放 castController/独立 fd、`setCastActive(false)`、`start()` 续播并对齐 `castRemotePositionMs`（来自 `castController.on('playbackStateChange')` 回写）。不调用 `castController.release()`（设备断开后系统回收，避免该 method 在部分 SDK 类型中缺失导致编译失败）。
 - **`AVCastController.off` 重载缺口（已踩坑，API 24）**：`off` 的类型重载**未声明** `playNext`/`playPrevious`（但 `on` 有，运行时 `off` 支持注销，纯类型缺失）。直接 `castController.off('playNext', cb)` 报 `10505001 No overload matches / not assignable to 'customDataChange'`。修复：对这两个事件经 `(castController as ESObject)?.off('playNext', cb)` 透传（`ESObject` 是 ArkTS 内置类型，编译期动态调用，无需 import）。`on`/`off` 的 may-throw WARN 用 `try/catch` 包裹清除。
+
+### 已核实 API 包名与限制（功能丰富用，API 24 / HarmonyOS 6.1.1）
+- **Form Kit 桌面播控卡片（已落地）**：`@kit.FormKit`，`FormExtensionAbility` + `formProvider.updateForm(formId, formBindingData.createFormBindingData(obj))` + `formBindingData.createFormBindingData`。卡片 UI 为 ArkTS 动态卡片（`uiSyntax: "arkts"`），按钮用全局 `postCardAction({ action:'message', params:{msg} })`（卡片内全局函数，无需 import）；form 进程与主应用进程独立，回控经 `FormAbility.onFormEvent` → `startAbility` 到 `EntryAbility`（`want.parameters.control`）→ `AVSessionController.remoteControl(cmd)`。formId 持久化复用 `PreferencesUtil`（已有 `getFormIds/addFormId/removeFormId`）。`form_config.json` 放 `resources/base/profile/`。
+- **空间音频（AudioSpatializationManager，已落地只读态）**：`@kit.AudioKit`，`audio.getAudioManager().getSpatializationManager().isSpatializationEnabledForCurrentDevice()` 返回 boolean（只读，无需权限）。⚠️ `setSpatializationEnabled` **需系统权限 `MANAGE_SYSTEM_AUDIO_EFFECTS`**，三方应用拿不到 → 不能在普通应用里做"空间音频开关"，只能查询展示。
+- **分享（systemShare，待实现）**：`@kit.ShareKit`，`systemShare.ShareController` + `systemShare.ShareData`/`ShareFile`。需真实文件 URI（沙箱路径或媒体库 URI）；本工程歌曲为沙箱 `.pcm`/`filesDir` 路径，分享前需解析真实路径。
+- **设铃声（RingtoneKit，待实现）**：`@kit.RingtoneKit`，`ringtone.startRingtoneSetting(context, path, name): Promise<RingtoneType>`，`path` 必须是**应用沙箱文件路径**（需先把歌复制到 `filesDir`）；支持 MP3/OGG/FLAC/AAC 等。`.pcm` 不在支持列表 → 设铃声前需转码或仅对导入的 mp3 开放。
+- **睡眠定时（reminderAgentManager，待实现/管控风险）**：`@kit.BackgroundTasksKit`，`REMINDER_TYPE_TIMER` + `publishReminder(timer): Promise<number>`。需 `ohos.permission.PUBLISH_AGENT_REMINDER` + 通知授权，且**三方应用受华为管控审批**（纯工具类可申请）。音乐 App 更稳的做法是**应用内定时器**直接 pause 播放，无需系统提醒。
+- **小艺语音（insightIntent，待实现）**：包名是 `@kit.AbilityKit`（非 InsightIntentKit）；声明 `insightIntent` 的 PlayMusic 意图，语音拉起续播。
+- **跨设备续播（continuationManager，待实现）**：实为 `@kit.AbilityKit` 的 `UIAbility.onContinue` + `wantParam` 写曲 id+position；`module.json5` 配 `continuable: true`。
+- **多频段 EQ（AudioEffect，不可行）**：ArkTS **无公开多频段 EQ API**（仅 `AudioEffectMode` 预设/空间音频），不能做自定义均衡器，只能用空间音频/音效模式替代。
+
+### 架构现状（2026-07-31 还债后）
+- **MediaService 孤儿模块已删除**：全工程仅 entry 单份 `AudioRendererController`，无双份维护。
+- **权限已最小化**：`module.json5` 仅保留 `KEEP_BACKGROUND_RUNNING`（后台播放）+ `INTERNET` + `GET_NETWORK_INFO`（局域网投播）；已删 `WRITE_MEDIA`、`DETECT_GESTURE`、`READ_MEDIA`。`READ_MEDIA` 经 grep 确认全工程无媒体库访问（歌曲来自 preferences + DocumentViewPicker 导入 + 沙箱 .pcm，播放用 fileIo.openSync），确属未使用。
+- **播放队列 = 引擎 `AudioRendererController.songList` + `musicIndex`**（权威持有者）；`ControlAreaComponent` 的播放列表弹窗（ic_music_list）已升级为可管理+排序（默认/标题/歌手/最近播放/随机），行菜单含 播放/下一首播放/移除。弹窗展示读 `AppStorage('songList')`，动作走引擎并由 `syncQueue()` 回写。新增 `reconcileWithLibrary(library)`：导入/删除歌曲后差量合并引擎队列与曲库（移除已删项+追加新导入项+修正索引），调用点在 `LocalLibrary.onPickMusic/deleteSong`、`ManageSongs.doDelete`。⚠️ 点击列表页歌曲只设 AppStorage+selectIndex 并 push 播放页，**不直接切引擎队列**（引擎队列由构造/setQueue/排序/增删驱动），这是既存行为，非本次引入。
+- **P0 落地**：歌词（LrcView 误 import hypium 已修，LyricsComponent→PlayerInfoComponent→PlayerPage 已接，AVSessionController.setAVMetadata 把 lyric 塞进锁屏 metadata.lyric）；桌面 Form 播控卡片（见上 Form Kit 节）；空间音频只读态（Settings 项）；**首次启动权限引导弹窗**（`Layout.maybeShowPermissionGuide` + `PreferencesUtil.isPermGuideShown/markPermGuideShown`，key `permGuideShown`，仅首次 `AlertDialog` 说明后台播放+网络用途）；Favorites/PlayHistory 空态加「去音乐库」按钮（`pushPathByName('LocalLibrary')`）。
+- **封面策略（内嵌优先 + 新默认封面）**：`SongItem.getMark()/getLabel()` 返回类型改为 `Resource | PixelMap`，优先级：`CoverCache` 内嵌封面 → 原 mark/label → `ic_default_cover.svg`（新默认：紫-粉渐变圆角底+白色声波）。内嵌封面通过 `@kit.MediaKit` `AVMetadataExtractor.fetchAlbumCover()` 抽取，缓存于 `CoverCache` 单例；启动/导入后 `preload` 并刷新 `songList`/`coverRefreshToken`。`PlayerInfoComponent.getImageColor()` 兼容 Resource 与 PixelMap 取色/模糊；桌面卡片封面占位同步改用 `ic_default_cover`。
+- **编译隐患修复**：`ControlAreaComponent` 补 `import { MusicStore }`（applySort 用到却漏 import，上一波构建失败未暴露）。

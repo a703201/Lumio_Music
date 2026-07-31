@@ -13,32 +13,8 @@
     "pages": "$profile:main_pages",
     "requestPermissions": [
       {
-        "name": "ohos.permission.READ_MEDIA",
-        "reason": "$string:read_media_reason",
-        "usedScene": {
-          "abilities": ["EntryAbility"],
-          "when": "inuse"
-        }
-      },
-      {
-        "name": "ohos.permission.WRITE_MEDIA",
-        "reason": "$string:write_media_reason",
-        "usedScene": {
-          "abilities": ["EntryAbility"],
-          "when": "inuse"
-        }
-      },
-      {
         "name": "ohos.permission.KEEP_BACKGROUND_RUNNING",
         "reason": "$string:keep_background_reason",
-        "usedScene": {
-          "abilities": ["EntryAbility"],
-          "when": "inuse"
-        }
-      },
-      {
-        "name": "ohos.permission.DETECT_GESTURE",
-        "reason": "$string:gesture_reason",
         "usedScene": {
           "abilities": ["EntryAbility"],
           "when": "inuse"
@@ -95,6 +71,20 @@
             "resource": "$profile:backup_config"
           }
         ],
+      },
+      {
+        "name": "FormAbility",
+        "srcEntry": "./ets/formability/FormAbility.ets",
+        "type": "form",
+        "exported": true,
+        "label": "$string:FormAbility_label",
+        "description": "$string:FormAbility_desc",
+        "metadata": [
+          {
+            "name": "ohos.extension.form",
+            "resource": "$profile:form_config"
+          }
+        ]
       }
     ]
   }

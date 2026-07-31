@@ -20,6 +20,7 @@ import { Logger } from './Logger';
 const TAG = 'PreferencesUtil';
 const MY_STORE = 'myStore';
 const FORM_ID = 'formIds';
+const PERM_GUIDE_SHOWN = 'permGuideShown';
 
 export class PreferencesUtil {
   private static preferencesUtil: PreferencesUtil;
@@ -145,6 +146,37 @@ export class PreferencesUtil {
     } catch (error) {
       let err = error as BusinessError;
       Logger.error(TAG, `Failed to check the key 'formIds'. message:${err.message}`);
+    }
+  }
+
+  async isPermGuideShown(context: Context): Promise<boolean> {
+    try {
+      let preference = await this.getPreferences(context);
+      if (preference === null) {
+        return false;
+      }
+      return preference.getSync(PERM_GUIDE_SHOWN, false) as boolean;
+    } catch (error) {
+      let err = error as BusinessError;
+      Logger.error(TAG, `isPermGuideShown failed. message:${err.message}`);
+      return false;
+    }
+  }
+
+  async markPermGuideShown(context: Context): Promise<void> {
+    try {
+      let preference = await this.getPreferences(context);
+      if (preference === null) {
+        return;
+      }
+      preference.put(PERM_GUIDE_SHOWN, true, (err: BusinessError) => {
+        if (!err) {
+          preference.flush();
+        }
+      });
+    } catch (error) {
+      let err = error as BusinessError;
+      Logger.error(TAG, `markPermGuideShown failed. message:${err.message}`);
     }
   }
 

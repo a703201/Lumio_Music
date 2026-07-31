@@ -14,19 +14,53 @@
  */
 
 import { Logger } from '../utils/Logger';
-import { UIAbility, Configuration, ConfigurationConstant } from '@kit.AbilityKit';
+import { UIAbility, Configuration, ConfigurationConstant, Want } from '@kit.AbilityKit';
 import { display, window } from '@kit.ArkUI';
 import { BreakpointConstants } from '../common/constants/BreakpointConstants';
 import { MusicStore } from '../services/MusicStore';
 import { SettingsStore } from '../utils/SettingsStore';
 import { ThemeManager } from '../utils/ThemeManager';
+import { AVSessionController } from '../utils/AVSessionController';
+import { CoverCache } from '../utils/CoverCache';
 
 export default class EntryAbility extends UIAbility {
   private windowObj?: window.Window;
 
-  onCreate() {
+  onCreate(want: Want) {
     AppStorage.setOrCreate('context', this.context);
     Logger.info('Ability onCreate');
+    // 处理来自桌面卡片（FormAbility.onFormEvent）的播放控制指令
+    this.handleControlWant(want);
+  }
+
+  onNewWant(want: Want) {
+    Logger.info('Ability onNewWant');
+    this.handleControlWant(want);
+  }
+
+  /**
+   * 解析 want 中的 control 指令（play/pause/next/prev），转发给 AVSessionController 回控播放。
+   */
+  private handleControlWant(want: Want): void {
+    let control: string = (want.parameters?.['control'] as string) ?? '';
+    // 桌面卡片 router 事件：参数经 postCardAction 的 params 以 JSON 字符串置于 want.parameters.params
+    const paramsStr: string | undefined = want.parameters?.['params'] as string | undefined;
+    if (paramsStr) {
+      try {
+        const params: ESObject = JSON.parse(paramsStr);
+        const cmd: string = (params['control'] as string) ?? '';
+        if (cmd) {
+          control = cmd;
+        }
+      } catch (e) {
+        Logger.error('Ability', `handleControlWant parse params failed: ${(e as Error).message}`);
+      }
+    }
+    if (!control) {
+      return;
+    }
+    Logger.info('Ability', `handleControlWant: ${control}`);
+    AVSessionController.getInstance().remoteControl(control);
   }
 
   onDestroy() {
@@ -98,6 +132,13 @@ export default class EntryAbility extends UIAbility {
         Logger.info('No local songs yet, import from 音乐库');
       } else {
         Logger.info(`Loaded ${store.songs.length} songs from storage`);
+        // 后台抽取内嵌封面，完成后刷新 songList 让列表/播放页自动切到真实封面
+        CoverCache.getInstance().preload(store.songs).then(() => {
+          AppStorage.setOrCreate('songList', [...store.songs]);
+          AppStorage.setOrCreate('coverRefreshToken', Date.now());
+        }).catch((err: Error) => {
+          Logger.error('CoverCache preload failed', err.message);
+        });
       }
     } catch (err) {
       Logger.error('Failed to init store');
@@ -121,6 +162,8 @@ export default class EntryAbility extends UIAbility {
 
   onForeground() {
     Logger.info('Ability onForeground');
+    // 回到前台时刷新桌面卡片状态（覆盖「播放中新增卡片、之后无状态变化」导致卡片为空的情况）
+    AVSessionController.getInstance().pushFormUpdate();
   }
 
   onBackground() {

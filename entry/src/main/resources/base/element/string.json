@@ -13,20 +13,8 @@
       "value": "Lumio Music"
     },
     {
-      "name": "read_media_reason",
-      "value": "用于扫描和播放本地音频文件"
-    },
-    {
-      "name": "write_media_reason",
-      "value": "用于保存播放历史和收藏数据"
-    },
-    {
       "name": "keep_background_reason",
       "value": "用于后台播放音乐"
-    },
-    {
-      "name": "gesture_reason",
-      "value": "用于感知握持手状态，实现智感握姿跟随"
     },
     {
       "name": "internet_reason",
@@ -55,6 +43,78 @@
     {
       "name": "page_show",
       "value": "Lumio Music"
+    },
+    {
+      "name": "FormAbility_label",
+      "value": "音乐播控卡片"
+    },
+    {
+      "name": "FormAbility_desc",
+      "value": "桌面音乐播控卡片，支持播放/暂停/切换与实时状态"
+    },
+    {
+      "name": "form_display_name",
+      "value": "音乐播控"
+    },
+    {
+      "name": "form_desc",
+      "value": "在桌面便捷控制音乐播放"
+    },
+    {
+      "name": "queue_title",
+      "value": "播放队列"
+    },
+    {
+      "name": "queue_empty",
+      "value": "队列为空"
+    },
+    {
+      "name": "queue_play",
+      "value": "播放"
+    },
+    {
+      "name": "queue_play_next",
+      "value": "下一首播放"
+    },
+    {
+      "name": "queue_remove",
+      "value": "移除"
+    },
+    {
+      "name": "sort_default",
+      "value": "默认"
+    },
+    {
+      "name": "sort_title",
+      "value": "标题"
+    },
+    {
+      "name": "sort_artist",
+      "value": "歌手"
+    },
+    {
+      "name": "sort_recent",
+      "value": "最近播放"
+    },
+    {
+      "name": "sort_random",
+      "value": "随机"
+    },
+    {
+      "name": "perm_guide_title",
+      "value": "权限说明"
+    },
+    {
+      "name": "perm_guide_message",
+      "value": "为了更好的听歌体验，Lumio Music 需要以下能力：\n\n· 后台播放：在锁屏、后台或切换到其他应用时继续播放音乐。\n· 网络连接：发现同一局域网内的投播设备（如音箱、电视），把音乐投送到这些设备。\n\n这些能力仅用于本应用的播放与投播，不会上传你的任何个人数据。"
+    },
+    {
+      "name": "perm_guide_ok",
+      "value": "知道了"
+    },
+    {
+      "name": "empty_go_library",
+      "value": "去音乐库"
     }
   ]
 }

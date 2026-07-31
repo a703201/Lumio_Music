@@ -34,6 +34,7 @@ export struct PlayerInfoComponent {
   @StorageProp('currentBreakpoint') currentBreakpoint: string = BreakpointConstants.BREAKPOINT_SM;
   @StorageLink('songList') songList: SongItem[] = [];
   @StorageProp('selectIndex') @Watch('getImageColor') selectIndex: number = 0;
+  @StorageProp('coverRefreshToken') @Watch('getImageColor') coverRefreshToken: number = 0;
   @StorageLink('imageColor') imageColor: string = 'rgba(0, 0, 2, 1.00)';
   @StorageLink('topHeight') topHeight: number = 0;
   @StorageLink('bottomHeight') bottomHeight: number = 0;
@@ -258,33 +259,48 @@ export struct PlayerInfoComponent {
     if (!songLabel) {
       return;
     }
-    this.context.resourceManager.getMediaContent(songLabel.id)
-      .then((value: Uint8Array) => {
-        let buffer = value.buffer as ArrayBuffer;
-        image.createImageSource(buffer).createPixelMap().then((pixelMap) => {
-          effectKit.createColorPicker(pixelMap, (error, colorPicker) => {
-            if (error) {
-              Logger.error('Failed to create color picker.');
-            } else {
-              let color = colorPicker.getLargestProportionColor();
-              let colorArr = ColorConversion.dealColor(color.red, color.green, color.blue);
-              this.imageColor = `rgba(${colorArr[0]}, ${colorArr[1]}, ${colorArr[2]}, 1)`;
-            }
-          })
-          let headFilter = effectKit.createEffect(pixelMap);
-          if (headFilter !== null) {
-            headFilter.blur(PlayerConstants.IMAGE_BLUR);
-            headFilter.getEffectPixelMap().then((value) => {
-              this.imageLabel = value;
-            })
-          }
-        })
-          .catch((error: BusinessError) => {
-            Logger.error(`${error.code} + ${error.message}`);
-          })
+
+    let sourcePromise: Promise<PixelMap> = Promise.reject(new Error('unreachable'));
+    if (this.isPixelMap(songLabel)) {
+      sourcePromise = Promise.resolve(songLabel as PixelMap);
+    } else {
+      const resource = songLabel as Resource;
+      try {
+        sourcePromise = this.context.resourceManager.getMediaContent(resource.id)
+          .then((value: Uint8Array) => {
+            let buffer = value.buffer as ArrayBuffer;
+            return image.createImageSource(buffer).createPixelMap();
+          });
+      } catch (error) {
+        Logger.error(`getMediaContent failed: ${(error as BusinessError).message}`);
+        return;
+      }
+    }
+
+    sourcePromise.then((pixelMap) => {
+      effectKit.createColorPicker(pixelMap, (error, colorPicker) => {
+        if (error) {
+          Logger.error('Failed to create color picker.');
+        } else {
+          let color = colorPicker.getLargestProportionColor();
+          let colorArr = ColorConversion.dealColor(color.red, color.green, color.blue);
+          this.imageColor = `rgba(${colorArr[0]}, ${colorArr[1]}, ${colorArr[2]}, 1)`;
+        }
       })
+      let headFilter = effectKit.createEffect(pixelMap);
+      if (headFilter !== null) {
+        headFilter.blur(PlayerConstants.IMAGE_BLUR);
+        headFilter.getEffectPixelMap().then((value) => {
+          this.imageLabel = value;
+        })
+      }
+    })
       .catch((error: BusinessError) => {
         Logger.error(`${error.code} + ${error.message}`);
       })
+  }
+
+  private isPixelMap(value: Resource | PixelMap): boolean {
+    return typeof (value as PixelMap).getImageInfo === 'function';
   }
 }

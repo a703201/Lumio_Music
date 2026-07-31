@@ -1,5 +1,6 @@
 import { SongItem } from '../models/music';
 import { MusicStore } from '../services/MusicStore';
+import { AudioRendererController } from '../utils/AudioRendererController';
 
 @Component
 export struct Find {
@@ -69,8 +70,7 @@ export struct Find {
       const index: number = this.store.songs.findIndex(s => s.id === song.id);
       if (index >= 0) {
         this.store.currentIndex = index;
-        AppStorage.setOrCreate('selectIndex', index);
-        AppStorage.setOrCreate('songList', this.store.songs);
+        AudioRendererController.getInstance().playFromList(this.store.songs, index);
         this.pathStack.pushPathByName('PlayerPage', null);
       }
     })

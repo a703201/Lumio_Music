@@ -1,5 +1,6 @@
 import { Logger } from '../utils/Logger';
 import { common, Want } from '@kit.AbilityKit';
+import { audio } from '@kit.AudioKit';
 import { getAppVersionDisplay } from '../utils/AppInfoUtil';
 import { MusicStore } from '../services/MusicStore';
 import { SettingsStore, ThemeMode, RepeatModeSetting } from '../utils/SettingsStore';
@@ -41,6 +42,9 @@ struct Settings {
   @State privacyStats: boolean = true;
   @State cacheSizeText: string = '约 0.0 MB';
 
+  // 空间音频（只读状态，三方应用无法强开，只能查询当前设备是否开启）
+  @State spatialAudioEnabled: boolean = false;
+
   // 当前单选弹窗类型（repeat/theme，空串表示无）
   @State currentPicker: 'repeat' | 'theme' | '' = '';
   pickerController: CustomDialogController = new CustomDialogController({
@@ -61,6 +65,21 @@ struct Settings {
       this.syncFromStore();
     }
     this.refreshCacheSize();
+    this.querySpatialAudio();
+  }
+
+  /**
+   * 查询当前设备的空间音频开关状态（只读；普通应用无权限调用 setSpatializationEnabled，
+   * 该接口需系统权限 MANAGE_SYSTEM_AUDIO_EFFECTS）。仅展示，不做开关。
+   */
+  private querySpatialAudio(): void {
+    try {
+      const spatializationManager = audio.getAudioManager().getSpatializationManager();
+      this.spatialAudioEnabled = spatializationManager.isSpatializationEnabledForCurrentDevice();
+    } catch (e) {
+      Logger.error('querySpatialAudio failed');
+      this.spatialAudioEnabled = false;
+    }
   }
 
   private syncFromStore(): void {
@@ -463,6 +482,17 @@ struct Settings {
                 1,
                 '#FF9500',
                 () => { this.currentPicker = 'repeat'; this.openPicker(); }
+              )
+              this.buildSettingItem(
+                $r('app.media.ic_music'),
+                '空间音频',
+                this.spatialAudioEnabled ? '当前设备已开启' : '当前设备未开启',
+                2,
+                '#00C7BE',
+                () => {
+                  this.querySpatialAudio();
+                  this.toast(this.spatialAudioEnabled ? '空间音频：已开启' : '空间音频：未开启（或设备不支持）');
+                }
               )
             }
             .margin({ bottom: 8 })
