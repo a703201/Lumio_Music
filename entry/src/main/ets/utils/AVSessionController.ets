@@ -19,6 +19,7 @@ import { avSession } from '@kit.AVSessionKit';
 // [StartExclude avsession_controller]
 import { BusinessError } from '@kit.BasicServicesKit';
 import { resourceManager } from '@kit.LocalizationKit';
+import { fileIo } from '@kit.CoreFileKit';
 import { SongItem } from '../songdatacontroller/SongData';
 import { Logger } from './Logger';
 import { MediaTools } from './MediaTools';
@@ -35,6 +36,13 @@ export class AVSessionController {
   private musicIndex: number | undefined = undefined;
   private audioRendererController: AudioRendererController | undefined = undefined;
   private listenersRegistered: boolean = false;
+  // [StartExclude avsession_controller]
+  // 投播（Cast）相关状态
+  private castController: avSession.AVCastController | undefined = undefined;
+  private isCasting: boolean = false;
+  private castFile: fileIo.File | undefined = undefined; // 投播独立文件句柄，与本地播放 curFile 解耦
+  private castRemotePositionMs: number = 0; // 记录远端播放进度，断连后本地续播对齐
+  // [EndExclude avsession_controller]
   // [StartExclude avsession_controller]
   constructor() {
     let list: SongItem[] | undefined = AppStorage.get('songList');
@@ -63,6 +71,10 @@ export class AVSessionController {
     try {
       this.AVSession = await avSession.createAVSession(this.context, "PLAY_AUDIO", 'audio');
       await this.AVSession.activate();
+      // 声明支持投播（局域网/远端设备），AVCastPicker 才能拉起可投播设备列表
+      this.AVSession.setExtras({ requireAbilityList: ['url-cast'] }).catch((err: BusinessError) => {
+        Logger.error(TAG, `setExtras failed: ${err.message}`);
+      });
     } catch (e) {
       Logger.error(TAG, 'AVSession create/activate failed');
       return;
@@ -71,11 +83,9 @@ export class AVSessionController {
     Logger.info(TAG, `session create successed : sessionId : ${this.AVSession.sessionId}`);
     await this.setAVMetadata();
     this.setLaunchAbility();
-    // 控制中心/通知中心的监听在 AudioRendererController 绑定后再注册，
-    // 避免构造顺序导致会话未创建、监听缺失（控制中心无法控制播放）。
-    if (this.audioRendererController) {
-      this.registerSessionListeners();
-    }
+    // 单一保活入口：AVSession 与 AudioRendererController 同时就绪才注册监听，
+    // 解决两者异步初始化顺序导致的竞态（此前任一未就绪都会跳过注册，控制中心无法控制播放）。
+    this.ensureListenersRegistered();
     if (this.musicIndex !== undefined) {
       this.getAndUpdateFavoriteState(this.musicIndex.toString());
     }
@@ -89,13 +99,20 @@ export class AVSessionController {
    */
   public bindAudioRendererController(controller: AudioRendererController): void {
     this.audioRendererController = controller;
-    if (this.AVSession) {
-      this.registerSessionListeners();
-    }
+    this.ensureListenersRegistered();
   }
 
-  private registerSessionListeners(): void {
-    if (this.listenersRegistered || !this.AVSession) {
+  /**
+   * 单一保活的监听注册入口。仅在 AVSession 与 AudioRendererController 同时就绪后才注册，
+   * 并用 listenersRegistered 去重，避免构造顺序（两者异步初始化）导致的竞态。
+   */
+  private ensureListenersRegistered(): void {
+    if (this.listenersRegistered) {
+      return;
+    }
+    if (!this.AVSession || !this.audioRendererController) {
+      // 尚缺一方，待另一方就绪时再次调用本方法即可完成注册
+      Logger.info(TAG, 'ensureListenersRegistered: waiting for AVSession + audioRendererController');
       return;
     }
     this.listenersRegistered = true;
@@ -179,6 +196,10 @@ export class AVSessionController {
     } catch (error) {
       Logger.error(TAG, `SetAVMetadata try: code: ${(error as BusinessError).code}`);
     }
+    // 投播中切歌：重新投播新曲目（startPosition 归零，从曲首开始）
+    if (this.isCasting) {
+      this.castCurrentSong(0);
+    }
   }
   // [End set_avmetadata]
 
@@ -195,6 +216,8 @@ export class AVSessionController {
       this.AVSession.on('seek', this.onSeek);
       this.AVSession.on('setLoopMode', this.onSetLoopMode);
       this.AVSession.on('toggleFavorite', this.onToggleFavorite);
+      // 投播设备连接状态：远端设备连上 -> 开始投播；断开 -> 结束投播切回本地
+      this.AVSession.on('outputDeviceChange', this.onOutputDeviceChange);
     } catch (e) {
       Logger.error(TAG, 'setListenerForMesFromController failed');
     }
@@ -202,6 +225,14 @@ export class AVSessionController {
   // [End set_listener_for_mes_from_controller]
   private onPlay: () => void = () => {
     Logger.info(TAG, `on play , do play task`);
+    if (this.isCasting && this.castController) {
+      // 投播态：控制远端设备播放
+      this.castController.sendControlCommand({ command: 'play' }).catch((err: BusinessError) => {
+        Logger.error(TAG, `cast sendControlCommand play failed: ${err.message}`);
+      });
+      this.setPlayState(true);
+      return;
+    }
     if (!this.audioRendererController) {
       Logger.error(TAG, 'audioRendererController is undefined in onPlay');
       return;
@@ -215,6 +246,14 @@ export class AVSessionController {
 
   private onPause: () => void = () => {
     Logger.info(TAG, `on pause , do pause task`);
+    if (this.isCasting && this.castController) {
+      // 投播态：控制远端设备暂停
+      this.castController.sendControlCommand({ command: 'pause' }).catch((err: BusinessError) => {
+        Logger.error(TAG, `cast sendControlCommand pause failed: ${err.message}`);
+      });
+      this.setPlayState(false);
+      return;
+    }
     if (!this.audioRendererController) {
       Logger.error(TAG, 'audioRendererController is undefined in onPause');
       return;
@@ -242,6 +281,14 @@ export class AVSessionController {
 
   private onSeek: (curMs: number) => void = (curMs: number) => {
     Logger.info(TAG, `on seek , do seek task`);
+    if (this.isCasting && this.castController) {
+      // 投播态：控制远端设备跳转进度
+      this.castController.sendControlCommand({ command: 'seek', parameter: curMs }).catch((err: BusinessError) => {
+        Logger.error(TAG, `cast sendControlCommand seek failed: ${err.message}`);
+      });
+      this.setProgressState(curMs);
+      return;
+    }
     if (!this.audioRendererController) {
       Logger.error(TAG, 'audioRendererController is undefined in onSeek');
       return;
@@ -276,6 +323,162 @@ export class AVSessionController {
     Logger.info(TAG, `on toggleFavorite , do toggleFavorite task`);
     this.updateFavoriteState(assetId);
   }
+
+  // [StartExclude cast_support]
+  /**
+   * 投播设备连接状态回调。
+   * 远端设备（局域网/Cast+/DLNA）连接成功 -> 开始投播并暂停本地出声；
+   * 设备断开或非远端输出 -> 结束投播并恢复本地播放。
+   */
+  private onOutputDeviceChange: (state: avSession.ConnectionState, device: avSession.OutputDeviceInfo) => void =
+    (state: avSession.ConnectionState, device: avSession.OutputDeviceInfo) => {
+      let currentDevice: avSession.DeviceInfo | undefined = device?.devices?.[0];
+      if (currentDevice && currentDevice.castCategory === avSession.AVCastCategory.CATEGORY_REMOTE
+        && state === avSession.ConnectionState.STATE_CONNECTED) {
+        Logger.info(TAG, `cast device connected: ${currentDevice.deviceName}`);
+        this.startCast(currentDevice);
+      } else if (this.isCasting) {
+        Logger.info(TAG, 'cast device disconnected or switched to local output, stopping cast');
+        this.stopCast();
+      }
+    };
+
+  /**
+   * 开始投播：获取投播控制器，暂停本地出声，把当前曲目以 fdSrc 形式投到远端设备。
+   */
+  private async startCast(device: avSession.DeviceInfo): Promise<void> {
+    if (this.isCasting || !this.AVSession) {
+      return;
+    }
+    try {
+      this.castController = await this.AVSession.getAVCastController();
+    } catch (err) {
+      Logger.error(TAG, `getAVCastController failed: ${(err as BusinessError).message}`);
+      return;
+    }
+    this.isCasting = true;
+    if (this.audioRendererController) {
+      this.audioRendererController.setCastActive(true); // 投播期间本地保持静音
+      await this.audioRendererController.pause();
+    }
+    this.setPlayState(true); // 控制中心展示为“播放中（投播）”
+    try {
+      // 监听远端播放状态变化，回写进度以便断连后本地续播对齐
+      this.castController?.on('playbackStateChange', 'all', this.onCastPlaybackStateChange);
+      // 远端设备发起的下一首/上一首
+      this.castController?.on('playNext', this.onPlayNext);
+      this.castController?.on('playPrevious', this.onPlayPrevious);
+    } catch (err) {
+      Logger.error(TAG, `cast on listeners failed: ${(err as BusinessError).message}`);
+    }
+    await this.castCurrentSong();
+  }
+
+  /**
+   * 结束投播：停止远端、注销监听、关闭独立 fd，恢复本地播放并对齐远端进度。
+   */
+  private async stopCast(): Promise<void> {
+    if (!this.isCasting) {
+      return;
+    }
+    this.isCasting = false;
+    try {
+      this.castController?.off('playbackStateChange', this.onCastPlaybackStateChange);
+      // AVCastController.off 的类型重载未暴露 playNext/playPrevious，但运行时支持注销；
+      // 经 ESObject 透传以绕过编译期 overload 不匹配报错。
+      (this.castController as ESObject)?.off('playNext', this.onPlayNext);
+      (this.castController as ESObject)?.off('playPrevious', this.onPlayPrevious);
+    } catch (err) {
+      Logger.error(TAG, `cast off listeners failed: ${(err as BusinessError).message}`);
+    }
+    try {
+      await this.castController?.sendControlCommand({ command: 'stop' });
+    } catch (err) {
+      Logger.error(TAG, `cast stop command failed: ${(err as BusinessError).message}`);
+    }
+    this.castController = undefined;
+    if (this.castFile) {
+      try {
+        fileIo.closeSync(this.castFile.fd);
+      } catch (e) {
+      }
+      this.castFile = undefined;
+    }
+    if (this.audioRendererController) {
+      this.audioRendererController.setCastActive(false);
+      // 本地此前处于 pause，直接 resume 即可从原进度续播
+      await this.audioRendererController.start();
+      if (this.castRemotePositionMs > 0) {
+        this.audioRendererController.seek(this.castRemotePositionMs);
+      }
+    }
+    this.castRemotePositionMs = 0;
+  }
+
+  /**
+   * 把“当前曲目”以独立 fd 投到远端设备。切歌（setAVMetadata）时也会调用以重新投播。
+   * @param startPositionOverride 指定投播起始进度（ms）；切歌时传 0，初始投播不传则用本地当前进度。
+   */
+  private async castCurrentSong(startPositionOverride?: number): Promise<void> {
+    if (!this.castController) {
+      return;
+    }
+    const song: SongItem | undefined = this.audioRendererController?.getCurrentSong();
+    if (!song) {
+      Logger.error(TAG, 'castCurrentSong: current song is undefined');
+      return;
+    }
+    // 关闭上一个投播 fd，避免泄漏（与本地播放 curFile 解耦，独立开 fd）
+    if (this.castFile) {
+      try {
+        fileIo.closeSync(this.castFile.fd);
+      } catch (e) {
+      }
+      this.castFile = undefined;
+    }
+    let file: fileIo.File;
+    try {
+      file = fileIo.openSync(song.src, fileIo.OpenMode.READ_ONLY);
+    } catch (err) {
+      Logger.error(TAG, `cast open file failed: ${song.src}`);
+      return;
+    }
+    this.castFile = file;
+    const position: number = startPositionOverride ?? this.audioRendererController?.getCurrentPosition() ?? 0;
+    const duration: number = this.audioRendererController?.getDuration() ?? 0;
+    const playItem: avSession.AVQueueItem = {
+      itemId: 0,
+      description: {
+        assetId: (this.musicIndex ?? 0).toString(),
+        title: song.title,
+        artist: song.singer,
+        mediaType: 'AUDIO',
+        fdSrc: { fd: file.fd },
+        startPosition: position,
+        duration: duration,
+        albumTitle: song.title,
+        appName: 'HM_Player'
+      }
+    };
+    try {
+      await this.castController.prepare(playItem);
+      await this.castController.start(playItem);
+      Logger.info(TAG, `cast started: ${song.title}`);
+    } catch (err) {
+      Logger.error(TAG, `cast prepare/start failed: ${(err as BusinessError).message}`);
+    }
+  }
+
+  /**
+   * 远端播放状态变化：回写进度，用于断连后本地续播对齐。
+   */
+  private onCastPlaybackStateChange: (state: avSession.AVPlaybackState) => void = (state: avSession.AVPlaybackState) => {
+    if (state?.position?.elapsedTime !== undefined) {
+      this.castRemotePositionMs = state.position.elapsedTime;
+      this.setProgressState(state.position.elapsedTime);
+    }
+  }
+  // [EndExclude cast_support]
 
   private setPlayModeToControlArea() {
     if (!this.audioRendererController) {
@@ -438,8 +641,13 @@ export class AVSessionController {
       this.AVSession.off('setLoopMode');
       this.AVSession.off('seek');
       this.AVSession.off('toggleFavorite');
+      this.AVSession.off('outputDeviceChange', this.onOutputDeviceChange);
     } catch (e) {
       Logger.error(TAG, 'unregisterSessionListener failed');
+    }
+    // 退出时若仍在投播，释放投播资源
+    if (this.isCasting) {
+      this.stopCast();
     }
   }
   // [EndExclude avsession_controller]

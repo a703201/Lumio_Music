@@ -40,6 +40,8 @@ export class AudioRendererController {
   private avSessionController: AVSessionController | undefined = undefined;
   private duration: number = 0;
   private curFile?: fileIo.File;
+  // 投播状态标记：为 true 时本地播放器在 prepared 后不自动起播，保持静音（由远端设备出声）
+  public castActive: boolean = false;
 
   constructor() {
     let list: SongItem[] | undefined = AppStorage.get('songList');
@@ -81,8 +83,10 @@ export class AudioRendererController {
         // fdSrc 已设置，进入 prepared 状态准备播放（官方推荐：在状态回调中驱动状态机）
         this.avPlayer?.prepare();
       } else if (state === 'prepared') {
-        // 准备完成，开始播放
-        this.start();
+        // 准备完成。投播状态下本地保持静音（由远端设备出声），不自动起播。
+        if (!this.castActive) {
+          this.start();
+        }
       } else if (state === 'playing') {
         this.updateIsPlay(true);
       } else if (state === 'paused') {
@@ -190,6 +194,18 @@ export class AudioRendererController {
 
   public getFirst(): boolean {
     return this.isFirst;
+  }
+
+  public getCurrentSong(): SongItem | undefined {
+    return this.songList[this.musicIndex];
+  }
+
+  public getCurrentPosition(): number {
+    return this.curMs;
+  }
+
+  public setCastActive(active: boolean): void {
+    this.castActive = active;
   }
 
   public setPlayModel(playMode: MusicPlayMode): void {
