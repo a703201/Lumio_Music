@@ -1,3 +1,4 @@
+import { Logger } from './Logger';
 import { preferences } from '@kit.ArkData';
 import { MusicStore } from '../services/MusicStore';
 import { AVSessionController } from './AVSessionController';
@@ -69,7 +70,7 @@ export class SettingsStore {
       this.privacyStats = await this.pref.get(KEY_PRIVACY_STATS, true) as boolean;
       this.initialized = true;
     } catch (err) {
-      console.error('SettingsStore init failed');
+      Logger.error('SettingsStore init failed');
     }
   }
 
@@ -117,7 +118,7 @@ export class SettingsStore {
     try {
       AVSessionController.getInstance().setLockScreenControl(value);
     } catch (e) {
-      console.error('link AVSession lock screen failed');
+      Logger.error('link AVSession lock screen failed');
     }
   }
 
@@ -139,7 +140,7 @@ export class SettingsStore {
       await this.pref.put(key, value);
       await this.pref.flush();
     } catch (err) {
-      console.error('SettingsStore put failed: ' + key);
+      Logger.error('SettingsStore put failed: ' + key);
     }
   }
 
@@ -151,7 +152,7 @@ export class SettingsStore {
       await this.pref.put(key, value);
       await this.pref.flush();
     } catch (err) {
-      console.error('SettingsStore put failed: ' + key);
+      Logger.error('SettingsStore put failed: ' + key);
     }
   }
 }

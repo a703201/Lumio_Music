@@ -1,3 +1,4 @@
+import { Logger } from '../utils/Logger';
 import { common, Want } from '@kit.AbilityKit';
 import { getAppVersionDisplay } from '../utils/AppInfoUtil';
 import { MusicStore } from '../services/MusicStore';
@@ -74,7 +75,7 @@ struct Settings {
     try {
       this.getUIContext().getPromptAction().showToast({ message });
     } catch (e) {
-      console.error('toast failed');
+      Logger.error('toast failed');
     }
   }
 
@@ -87,11 +88,11 @@ struct Settings {
       };
       const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       context.startAbility(want).catch((err: Error) => {
-        console.error('Failed to open url:', err);
+        Logger.error('Failed to open url: ' + (err as Error).message);
         this.toast('无法打开网页');
       });
     } catch (err) {
-      console.error('Failed to open url:', err);
+      Logger.error('Failed to open url: ' + (err as Error).message);
       this.toast('无法打开网页');
     }
   }

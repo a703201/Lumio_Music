@@ -1,3 +1,4 @@
+import { Logger } from './Logger';
 import { window } from '@kit.ArkUI';
 import { SettingsStore, ThemeMode } from './SettingsStore';
 
@@ -109,7 +110,7 @@ export class ThemeManager {
         navigationBarContentColor: contentColor
       });
     } catch (e) {
-      console.error('applyToWindow failed');
+      Logger.error('applyToWindow failed');
     }
   }
 }

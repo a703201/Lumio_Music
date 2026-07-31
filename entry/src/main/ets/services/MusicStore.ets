@@ -1,3 +1,4 @@
+import { Logger } from '../utils/Logger';
 import { SongItem } from '../models/music';
 import { RepeatMode, Playlist } from '../models/music';
 import dataPreferences from '@ohos.data.preferences';
@@ -46,7 +47,7 @@ export class MusicStore {
       this.preferences = await dataPreferences.getPreferences(context, PREF_NAME);
       await this.loadState();
     } catch (err) {
-      console.error('Failed to init preferences');
+      Logger.error('Failed to init preferences');
     }
   }
 
@@ -175,7 +176,7 @@ export class MusicStore {
       const currentIndex = await this.preferences.get(KEY_CURRENT_INDEX, 0) as number;
       this.currentIndex = currentIndex;
     } catch (err) {
-      console.error('Failed to load state');
+      Logger.error('Failed to load state');
     }
   }
 
@@ -185,7 +186,7 @@ export class MusicStore {
       await this.preferences.put(KEY_SONGS, JSON.stringify(this.songs));
       await this.preferences.flush();
     } catch (err) {
-      console.error('Failed to save songs');
+      Logger.error('Failed to save songs');
     }
   }
 
@@ -195,7 +196,7 @@ export class MusicStore {
       await this.preferences.put(KEY_FAVORITES, JSON.stringify(Array.from(this.favorites)));
       await this.preferences.flush();
     } catch (err) {
-      console.error('Failed to save favorites');
+      Logger.error('Failed to save favorites');
     }
   }
 
@@ -205,7 +206,7 @@ export class MusicStore {
       await this.preferences.put(KEY_RECENTLY_PLAYED, JSON.stringify(this.recentlyPlayed));
       await this.preferences.flush();
     } catch (err) {
-      console.error('Failed to save recently played');
+      Logger.error('Failed to save recently played');
     }
   }
 
@@ -215,7 +216,7 @@ export class MusicStore {
       await this.preferences.put(KEY_PLAYLISTS, JSON.stringify(this.playlists));
       await this.preferences.flush();
     } catch (err) {
-      console.error('Failed to save playlists');
+      Logger.error('Failed to save playlists');
     }
   }
 
@@ -225,7 +226,7 @@ export class MusicStore {
       await this.preferences.put(KEY_REPEAT_MODE, this.repeatMode);
       await this.preferences.flush();
     } catch (err) {
-      console.error('Failed to save repeat mode');
+      Logger.error('Failed to save repeat mode');
     }
   }
 }

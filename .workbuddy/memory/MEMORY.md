@@ -24,3 +24,14 @@
 
 ### 沙箱注意
 - 本会话迭代构建多次后，沙箱 `[safe-delete]` 守卫（turn 级、阈值 50 文件）会拦截 hvigor 的 `.cxx`/cmake 缓存/报告批量清理，导致 assembleHap 在末段 FAIL，**无法在本会话产出 HAP**。该守卫只拦 hvigor 子进程批量删除；用户直接在 DevEco 构建正常。代码层编译请用 BuildNativeWithCmake/BuildNativeWithNinja/CompileArkTS 三段是否 Finished 判定。
+
+### 日志规范（统一出口，长效约定）
+- 全工程日志统一走 `utils/Logger.ets` 封装（`Logger.debug/info/warn/error(...args: string[])` → `hilog.xxx(0xFF00, 'MusicPlay', '%{public}s', args.join(' '))`）。domain=0xFF00、prefix='MusicPlay'。**禁止**在业务代码直接 `console.*` 或裸调 `hilog`（EntryAbility/EntryBackupAbility 已迁到 Logger）。
+- Logger 实现用 `args.join(' ')` 把多参数拼成单条消息，兼容 `Logger.error(TAG, 'msg')` 与 `Logger.error('msg')` 两种历史调用约定；模块 TAG 进入消息体，不再作为 hilog 的 tag 字段。
+- 两份 Logger（entry/ 与 MediaService/）实现已对齐，行为一致。
+
+### 投播（AVCastPicker）与播控（AVSession）架构事实（已诊断）
+- **投播 ≠ 播控，二者解耦**：`TopAreaComponent.ets:37` 的 `AVCastPicker`（`@kit.AVSessionKit`）走 CastEngine 把"可投流"推到远端；播控（通知/控制中心/锁屏卡片）由本地 `AVSessionController` 的 `AVSession` 经 metadata/playbackState 驱动。CastEngine 拒绝投播只在投播通道弹提示，**不调用 activate/deactivate，不触碰本地已激活会话**，故"投播内容受版权加密保护"**不会导致播控失效**。
+- 本地音乐经 `AudioRendererController` 用 `media.AVPlayer` + `fdSrc({fd})` 播放。CastEngine 需要"远端可拉取的媒体"（http/HLS），`fdSrc` 是进程内句柄无法被远端重开，系统遂以"版权加密保护"兜底替代"源不支持投播"——属**误导性措辞，非真实 DRM**。
+- **本地播放器无需投播**，`AVCastPicker` 在此是误导入口；建议移除或按 `@State castEnabled` 条件隐藏（仅可投源存在时显示）。
+- 真正让播控失效的高危点：`AVSessionController.registerSessionListeners()` 在 initAVSession 与 bindAudioRendererController 两处按需注册，构造顺序下常不同时成立 → 监听永不注册 → 系统卡片 play/pause/seek 无响应（仅展示不可控）；另需排查 AVSession 创建/激活失败日志、notificationLockScreen 被关（false→deactivate）、playbackState 未设置。

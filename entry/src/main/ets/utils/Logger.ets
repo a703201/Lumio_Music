@@ -16,23 +16,22 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
 
 export class Logger {
-  private static domain: number = 0xFF00;
-  private static prefix: string = 'MusicPlay';
-  private static format: string = '%{public}s, %{public}s';
+  private static readonly domain: number = 0xFF00;
+  private static readonly prefix: string = 'MusicPlay';
 
   static debug(...args: string[]): void {
-    hilog.debug(Logger.domain, Logger.prefix, Logger.format, args);
+    hilog.debug(Logger.domain, Logger.prefix, '%{public}s', args.join(' '));
   }
 
   static info(...args: string[]): void {
-    hilog.info(Logger.domain, Logger.prefix, Logger.format, args);
+    hilog.info(Logger.domain, Logger.prefix, '%{public}s', args.join(' '));
   }
 
   static warn(...args: string[]): void {
-    hilog.warn(Logger.domain, Logger.prefix, Logger.format, args);
+    hilog.warn(Logger.domain, Logger.prefix, '%{public}s', args.join(' '));
   }
 
   static error(...args: string[]): void {
-    hilog.error(Logger.domain, Logger.prefix, Logger.format, args);
+    hilog.error(Logger.domain, Logger.prefix, '%{public}s', args.join(' '));
   }
 }

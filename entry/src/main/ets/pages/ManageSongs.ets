@@ -1,3 +1,4 @@
+import { Logger } from '../utils/Logger';
 import { SongItem } from '../models/music';
 import { MusicStore } from '../services/MusicStore';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
@@ -37,7 +38,7 @@ struct ManageSongs {
     try {
       this.getUIContext().getPromptAction().showToast({ message });
     } catch (e) {
-      console.error('toast failed');
+      Logger.error('toast failed');
     }
   }
 

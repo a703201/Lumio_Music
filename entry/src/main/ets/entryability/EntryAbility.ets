@@ -13,30 +13,28 @@
  * limitations under the License.
  */
 
+import { Logger } from '../utils/Logger';
 import { UIAbility, Configuration, ConfigurationConstant } from '@kit.AbilityKit';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 import { display, window } from '@kit.ArkUI';
 import { BreakpointConstants } from '../common/constants/BreakpointConstants';
 import { MusicStore } from '../services/MusicStore';
 import { SettingsStore } from '../utils/SettingsStore';
 import { ThemeManager } from '../utils/ThemeManager';
 
-const DOMAIN = 0x0000;
-
 export default class EntryAbility extends UIAbility {
   private windowObj?: window.Window;
 
   onCreate() {
     AppStorage.setOrCreate('context', this.context);
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
+    Logger.info('Ability onCreate');
   }
 
   onDestroy() {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onDestroy');
+    Logger.info('Ability onDestroy');
   }
 
   async onWindowStageCreate(windowStage: window.WindowStage): Promise<void> {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
+    Logger.info('Ability onWindowStageCreate');
 
     await this.initStore();
     // 初始化设置项偏好与主题管理器（需在窗口就绪前完成，供页面与系统栏取色）
@@ -45,7 +43,7 @@ export default class EntryAbility extends UIAbility {
 
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
-        hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err) ?? '');
+        Logger.error('Failed to load the content. Cause: ' + (JSON.stringify(err) ?? ''));
         return;
       }
 
@@ -71,7 +69,7 @@ export default class EntryAbility extends UIAbility {
         });
       });
 
-      hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
+      Logger.info('Succeeded in loading the content.');
     });
   }
 
@@ -97,17 +95,17 @@ export default class EntryAbility extends UIAbility {
       const store: MusicStore = MusicStore.getInstance();
       await store.init(this.context);
       if (store.songs.length === 0) {
-        hilog.info(DOMAIN, 'testTag', 'No local songs yet, import from 音乐库');
+        Logger.info('No local songs yet, import from 音乐库');
       } else {
-        hilog.info(DOMAIN, 'testTag', `Loaded ${store.songs.length} songs from storage`);
+        Logger.info(`Loaded ${store.songs.length} songs from storage`);
       }
     } catch (err) {
-      hilog.error(DOMAIN, 'testTag', 'Failed to init store');
+      Logger.error('Failed to init store');
     }
   }
 
   onConfigurationUpdated(config: Configuration): void {
-    hilog.info(DOMAIN, 'testTag', 'Ability onConfigurationUpdated');
+    Logger.info('Ability onConfigurationUpdated');
     // 同步系统深色模式状态，供 ThemeManager 在「跟随系统」时读取
     const dark: boolean = config.colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK;
     AppStorage.setOrCreate('systemIsDark', dark);
@@ -118,14 +116,14 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageDestroy() {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageDestroy');
+    Logger.info('Ability onWindowStageDestroy');
   }
 
   onForeground() {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
+    Logger.info('Ability onForeground');
   }
 
   onBackground() {
-    hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
+    Logger.info('Ability onBackground');
   }
 }

@@ -1,3 +1,4 @@
+import { Logger } from '../utils/Logger';
 import { curves } from '@kit.ArkUI';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { SongItem } from '../models/music';
@@ -133,7 +134,7 @@ export struct LocalLibrary {
         this.isLoading = false;
       }
     } catch (err) {
-      console.error('Pick music failed');
+      Logger.error('Pick music failed');
       this.isLoading = false;
     }
   }
