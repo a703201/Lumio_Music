@@ -57,7 +57,8 @@ export function parseLrcLyric(text: string): Array<LrcEntry> {
     return [];
   }
   let lyric: string[] = text.split('\n');
-  let lrc = new Array<LrcEntry>();
+  // 按时间戳分组：同一个时间戳可能出现多行（原文 + 翻译）
+  let groups: Map<number, string[]> = new Map();
   for (let i = 0; i < lyric.length; i++) {
     let lineTime = lyric[i].match(lrcLineRegex);
     let lineText = lyric[i].replace(lrcLineRegex, '');
@@ -66,30 +67,91 @@ export function parseLrcLyric(text: string): Array<LrcEntry> {
         let min = Number(String(lineTime[j].match(lrcTimeRegex1)).slice(1));
         let sec = Number.parseFloat(String(lineTime[j].match(lrcTimeRegex2)));
         let timeInSeconds = (min * 60 + sec) * 1000;
-        lrc.push({
-          lineStartTime: timeInSeconds,
-          lineDuration: 0,
-          lineWords: lineText,
-          words: []
-        });
+        let list = groups.get(timeInSeconds);
+        if (!list) {
+          list = [];
+          groups.set(timeInSeconds, list);
+        }
+        list.push(lineText);
       }
     }
   }
-  if (lrc && lrc.length > 0) {
-    lrc.sort((a, b) => {
-      return a.lineStartTime - b.lineStartTime;
-    })
-    for (let i = 0; i < lrc.length; i++) {
-      if (i === lrc.length - 1) {
-        lrc[i].lineDuration = Number.MAX_VALUE;
+  if (groups.size === 0) {
+    Logger.error('Failed to parse the lyrics.');
+    return [];
+  }
+
+  // 以整首歌的语种多数决判断「翻译」属于哪一语种：
+  // 少数语种（平局时取 CJK）的那一类行即为翻译。这样对两类常见情形都正确：
+  //  - 外语原曲 + 中文翻译：中文为少数 -> 作翻译
+  //  - 中文原曲 + 英文翻译：英文为少数 -> 作翻译
+  let cjkCount = 0;
+  let otherCount = 0;
+  groups.forEach((texts: string[]) => {
+    for (let t = 0; t < texts.length; t++) {
+      if (containsCjk(texts[t])) {
+        cjkCount++;
       } else {
-        lrc[i].lineDuration = lrc[i+1].lineStartTime - lrc[i].lineStartTime;
+        otherCount++;
       }
     }
-  } else {
-    Logger.error('Failed to parse the lyrics.');
+  });
+  let translationIsCjk = cjkCount <= otherCount;
+
+  let lrc = new Array<LrcEntry>();
+  groups.forEach((texts: string[], time: number) => {
+    let originals: string[] = [];
+    let translations: string[] = [];
+    for (let t = 0; t < texts.length; t++) {
+      if (containsCjk(texts[t]) === translationIsCjk) {
+        translations.push(texts[t]);
+      } else {
+        originals.push(texts[t]);
+      }
+    }
+    if (originals.length === 0) {
+      // 极端情况：所有行都是翻译语种，退化为首行作原文
+      originals.push(texts[0]);
+      translations = texts.slice(1);
+    }
+    lrc.push({
+      lineStartTime: time,
+      lineDuration: 0,
+      lineWords: originals.join(' / '),
+      words: [],
+      translation: translations.length > 0 ? translations.join(' / ') : ''
+    });
+  });
+
+  lrc.sort((a, b) => {
+    return a.lineStartTime - b.lineStartTime;
+  });
+  for (let i = 0; i < lrc.length; i++) {
+    if (i === lrc.length - 1) {
+      lrc[i].lineDuration = Number.MAX_VALUE;
+    } else {
+      lrc[i].lineDuration = lrc[i + 1].lineStartTime - lrc[i].lineStartTime;
+    }
   }
   return lrc;
+}
+
+/**
+ * 判断文本是否含有 CJK / 日文假名等东亚字符（用于区分原文与翻译）。
+ */
+function containsCjk(s: string): boolean {
+  for (let i = 0; i < s.length; i++) {
+    let code = s.charCodeAt(i);
+    if ((code >= 0x3040 && code <= 0x30FF) || // 平假名 / 片假名
+      (code >= 0x3400 && code <= 0x4DBF) || // CJK 扩展 A
+      (code >= 0x4E00 && code <= 0x9FFF) || // CJK 统一表意
+      (code >= 0x3000 && code <= 0x303F) || // CJK 符号与标点
+      (code >= 0xF900 && code <= 0xFAFF) || // CJK 兼容
+      (code >= 0xFF00 && code <= 0xFFEF)) { // 全角字符
+      return true;
+    }
+  }
+  return false;
 }
 
 /**

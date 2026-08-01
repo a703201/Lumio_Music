@@ -9,6 +9,8 @@ export class SongItem {
   id: number = 0;
   title: string = '';
   singer: string = '';
+  album: string = '';
+  author: string = '';
   mark: Resource | undefined = undefined;
   label: Resource | undefined = undefined;
   src: string = '';

@@ -5,6 +5,7 @@ import { SongItem } from '../models/music';
 import { MusicStore } from '../services/MusicStore';
 import { AudioRendererController } from '../utils/AudioRendererController';
 import { CoverCache } from '../utils/CoverCache';
+import { AudioMetaReader } from '../utils/AudioMeta';
 import { picker } from '@kit.CoreFileKit';
 import fs from '@ohos.file.fs';
 import { common } from '@kit.AbilityKit';
@@ -24,6 +25,7 @@ export struct LocalLibrary {
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('bottomHeight') bottomHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
+  @StorageProp('coverRefreshToken') @Watch('onCoverRefreshed') coverRefreshToken: number = 0;
 
   private getThemeColors(): ColorTokens {
     return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
@@ -99,30 +101,35 @@ export struct LocalLibrary {
           const existingIndex = this.store.songs.findIndex(s => s.src === uri);
           if (existingIndex < 0) {
             const fileName = decodeURIComponent(uri.substring(uri.lastIndexOf('/') + 1));
-            const title = fileName.includes('.') ? fileName.substring(0, fileName.lastIndexOf('.')) : fileName;
+            const fallbackTitle = fileName.includes('.') ? fileName.substring(0, fileName.lastIndexOf('.')) : fileName;
             const destPath = downloadDir + '/' + fileName;
+            let srcPath: string = uri;
             try {
               const srcFile = fs.openSync(uri, fs.OpenMode.READ_ONLY);
               const destFile = fs.openSync(destPath, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
               fs.copyFileSync(srcFile.fd, destFile.fd);
               fs.closeSync(srcFile.fd);
               fs.closeSync(destFile.fd);
-              const song = new SongItem();
-              song.id = Math.abs(hashCode(destPath));
-              song.title = title;
-              song.singer = '未知艺术家';
-              song.src = destPath;
-              song.index = this.store.songs.length + newSongs.length;
-              newSongs.push(song);
+              srcPath = destPath;
             } catch (copyErr) {
-              const song = new SongItem();
-              song.id = Math.abs(hashCode(uri));
-              song.title = title;
-              song.singer = '未知艺术家';
-              song.src = uri;
-              song.index = this.store.songs.length + newSongs.length;
-              newSongs.push(song);
+              srcPath = uri;
             }
+            const song = new SongItem();
+            song.id = Math.abs(hashCode(srcPath));
+            song.src = srcPath;
+            song.index = this.store.songs.length + newSongs.length;
+            // 读取音频内嵌文本元数据：标题 / 艺术家 / 专辑 / 作者
+            const meta = await AudioMetaReader.read(srcPath);
+            if (meta) {
+              song.title = (meta.title && meta.title.trim().length > 0) ? meta.title : fallbackTitle;
+              song.singer = (meta.artist && meta.artist.trim().length > 0) ? meta.artist : '未知艺术家';
+              song.album = meta.album ?? '';
+              song.author = meta.author ?? '';
+            } else {
+              song.title = fallbackTitle;
+              song.singer = '未知艺术家';
+            }
+            newSongs.push(song);
           }
         }
         if (newSongs.length > 0) {
@@ -169,6 +176,17 @@ export struct LocalLibrary {
     this.store.removeSong(song.id);
     AudioRendererController.getInstance().reconcileWithLibrary(this.store.songs);
     this.filteredSongs = [...this.store.songs];
+    this.itemScales = this.filteredSongs.map(() => 1.0);
+  }
+
+  onCoverRefreshed() {
+    const kw = this.searchText.trim();
+    if (kw === '') {
+      this.filteredSongs = [...this.store.songs];
+    } else {
+      this.filteredSongs = this.store.songs.filter(song =>
+        song.title.includes(kw) || song.singer.includes(kw));
+    }
     this.itemScales = this.filteredSongs.map(() => 1.0);
   }
 

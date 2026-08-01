@@ -14,24 +14,32 @@ struct PlayHistory {
   store: MusicStore = MusicStore.getInstance();
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
+  @StorageProp('coverRefreshToken') @Watch('onCoverRefreshed') coverRefreshToken: number = 0;
 
   private getThemeColors(): ColorTokens {
     return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
   }
 
   @State itemScales: number[] = [];
+  @State recentSongs: SongItem[] = [];
   @State backScale: number = 1.0;
   @State emptyIconScale: number = 1.0;
   @State playingIndex: number = -1;
 
   aboutToAppear(): void {
-    this.itemScales = this.store.recentlyPlayed.map(() => 1.0);
+    this.recentSongs = [...this.store.recentlyPlayed];
+    this.itemScales = this.recentSongs.map(() => 1.0);
     setInterval(() => {
       if (this.store.recentlyPlayed.length === 0) {
         this.emptyIconScale = this.emptyIconScale === 1.0 ? 1.08 : 1.0;
       }
       this.playingIndex = this.store.isPlaying ? this.store.currentIndex : -1;
     }, 500);
+  }
+
+  onCoverRefreshed() {
+    this.recentSongs = [...this.store.recentlyPlayed];
+    this.itemScales = this.recentSongs.map(() => 1.0);
   }
 
   @Builder
@@ -138,7 +146,7 @@ struct PlayHistory {
             .layoutWeight(1)
 
           // Count badge
-          Text(`${this.store.recentlyPlayed.length} 首`)
+          Text(`${this.recentSongs.length} 首`)
             .fontSize(13)
             .fontColor('#FF9500')
             .backgroundColor('rgba(255, 149, 0, 0.1)')
@@ -148,7 +156,7 @@ struct PlayHistory {
         .width('100%')
         .padding({ left: 16, right: 16, top: this.topHeight + 12, bottom: 16 })
 
-        if (this.store.recentlyPlayed.length === 0) {
+        if (this.recentSongs.length === 0) {
           Column() {
             Image($r('app.media.ic_list'))
               .width(72)
@@ -183,7 +191,7 @@ struct PlayHistory {
           .justifyContent(FlexAlign.Center)
         } else {
           List() {
-            ForEach(this.store.recentlyPlayed, (song: SongItem, index: number) => {
+            ForEach(this.recentSongs, (song: SongItem, index: number) => {
               ListItem() {
                 this.buildSongItem(song, index)
               }

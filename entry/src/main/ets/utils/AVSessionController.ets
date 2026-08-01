@@ -24,6 +24,7 @@ import { formProvider, formBindingData } from '@kit.FormKit';
 import { SongItem } from '../songdatacontroller/SongData';
 import { Logger } from './Logger';
 import { MediaTools } from './MediaTools';
+import { EmbeddedLyricReader } from './EmbeddedLyricReader';
 import { AudioRendererController } from './AudioRendererController';
 import { MusicPlayMode } from '../songdatacontroller/PlayerData';
 import { PreferencesUtil } from './PreferencesUtil';
@@ -194,6 +195,9 @@ export class AVSessionController {
           duration: this.getDuration(),
         };
         let lrc = await MediaTools.getLrcFromRawFile(this.context, this.songList[this.musicIndex].lyric);
+        if (!lrc) {
+          lrc = await EmbeddedLyricReader.read(this.songList[this.musicIndex].src);
+        }
         if (lrc) {
           metadata.lyric = lrc;
         }

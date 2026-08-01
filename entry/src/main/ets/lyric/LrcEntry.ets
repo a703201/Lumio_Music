@@ -47,6 +47,12 @@ export interface LrcEntry {
   lineWords: string;
 
   /**
+   * 该行对应的翻译（原文与翻译共享同一时间戳时的另一语种文本）。
+   * 为空字符串表示无翻译。由 LrcUtils.parseLrcLyric 按语种多数决识别。
+   */
+  translation?: string;
+
+  /**
    * Content of each character.
    */
   words: Word[];

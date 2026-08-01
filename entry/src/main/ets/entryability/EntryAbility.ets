@@ -128,6 +128,8 @@ export default class EntryAbility extends UIAbility {
     try {
       const store: MusicStore = MusicStore.getInstance();
       await store.init(this.context);
+      // 一次性补扫已导入歌曲的文本元数据（标题/艺术家/专辑/作者），修复历史「未知艺术家」
+      await store.refreshMetadataIfNeeded();
       if (store.songs.length === 0) {
         Logger.info('No local songs yet, import from 音乐库');
       } else {

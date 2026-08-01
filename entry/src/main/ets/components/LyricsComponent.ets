@@ -21,11 +21,15 @@ import { StyleConstants } from '../common/constants/StyleConstants';
 import { BreakpointConstants } from '../common/constants/BreakpointConstants';
 import { LrcEntry } from '../lyric/LrcEntry';
 import { parseKrcLyric, parseLrcLyric } from '../lyric/LrcUtils';
+import { EmbeddedLyricReader } from '../utils/EmbeddedLyricReader';
 import LrcView from '../lyric/LrcView';
 import { LyricScrollEffect, LyricTopPosition } from '../lyric/LyricConst';
 import { ControlAreaComponent } from './ControlAreaComponent';
 import { LyricFile } from '../lyric/LyricConst';
 import { PlayerConstants } from '../common/constants/PlayerConstants';
+import { Logger } from '../utils/Logger';
+
+const TAG: string = 'LyricsComponent';
 
 @Component
 export struct LyricsComponent {
@@ -36,8 +40,10 @@ export struct LyricsComponent {
   @State progressText: string = '';
   @State lyricScrollEffect: LyricScrollEffect = LyricScrollEffect.Line;
   @State mLrcEntryList: Array<LrcEntry> = [];
+  @State showTranslation: boolean = true;
   @StorageLink('songList') songList: SongItem[] = [];
   @StorageProp('selectIndex') @Watch('getLrcEntryList') selectIndex: number = 0;
+  @StorageProp('lyricBgDark') lyricBgDark: boolean = true;
   @StorageLink('isPlay') isPlay: boolean = false;
   @Link isShowControl: boolean;
   @Link isTablet: boolean;
@@ -51,23 +57,51 @@ export struct LyricsComponent {
 
   getLrcEntryList() {
     this.mLrcEntryList = [];
-    if (!this.context) {
+    const song = this.songList[this.selectIndex];
+    if (!this.context || !song) {
       return;
     }
-    try {
-      this.context.resourceManager.getRawFileContent(this.songList[this.selectIndex].lyric)
-        .then((value: Uint8Array) => {
-          let textDecoder = util.TextDecoder.create(PlayerConstants.ENCODING, { ignoreBOM: true });
-          let stringData = textDecoder.decodeToString(value, { stream: false });
-          if (this.songList[this.selectIndex].lyric.endsWith(LyricFile.KRC)) {
-            this.mLrcEntryList = parseKrcLyric(stringData);
-          } else if (this.songList[this.selectIndex].lyric.endsWith(LyricFile.LRC)) {
-            this.mLrcEntryList = parseLrcLyric(stringData);
-          }
-        })
-    } catch (e) {
-      // ignore
-    }
+    const context = this.context;
+    const token = this.selectIndex;
+    // 1) 优先读取音频文件内嵌歌词（导入的本地歌曲主要走这里）
+    EmbeddedLyricReader.read(song.src)
+      .then((embedded: string | undefined) => {
+        if (token !== this.selectIndex) {
+          return;
+        }
+        if (embedded && embedded.trim().length > 0) {
+          this.mLrcEntryList = parseLrcLyric(embedded);
+          Logger.debug(TAG, 'src=' + song.src + ' embeddedLen=' + (embedded ? embedded.length : -1) + ' finalLyricCount=' + this.mLrcEntryList.length);
+          return;
+        }
+        // 2) 兜底：rawfile 资源里的 LRC/KRC（如内置示例歌曲）
+        if (!song.lyric || song.lyric.length === 0) {
+          return;
+        }
+        try {
+          context.resourceManager.getRawFileContent(song.lyric)
+            .then((value: Uint8Array) => {
+              if (token !== this.selectIndex) {
+                return;
+              }
+              let textDecoder = util.TextDecoder.create(PlayerConstants.ENCODING, { ignoreBOM: true });
+              let stringData = textDecoder.decodeToString(value, { stream: false });
+              if (song.lyric.endsWith(LyricFile.KRC)) {
+                this.mLrcEntryList = parseKrcLyric(stringData);
+              } else if (song.lyric.endsWith(LyricFile.LRC)) {
+                this.mLrcEntryList = parseLrcLyric(stringData);
+              }
+            })
+            .catch(() => {
+              // ignore
+            });
+        } catch (e) {
+          // ignore
+        }
+      })
+      .catch(() => {
+        // ignore
+      });
   }
 
   build() {
@@ -171,7 +205,9 @@ export struct LyricsComponent {
                   lyricMilliSecondsTime: this.time,
                   mLrcEntryList: this.mLrcEntryList,
                   lyricScrollEffect: this.lyricScrollEffect,
-                  lyricTopPosition: LyricTopPosition.Middle
+                  lyricTopPosition: LyricTopPosition.Middle,
+                  showTranslation: this.showTranslation,
+                  backgroundIsDark: this.lyricBgDark
                 })
                   .layoutWeight(1)
               }
@@ -184,7 +220,9 @@ export struct LyricsComponent {
           lyricMilliSecondsTime: this.time,
           mLrcEntryList: this.mLrcEntryList,
           lyricScrollEffect: this.lyricScrollEffect,
-          lyricTopPosition: LyricTopPosition.Middle
+          lyricTopPosition: LyricTopPosition.Middle,
+          showTranslation: this.showTranslation,
+          backgroundIsDark: this.lyricBgDark
         })
           .layoutWeight(1)
       }
@@ -200,6 +238,8 @@ export struct LyricsComponent {
           .aspectRatio(1)
           .opacity(this.currentBreakpoint === BreakpointConstants.BREAKPOINT_LG ? 1 : 0.86)
       }
+      .onClick(() => { this.showTranslation = !this.showTranslation; })
+      .opacity(this.showTranslation ? 1 : 0.4)
       .width(StyleConstants.FULL_WIDTH)
       .height($r('app.float.control_icon_height'))
       .justifyContent(FlexAlign.End)

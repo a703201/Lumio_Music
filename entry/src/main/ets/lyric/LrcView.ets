@@ -66,7 +66,9 @@ export default struct shiLrcView {
    */
   @Prop @Watch('onTimeUpdated') lyricScrollEffect: LyricScrollEffect = LyricScrollEffect.Line;
   @Prop @Watch('playLyrics') isPlay: boolean = false;
-  private readonly mNormalTextColor = '#99ffffff';
+  @Prop @Watch('onTranslationToggled') showTranslation: boolean = true;
+  @Prop @Watch('onBgChanged') backgroundIsDark: boolean = true;
+  private mNormalTextColor = '#99ffffff';
   private viewWidth: number = 360;
   private viewHeight: number = 500;
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
@@ -101,6 +103,10 @@ export default struct shiLrcView {
    */
   private mDividerHeight = 24;
   /**
+   * 原文与翻译之间的额外间距（vp）。
+   */
+  private mTranslateGap: number = 14;
+  /**
    * Size of the current lyrics, in vp.
    */
   private mCurrentTextSize: number = 24;
@@ -116,6 +122,15 @@ export default struct shiLrcView {
    * Lyrics font weight.
    */
   private fontWeight = 'bold';
+  /**
+   * 翻译文字字号（小于正文）。
+   */
+  private mTranslateTextSize: number = 15;
+  /**
+   * 翻译文字颜色：非当前行（暗）/ 当前行（亮）。
+   */
+  private mTranslateColorNormal: string = '#80ffffff';
+  private mTranslateColorCurrent: string = '#d6ffffff';
   /**
    * Distance between the lyrics and the left border.
    */
@@ -278,7 +293,7 @@ export default struct shiLrcView {
     this.context.translate(0, this.curCanvasOffsetY);
   }
 
-  private getLineHeight(text: string, isCurrent?: boolean): number {
+  private getLineHeight(text: string, isCurrent?: boolean, translation?: string): number {
     let lineHeight = 0;
     if (isCurrent) {
       this.context.font = this.fontWeight + ' ' + this.mCurrentTextSize + 'vp ' + this.fontFamily;
@@ -307,6 +322,11 @@ export default struct shiLrcView {
       }
     } else {
       lineHeight = textMetrics.height;
+    }
+    if (this.showTranslation && translation && translation.length > 0) {
+      this.context.font = this.fontWeight + ' ' + this.mTranslateTextSize + 'vp ' + this.fontFamily;
+      let tMetrics = this.context.measureText(translation);
+      lineHeight += this.mDividerHeight * 0.5 + this.mTranslateGap + tMetrics.height;
     }
     return lineHeight;
   }
@@ -541,7 +561,54 @@ export default struct shiLrcView {
     } else {
       lineHeight = this.drawSingleLine(lyric, textMetrics, isCurrent);
     }
+
+    // 翻译：字号更小、颜色更暗，绘制在正文下方以区分原文
+    if (this.showTranslation && lyric.translation && lyric.translation.length > 0) {
+      this.context.font = this.fontWeight + ' ' + this.mTranslateTextSize + 'vp ' + this.fontFamily;
+      this.context.fillStyle = isCurrent ? this.mTranslateColorCurrent : this.mTranslateColorNormal;
+      this.context.textBaseline = 'bottom';
+      this.context.textAlign = 'start';
+      let tMetrics = this.context.measureText(lyric.translation);
+      this.lrcY = this.lrcY + this.mDividerHeight * 0.5 + this.mTranslateGap;
+      this.drawWrappedTranslation(lyric.translation);
+      lineHeight += this.mDividerHeight * 0.5 + this.mTranslateGap + tMetrics.height;
+    }
     return lineHeight;
+  }
+
+  /**
+   * 绘制翻译文本，超出宽度时按空格/字符折行。
+   */
+  private drawWrappedTranslation(text: string): void {
+    this.context.font = this.fontWeight + ' ' + this.mTranslateTextSize + 'vp ' + this.fontFamily;
+    let remaining = text;
+    let guard = 0;
+    while (remaining.length > 0 && guard < 8) {
+      guard++;
+      let whole = this.context.measureText(remaining);
+      if (whole.width <= this.lrcWidth) {
+        this.context.fillText(remaining, this.lrcX, this.lrcY, this.lrcWidth);
+        this.lrcY = this.lrcY + whole.height;
+        break;
+      }
+      let piece = remaining;
+      let pieceMetrics = this.context.measureText(piece);
+      while (pieceMetrics.width > this.lrcWidth && piece.length > 1) {
+        let sp = piece.lastIndexOf(' ');
+        if (sp <= 0) {
+          piece = piece.substring(0, piece.length - 1);
+        } else {
+          piece = piece.substring(0, sp);
+        }
+        pieceMetrics = this.context.measureText(piece);
+      }
+      this.context.fillText(piece, this.lrcX, this.lrcY, this.lrcWidth);
+      this.lrcY = this.lrcY + whole.height;
+      remaining = remaining.substring(piece.length).replace(/^\s+/, '');
+      if (piece.length === 0) {
+        break;
+      }
+    }
   }
 
   /**
@@ -610,20 +677,25 @@ export default struct shiLrcView {
     switch (this.lyricTopPosition) {
       case LyricTopPosition.Top:
         for (let i = 0; i <= line && i < this.mLrcEntryList.length; i++) {
+          const tr = this.showTranslation ? this.mLrcEntryList[i].translation : '';
           if (i === line) {
-            offsetY += this.getLineHeight(this.mLrcEntryList[i].lineWords, true) / 2
-              - this.getLineHeight(this.mLrcEntryList[i].lineWords, false) / 2;
+            offsetY += this.getLineHeight(this.mLrcEntryList[i].lineWords, true, tr) / 2
+              - this.getLineHeight(this.mLrcEntryList[i].lineWords, false, tr) / 2;
           } else {
-            offsetY += this.getLineHeight(this.mLrcEntryList[i].lineWords, false) + this.mDividerHeight;
+            offsetY += this.getLineHeight(this.mLrcEntryList[i].lineWords, false, tr)
+              + this.mDividerHeight;
           }
         }
         break;
       case LyricTopPosition.Middle:
         for (let i = 0; i <= line && i < this.mLrcEntryList.length; i++) {
+          const tr = this.showTranslation ? this.mLrcEntryList[i].translation : '';
           if (i === line) {
-            offsetY += this.getLineHeight(this.mLrcEntryList[i].lineWords, true) / 2 + this.mDividerHeight;
+            offsetY += this.getLineHeight(this.mLrcEntryList[i].lineWords, true, tr) / 2
+              + this.mDividerHeight;
           } else {
-            offsetY += this.getLineHeight(this.mLrcEntryList[i].lineWords, false) + this.mDividerHeight;
+            offsetY += this.getLineHeight(this.mLrcEntryList[i].lineWords, false, tr)
+              + this.mDividerHeight;
           }
         }
         break;
@@ -683,6 +755,44 @@ export default struct shiLrcView {
       }
     }
     return this.mCurrentLine;
+  }
+
+  /**
+   * 根据背景明暗切换歌词配色方案。
+   */
+  private applyColorScheme(): void {
+    if (this.backgroundIsDark) {
+      // 深色背景：浅色文字（默认方案）
+      this.mNormalTextColor = '#99ffffff';
+      this.mCurrentTextColor = '#FFFFFF';
+      this.mTranslateColorNormal = '#80ffffff';
+      this.mTranslateColorCurrent = '#d6ffffff';
+    } else {
+      // 浅色背景：深色文字
+      this.mNormalTextColor = '#99000000';
+      this.mCurrentTextColor = '#000000';
+      this.mTranslateColorNormal = '#66000000';
+      this.mTranslateColorCurrent = '#99000000';
+    }
+  }
+
+  /**
+   * 背景明暗变化后，重新应用配色并重绘。
+   */
+  onBgChanged() {
+    this.applyColorScheme();
+    this.drawContent(this.curCanvasOffsetY);
+  }
+
+  /**
+   * 翻译开关变化后重绘。
+   */
+  onTranslationToggled() {
+    this.drawContent(this.curCanvasOffsetY);
+  }
+
+  aboutToAppear() {
+    this.applyColorScheme();
   }
 
   build() {

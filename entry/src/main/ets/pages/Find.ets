@@ -5,12 +5,17 @@ import { AudioRendererController } from '../utils/AudioRendererController';
 @Component
 export struct Find {
   @Consume('navPathStack') pathStack: NavPathStack;
+  @StorageProp('coverRefreshToken') @Watch('onCoverRefreshed') coverRefreshToken: number = 0;
   store: MusicStore = MusicStore.getInstance();
 
   @State cardScales: number[] = [];
   @State emptyIconScale: number = 1.0;
+  @State recentSongs: SongItem[] = [];
+  @State allSongs: SongItem[] = [];
 
   aboutToAppear(): void {
+    this.recentSongs = [...this.store.recentlyPlayed];
+    this.allSongs = [...this.store.songs];
     this.updateCardScales();
     setInterval(() => {
       if (this.store.recentlyPlayed.length === 0 && this.store.songs.length === 0) {
@@ -19,8 +24,14 @@ export struct Find {
     }, 2000);
   }
 
+  onCoverRefreshed() {
+    this.recentSongs = [...this.store.recentlyPlayed];
+    this.allSongs = [...this.store.songs];
+    this.updateCardScales();
+  }
+
   updateCardScales(): void {
-    const total = this.store.recentlyPlayed.length + this.store.songs.length;
+    const total = this.recentSongs.length + this.allSongs.length;
     this.cardScales = [];
     for (let i = 0; i < total; i++) {
       this.cardScales.push(1.0);
@@ -99,7 +110,7 @@ export struct Find {
 
       Scroll() {
         Column() {
-          if (this.store.recentlyPlayed.length > 0) {
+          if (this.recentSongs.length > 0) {
             Text('最近播放')
               .fontSize(16)
               .fontWeight(FontWeight.Medium)
@@ -107,7 +118,7 @@ export struct Find {
               .margin({ bottom: 12, left: 16, right: 16 })
 
             List() {
-              ForEach(this.store.recentlyPlayed, (song: SongItem, index: number) => {
+              ForEach(this.recentSongs, (song: SongItem, index: number) => {
                 ListItem() {
                   this.buildSongCard(song, index)
                 }
@@ -118,7 +129,7 @@ export struct Find {
             .scrollBar(BarState.Off)
           }
 
-          if (this.store.songs.length > 0) {
+          if (this.allSongs.length > 0) {
             Text('全部歌曲')
               .fontSize(16)
               .fontWeight(FontWeight.Medium)
@@ -126,9 +137,9 @@ export struct Find {
               .margin({ top: 20, bottom: 12, left: 16, right: 16 })
 
             List() {
-              ForEach(this.store.songs, (song: SongItem, index: number) => {
+              ForEach(this.allSongs, (song: SongItem, index: number) => {
                 ListItem() {
-                  this.buildSongCard(song, this.store.recentlyPlayed.length + index)
+                  this.buildSongCard(song, this.recentSongs.length + index)
                 }
               })
             }
@@ -137,7 +148,7 @@ export struct Find {
             .scrollBar(BarState.Off)
           }
 
-          if (this.store.recentlyPlayed.length === 0 && this.store.songs.length === 0) {
+          if (this.recentSongs.length === 0 && this.allSongs.length === 0) {
             Column() {
               Image($r('app.media.ic_music'))
                 .width(64)

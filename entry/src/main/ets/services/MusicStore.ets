@@ -1,4 +1,5 @@
 import { Logger } from '../utils/Logger';
+import { AudioMetaReader } from '../utils/AudioMeta';
 import { SongItem } from '../models/music';
 import { RepeatMode, Playlist } from '../models/music';
 import dataPreferences from '@ohos.data.preferences';
@@ -9,6 +10,9 @@ interface SongData {
   singer: string;
   src: string;
   index: number;
+  album?: string;
+  author?: string;
+  lyric?: string;
 }
 
 const PREF_NAME = 'music_store';
@@ -135,6 +139,57 @@ export class MusicStore {
     this.saveRecentlyPlayed();
   }
 
+  /**
+   * 一次性补扫已入库歌曲的文本元数据（标题 / 艺术家 / 专辑 / 作者）。
+   * 历史版本导入时未读取元数据，导致「未知艺术家」等问题；升级后用本方法在
+   * 首次启动时补扫一次，之后通过偏好标记跳过，避免每次启动都做 I/O。
+   */
+  async refreshMetadataIfNeeded(): Promise<void> {
+    if (!this.preferences) {
+      return;
+    }
+    let scanned: boolean = false;
+    try {
+      scanned = await this.preferences.get('meta_scanned_v1', false) as boolean;
+    } catch (e) {
+      scanned = false;
+    }
+    if (scanned) {
+      return;
+    }
+    let changed: boolean = false;
+    for (const song of this.songs) {
+      const meta = await AudioMetaReader.read(song.src);
+      if (meta) {
+        if (meta.title && meta.title.trim().length > 0) {
+          song.title = meta.title;
+          changed = true;
+        }
+        if (meta.artist && meta.artist.trim().length > 0) {
+          song.singer = meta.artist;
+          changed = true;
+        }
+        if (meta.album) {
+          song.album = meta.album;
+          changed = true;
+        }
+        if (meta.author) {
+          song.author = meta.author;
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      this.saveSongs();
+    }
+    try {
+      await this.preferences.put('meta_scanned_v1', true);
+      await this.preferences.flush();
+    } catch (e) {
+      Logger.error('Failed to mark metadata scanned');
+    }
+  }
+
   private async loadState(): Promise<void> {
     if (!this.preferences) return;
     try {
@@ -147,6 +202,9 @@ export class MusicStore {
         song.singer = data.singer;
         song.src = data.src;
         song.index = data.index;
+        song.album = data.album ?? '';
+        song.author = data.author ?? '';
+        song.lyric = data.lyric ?? '';
         return song;
       });
       this.playList = [...this.songs];
@@ -164,6 +222,9 @@ export class MusicStore {
         song.singer = data.singer;
         song.src = data.src;
         song.index = data.index;
+        song.album = data.album ?? '';
+        song.author = data.author ?? '';
+        song.lyric = data.lyric ?? '';
         return song;
       });
 

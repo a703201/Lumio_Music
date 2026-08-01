@@ -14,27 +14,35 @@ struct Favorites {
   store: MusicStore = MusicStore.getInstance();
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
+  @StorageProp('coverRefreshToken') @Watch('onCoverRefreshed') coverRefreshToken: number = 0;
 
   private getThemeColors(): ColorTokens {
     return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
   }
 
   @State itemScales: number[] = [];
+  @State favoriteSongs: SongItem[] = [];
   @State favScales: number[] = [];
   @State backScale: number = 1.0;
   @State emptyIconScale: number = 1.0;
   @State playingIndex: number = -1;
 
   aboutToAppear(): void {
-    const favs = this.store.getFavoriteSongs();
-    this.itemScales = favs.map(() => 1.0);
-    this.favScales = favs.map(() => 1.0);
+    this.favoriteSongs = this.store.getFavoriteSongs();
+    this.itemScales = this.favoriteSongs.map(() => 1.0);
+    this.favScales = this.favoriteSongs.map(() => 1.0);
     setInterval(() => {
       if (this.store.getFavoriteSongs().length === 0) {
         this.emptyIconScale = this.emptyIconScale === 1.0 ? 1.08 : 1.0;
       }
       this.playingIndex = this.store.isPlaying ? this.store.currentIndex : -1;
     }, 500);
+  }
+
+  onCoverRefreshed() {
+    this.favoriteSongs = [...this.store.getFavoriteSongs()];
+    this.itemScales = this.favoriteSongs.map(() => 1.0);
+    this.favScales = this.favoriteSongs.map(() => 1.0);
   }
 
   @Builder
@@ -151,7 +159,7 @@ struct Favorites {
             .layoutWeight(1)
 
           // Count badge
-          Text(`${this.store.getFavoriteSongs().length} 首`)
+          Text(`${this.favoriteSongs.length} 首`)
             .fontSize(13)
             .fontColor('#FA2759')
             .backgroundColor('rgba(250, 39, 89, 0.1)')
@@ -161,7 +169,7 @@ struct Favorites {
         .width('100%')
         .padding({ left: 16, right: 16, top: this.topHeight + 12, bottom: 16 })
 
-        if (this.store.getFavoriteSongs().length === 0) {
+        if (this.favoriteSongs.length === 0) {
           Column() {
             Image($r('app.media.ic_favorite'))
               .width(72)
@@ -196,7 +204,7 @@ struct Favorites {
           .justifyContent(FlexAlign.Center)
         } else {
           List() {
-            ForEach(this.store.getFavoriteSongs(), (song: SongItem, index: number) => {
+            ForEach(this.favoriteSongs, (song: SongItem, index: number) => {
               ListItem() {
                 this.buildSongItem(song, index)
               }

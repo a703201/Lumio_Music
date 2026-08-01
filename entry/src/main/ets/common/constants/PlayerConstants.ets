@@ -95,5 +95,5 @@ export class PlayerConstants {
   /**
    * Set the image blur level.
    */
-  static readonly IMAGE_BLUR: number = 15;
+  static readonly IMAGE_BLUR: number = 60;
 }

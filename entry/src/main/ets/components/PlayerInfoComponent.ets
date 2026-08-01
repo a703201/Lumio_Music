@@ -96,6 +96,7 @@ export struct PlayerInfoComponent {
         .aspectRatio(1)
         .objectFit(ImageFit.Cover)
         .opacity(0.5)
+        .blur(PlayerConstants.IMAGE_BLUR)
       Row() {
         if (this.isFoldFull) {
           Column() {
@@ -285,6 +286,9 @@ export struct PlayerInfoComponent {
           let color = colorPicker.getLargestProportionColor();
           let colorArr = ColorConversion.dealColor(color.red, color.green, color.blue);
           this.imageColor = `rgba(${colorArr[0]}, ${colorArr[1]}, ${colorArr[2]}, 1)`;
+          const lum = (0.2126 * colorArr[0] + 0.7152 * colorArr[1] + 0.0722 * colorArr[2]) / 255;
+          const bgDark = lum <= 0.5;
+          AppStorage.setOrCreate('lyricBgDark', bgDark);
         }
       })
       let headFilter = effectKit.createEffect(pixelMap);

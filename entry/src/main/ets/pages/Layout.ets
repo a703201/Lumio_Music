@@ -29,6 +29,7 @@ struct Layout {
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('bottomHeight') bottomHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
+  @StorageProp('coverRefreshToken') @Watch('onCoverRefreshed') coverRefreshToken: number = 0;
 
   private getThemeColors(): ColorTokens {
     return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
@@ -88,6 +89,10 @@ struct Layout {
     if (this.rotateTimer >= 0) {
       clearInterval(this.rotateTimer);
     }
+  }
+
+  private onCoverRefreshed(): void {
+    // coverRefreshToken 变化即触发本组件重建，迷你播放条会通过 getLabel() 重新读取 CoverCache 中的封面。
   }
 
   private openPlayer(): void {

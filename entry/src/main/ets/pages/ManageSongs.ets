@@ -15,6 +15,7 @@ struct ManageSongs {
   store: MusicStore = MusicStore.getInstance();
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
+  @StorageProp('coverRefreshToken') @Watch('onCoverRefreshed') coverRefreshToken: number = 0;
 
   private getThemeColors(): ColorTokens {
     return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
@@ -33,6 +34,10 @@ struct ManageSongs {
   private reload(): void {
     this.songs = [...this.store.songs];
     this.itemScales = this.songs.map(() => 1.0);
+  }
+
+  onCoverRefreshed() {
+    this.reload();
   }
 
   private toast(message: string): void {
