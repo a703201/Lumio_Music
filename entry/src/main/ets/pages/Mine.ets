@@ -249,11 +249,23 @@ export struct Mine {
           )
 
           this.buildMenuItem(
+            $r('app.media.ic_song_list'),
+            '我的歌单',
+            `${this.store.playlists.length} 个歌单`,
+            true,
+            1,
+            '#5856D6',
+            () => {
+              this.pathStack.pushPathByName('Playlists', null);
+            }
+          )
+
+          this.buildMenuItem(
             $r('app.media.ic_hm_list'),
             '播放历史',
             `${this.store.recentlyPlayed.length} 首歌曲`,
             true,
-            1,
+            2,
             '#FF9500',
             () => {
               this.pathStack.pushPathByName('PlayHistory', null);

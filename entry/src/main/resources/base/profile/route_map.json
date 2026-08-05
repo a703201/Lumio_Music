@@ -63,6 +63,22 @@
       "data": {
         "description": "this is ManageSongs"
       }
+    },
+    {
+      "name": "Playlists",
+      "pageSourceFile": "src/main/ets/pages/Playlists.ets",
+      "buildFunction": "PlaylistsBuilder",
+      "data": {
+        "description": "this is Playlists"
+      }
+    },
+    {
+      "name": "PlaylistDetail",
+      "pageSourceFile": "src/main/ets/pages/PlaylistDetail.ets",
+      "buildFunction": "PlaylistDetailBuilder",
+      "data": {
+        "description": "this is PlaylistDetail"
+      }
     }
   ]
 }

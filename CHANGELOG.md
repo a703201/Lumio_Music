@@ -5,6 +5,28 @@
 
 ---
 
+## v2.2.0（2026-08-05）· 第二轮增强（代码完成，待 DevEco 真机构建验证）
+
+> 状态：功能 / 修复 / 文档已全部落地；因沙箱拦截 hvigor，release HAP 需在 DevEco Studio 完成构建与真机复验（见 `docs/代码审查报告_第二轮增强.md`）。
+
+### 新增
+- **歌单拖拽排序（FR-24）**：歌单详情内长按歌曲经 `ForEach.onMove` 拖动重排，`MusicStore.reorderPlaylistSongs` 持久化顺序。
+- **C++ 解析器计划项落地**：MP3 支持 Xing/Info VBR 头精确时长；MP4 支持 64 位 `largesize` 与 v0/v1 `mvhd` 时长；ID3v2 `enc==2`（UTF-16BE 无 BOM）按大端解析，中文不再乱码。
+
+### 优化
+- **C++ 兜底路径恢复生效**：`AudioMetaReader` 将同步 NAPI 调用移入 `taskpool`，并发入口改为顶层 `@Concurrent` 具名函数，修复此前闭包写法导致真机静默抛出 10200014、兜底解析从不执行的缺陷。
+- **空状态呼吸动画**：歌单页空状态图标由 `setInterval` 改为 `UIContext.animateTo` 循环，并受 `isDisposed` / `pageVisible` 生命周期守卫，避免递归回调泄漏与标志位卡死。
+- **C++ 内存安全加固**：`walkAtoms` 畸形 `largesize` 改减法比较防 64 位加法回绕死循环；Latin1/UTF-8 文本分支按缓冲区与帧边界钳制，杜绝越界读。
+
+### 移除
+- **下线发现页（FR-21）**：`Find.ets` 经复核为孤儿文件（未注册导航、无引用），已删除，零构建影响。
+
+### 审查与文档
+- 经 `code-reviewer` 审查（初版 🔴 驳回 P0×3 + P1×7 + P2×11），全部整改闭环；C++ 以 `g++` 独立 harness 对 3 个真实文件 + 5 个合成样本做改动前后 A/B 对照，零回归。
+- PRD / README / 功能模块拆解表 / 本 CHANGELOG 同步回写。
+
+---
+
 ## v2.1.0（2026-07-30）· HDS 沉浸重构
 
 ### 新增

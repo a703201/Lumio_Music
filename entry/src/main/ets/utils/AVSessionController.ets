@@ -28,6 +28,9 @@ import { EmbeddedLyricReader } from './EmbeddedLyricReader';
 import { AudioRendererController } from './AudioRendererController';
 import { MusicPlayMode } from '../songdatacontroller/PlayerData';
 import { PreferencesUtil } from './PreferencesUtil';
+// [StartExclude favorites_unified]
+import { MusicStore } from '../services/MusicStore';
+// [EndExclude favorites_unified]
 
 const TAG = 'AVSessionController';
 // [EndExclude avsession_controller]
@@ -99,8 +102,8 @@ export class AVSessionController {
     // 单一保活入口：AVSession 与 AudioRendererController 同时就绪才注册监听，
     // 解决两者异步初始化顺序导致的竞态（此前任一未就绪都会跳过注册，控制中心无法控制播放）。
     this.ensureListenersRegistered();
-    if (this.musicIndex !== undefined) {
-      this.getAndUpdateFavoriteState(this.musicIndex.toString());
+    if (this.musicIndex !== undefined && this.songList[this.musicIndex]) {
+      this.getAndUpdateFavoriteState(this.songList[this.musicIndex].id.toString());
     }
     // [EndExclude avsession_controller]
   }
@@ -187,8 +190,10 @@ export class AVSessionController {
         let mediaImage = await MediaTools.getPixelMapFromResource(this.context,
           this.songList[this.musicIndex].label as resourceManager.Resource);
         Logger.info(TAG, 'getPixelMapFromResource success' + JSON.stringify(mediaImage));
+        // 收藏以 song.id 为稳定主键（队列索引会漂移），与 MusicStore 收藏存储保持一致
+        const curSongForMeta: SongItem | undefined = this.songList[this.musicIndex ?? -1];
         let metadata: avSession.AVMetadata = {
-          assetId: `${this.musicIndex}`,
+          assetId: curSongForMeta ? `${curSongForMeta.id}` : `${this.musicIndex ?? 0}`,
           title: this.songList[this.musicIndex].title,
           artist: this.songList[this.musicIndex].singer,
           mediaImage: mediaImage,
@@ -467,7 +472,7 @@ export class AVSessionController {
     const playItem: avSession.AVQueueItem = {
       itemId: 0,
       description: {
-        assetId: (this.musicIndex ?? 0).toString(),
+        assetId: (song?.id ?? this.musicIndex ?? 0).toString(),
         title: song.title,
         artist: song.singer,
         mediaType: 'AUDIO',
@@ -664,33 +669,28 @@ export class AVSessionController {
   // [EndExclude set_lock_screen]
 
   // [StartExclude set_favorite_state]
-  public async updateFavoriteState(assetId: string, isFavorite: boolean = false) {
-    if (!this.context) {
+  /**
+   * 收藏状态统一收口到 MusicStore（按 song.id）。
+   * 此前收藏误写入 PreferencesUtil.myStore 的 formIds 键（与桌面卡片 formId、静音标记混用），
+   * 导致与 Favorites 页（读 MusicStore）数据割裂；此处改为唯一权威存储。
+   * @param assetId 当前歌曲 id（字符串）
+   */
+  public async updateFavoriteState(assetId: string): Promise<void> {
+    const songId: number = Number(assetId);
+    if (isNaN(songId)) {
+      Logger.error(TAG, `updateFavoriteState invalid assetId: ${assetId}`);
       return;
     }
-    let favoriteIds: string[] = await PreferencesUtil.getInstance().getFormIds(this.context);
-    if (favoriteIds.includes(assetId)) {
-      await PreferencesUtil.getInstance().removeFormId(this.context, assetId);
-      isFavorite = false;
-    } else {
-      await PreferencesUtil.getInstance().addFormId(this.context, assetId);
-      isFavorite = true;
-    }
-    AppStorage.setOrCreate('isFavorite', isFavorite);
-    this.setFavoriteState(isFavorite);
+    const store: MusicStore = MusicStore.getInstance();
+    store.toggleFavorite(songId);
+    const isFav: boolean = store.isFavorite(songId);
+    AppStorage.setOrCreate('isFavorite', isFav);
+    this.setFavoriteState(isFav);
   }
 
-  public async getAndUpdateFavoriteState(assetId: string) {
-    let isFavorite = false;
-    if (!this.context) {
-      return;
-    }
-    let favoriteListIds: string[] = await PreferencesUtil.getInstance().getFormIds(this.context);
-    if (favoriteListIds.includes(assetId)) {
-      isFavorite = true;
-    } else {
-      isFavorite = false;
-    }
+  public async getAndUpdateFavoriteState(assetId: string): Promise<void> {
+    const songId: number = Number(assetId);
+    const isFavorite: boolean = !isNaN(songId) && MusicStore.getInstance().isFavorite(songId);
     AppStorage.setOrCreate('isFavorite', isFavorite);
     this.setFavoriteState(isFavorite);
   }

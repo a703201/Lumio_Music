@@ -12,7 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Prompt } from '@kit.ArkUI';
 import { AudioRendererController } from '../utils/AudioRendererController';
 import { AVSessionController } from '../utils/AVSessionController';
 import { Logger } from '../utils/Logger';
@@ -61,13 +60,19 @@ export struct ControlAreaComponent {
     }
     this.playMode = PlayModeSwitchList[this.playModeIndex];
     Logger.info(TAG, 'playModeIndex is' + this.playModeIndex);
-    Prompt.showToast({
-      message: `${this.playMode === MusicPlayMode.ORDER ?
+    // API 12 起 Prompt/promptAction 全局方法已废弃，统一走 UIContext.getPromptAction()
+    const modeText: string = this.playMode === MusicPlayMode.ORDER ?
       this.resourceConversion.getStringValueFromResource($r('app.string.sequential_playback')) :
-        this.playMode === MusicPlayMode.RANDOM ?
+      this.playMode === MusicPlayMode.RANDOM ?
         this.resourceConversion.getStringValueFromResource($r('app.string.random_playback')) :
-        this.resourceConversion.getStringValueFromResource($r('app.string.single_playback'))}`
-    });
+        this.resourceConversion.getStringValueFromResource($r('app.string.single_playback'));
+    if (modeText.length > 0) {
+      try {
+        this.getUIContext().getPromptAction().showToast({ message: modeText });
+      } catch (e) {
+        Logger.error(TAG, 'showToast failed');
+      }
+    }
     AudioRendererController.getInstance().setPlayModel(this.playMode);
   }
 
@@ -131,10 +136,10 @@ export struct ControlAreaComponent {
             lg: $r('app.float.control_image_lg')
           }).getValue(this.currentBreakpoint))
           .onClick(() => {
-            AVSessionController.getInstance().updateFavoriteState(this.selectIndex.toString(), this.isFavorite)
-            const navPathStack = AppStorage.get<NavPathStack>('navPathStack');
-            if (navPathStack) {
-              navPathStack.pushPathByName('Favorites', null);
+            // 收藏以 song.id 为稳定主键（队列索引会漂移）；移除原「点收藏即跳收藏页」的误跳转
+            const song: SongItem | undefined = AudioRendererController.getInstance().getCurrentSong();
+            if (song) {
+              AVSessionController.getInstance().updateFavoriteState(song.id.toString());
             }
           })
       }

@@ -89,7 +89,8 @@ export class MusicStore {
 
   addPlaylist(name: string, songIds: number[]): Playlist {
     const playlist: Playlist = {
-      id: Date.now().toString(),
+      // P2-3：同一毫秒内连续创建会产生重复 id，deletePlaylist 会一次删掉两个；加随机后缀
+      id: `${Date.now()}_${Math.floor(Math.random() * 1e6)}`,
       name: name,
       songIds: songIds
     };
@@ -105,6 +106,85 @@ export class MusicStore {
 
   getPlaylistSongs(playlist: Playlist): SongItem[] {
     return this.songs.filter(s => playlist.songIds.includes(s.id));
+  }
+
+  /**
+   * 按 id 取歌单。歌单页与详情页之间只传 id，避免传对象副本导致的状态不同步。
+   */
+  getPlaylistById(id: string): Playlist | undefined {
+    return this.playlists.find(p => p.id === id);
+  }
+
+  /**
+   * 歌单是否已存在同名项（创建/重命名时做去重校验）。
+   */
+  hasPlaylistName(name: string, excludeId: string = ''): boolean {
+    const target: string = name.trim();
+    return this.playlists.some(p => p.id !== excludeId && p.name === target);
+  }
+
+  renamePlaylist(id: string, name: string): void {
+    const target: Playlist | undefined = this.playlists.find(p => p.id === id);
+    if (!target) {
+      return;
+    }
+    target.name = name.trim();
+    this.savePlaylists();
+  }
+
+  /**
+   * 向歌单批量追加歌曲，自动去重并保持原有顺序。
+   * @returns 实际新增条数
+   */
+  addSongsToPlaylist(playlistId: string, songIds: number[]): number {
+    const target: Playlist | undefined = this.playlists.find(p => p.id === playlistId);
+    if (!target) {
+      return 0;
+    }
+    const existing: Set<number> = new Set<number>(target.songIds);
+    let added: number = 0;
+    songIds.forEach((id: number) => {
+      if (!existing.has(id)) {
+        existing.add(id);
+        target.songIds.push(id);
+        added++;
+      }
+    });
+    if (added > 0) {
+      this.savePlaylists();
+    }
+    return added;
+  }
+
+  removeSongFromPlaylist(playlistId: string, songId: number): void {
+    const target: Playlist | undefined = this.playlists.find(p => p.id === playlistId);
+    if (!target) {
+      return;
+    }
+    const before: number = target.songIds.length;
+    target.songIds = target.songIds.filter(id => id !== songId);
+    if (target.songIds.length !== before) {
+      this.savePlaylists();
+    }
+  }
+
+  /**
+   * 歌单内歌曲拖拽排序：将 songIds 中 from 位置移动到 to 位置（FR-24）。
+   * 直接操作权威数据数组并持久化，页面按 songIds 顺序渲染即可联动刷新。
+   */
+  reorderPlaylistSongs(playlistId: string, from: number, to: number): void {
+    const target: Playlist | undefined = this.playlists.find(p => p.id === playlistId);
+    if (!target) {
+      return;
+    }
+    const ids: number[] = target.songIds;
+    if (from < 0 || from >= ids.length || to < 0 || to > ids.length || from === to) {
+      return;
+    }
+    const removed: number[] = ids.splice(from, 1);
+    const moved: number = removed[0];
+    ids.splice(to, 0, moved);
+    this.savePlaylists();
   }
 
   addToRecentlyPlayed(song: SongItem) {
@@ -134,9 +214,21 @@ export class MusicStore {
     this.playList = this.playList.filter(s => s.id !== songId);
     this.favorites.delete(songId);
     this.recentlyPlayed = this.recentlyPlayed.filter(s => s.id !== songId);
+    // 同步清理自建歌单中的悬挂引用，避免删歌后歌单数量虚高
+    let playlistChanged: boolean = false;
+    this.playlists.forEach((p: Playlist) => {
+      const before: number = p.songIds.length;
+      p.songIds = p.songIds.filter(id => id !== songId);
+      if (p.songIds.length !== before) {
+        playlistChanged = true;
+      }
+    });
     this.saveSongs();
     this.saveFavorites();
     this.saveRecentlyPlayed();
+    if (playlistChanged) {
+      this.savePlaylists();
+    }
   }
 
   /**
@@ -229,7 +321,20 @@ export class MusicStore {
       });
 
       const playlistStr = await this.preferences.get(KEY_PLAYLISTS, '[]') as string;
-      this.playlists = JSON.parse(playlistStr) as Playlist[];
+      // P1-10：反序列化做字段校验，脏数据（缺 id / songIds）不进内存，避免 build() 内取 .length 崩
+      const rawPlaylists = JSON.parse(playlistStr) as Playlist[];
+      this.playlists = (Array.isArray(rawPlaylists) ? rawPlaylists : [])
+        .filter((p: Playlist) => p !== null && p !== undefined && typeof p.id === 'string')
+        .map((p: Playlist) => {
+          const item: Playlist = {
+            id: p.id,
+            name: p.name ?? '未命名歌单',
+            songIds: Array.isArray(p.songIds)
+              ? p.songIds.filter((n: number) => typeof n === 'number')
+              : []
+          };
+          return item;
+        });
 
       const repeatMode = await this.preferences.get(KEY_REPEAT_MODE, 'list') as string;
       this.repeatMode = repeatMode as RepeatMode;

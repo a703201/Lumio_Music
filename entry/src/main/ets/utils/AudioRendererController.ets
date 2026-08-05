@@ -536,6 +536,10 @@ export class AudioRendererController {
     }
     Logger.info(TAG, 'this.session !== undefined ');
     this.avSessionController.setAVMetadata();
-    this.avSessionController.getAndUpdateFavoriteState(this.musicIndex.toString());
+    // 收藏态一律按稳定的 song.id 查询，不能用会漂移的队列下标
+    const cur: SongItem | undefined = this.songList[this.musicIndex];
+    if (cur) {
+      this.avSessionController.getAndUpdateFavoriteState(cur.id.toString());
+    }
   }
 }

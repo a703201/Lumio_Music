@@ -9,6 +9,11 @@ interface AudioMetadata {
   channels: number;
 }
 
+interface DeviceInfo {
+  brand: string;
+  osType: string;
+}
+
 export class NativeUtils {
   private static instance: NativeUtils | null = null;
 
@@ -30,7 +35,7 @@ export class NativeUtils {
     return nativeModule.parseAudioMetadata(filePath);
   }
 
-  public getDeviceInfo(): { brand: string; osType: string } {
+  public getDeviceInfo(): DeviceInfo {
     return nativeModule.getDeviceInfo();
   }
 }

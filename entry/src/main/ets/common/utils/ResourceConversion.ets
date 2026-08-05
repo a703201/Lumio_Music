@@ -22,14 +22,18 @@ export class ResourceConversion {
     this.context = AppStorage.get('context');
   }
 
-  getStringValueFromResource(res: Resource) {
+  /**
+   * 取字符串资源。显式声明返回 string（失败回退空串），避免调用方拿到 undefined
+   * 后被模板字符串渲染成字面量 "undefined"。
+   */
+  getStringValueFromResource(res: Resource): string {
     if (!this.context) {
-      return;
+      return '';
     }
     try {
       return this.context.resourceManager.getStringSync(res.id);
     } catch (e) {
-      return;
+      return '';
     }
   }
 }
