@@ -1,9 +1,9 @@
-import { image } from '@kit.ImageKit';
 import { SongItem, Playlist } from '../models/music';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { MusicStore } from '../services/MusicStore';
 import { AudioRendererController } from '../utils/AudioRendererController';
 import { Logger } from '../utils/Logger';
+import { CoverImageView } from '../components/CoverImageView';
 
 const TAG: string = 'PlaylistDetail';
 
@@ -77,8 +77,8 @@ struct PlaylistDetail {
     }
   }
 
-  private getCover(song: SongItem): Resource | image.PixelMap {
-    return song.getMark();
+  private getCoverSrc(song: SongItem): string {
+    return song.src;
   }
 
   private playAll(): void {
@@ -188,11 +188,7 @@ struct PlaylistDetail {
         ForEach(this.candidates, (song: SongItem) => {
           ListItem() {
             Row() {
-              Image(this.getCover(song))
-                .width(40)
-                .height(40)
-                .borderRadius(8)
-                .clip(true)
+              CoverImageView({ src: this.getCoverSrc(song), coverSize: 40, coverRadius: 8 })
 
               Column() {
                 Text(song.title)
@@ -270,11 +266,7 @@ struct PlaylistDetail {
         .width(28)
         .textAlign(TextAlign.Center)
 
-      Image(this.getCover(song))
-        .width(48)
-        .height(48)
-        .borderRadius(8)
-        .clip(true)
+      CoverImageView({ src: this.getCoverSrc(song), coverSize: 48, coverRadius: 8 })
 
       Column() {
         Text(song.title)

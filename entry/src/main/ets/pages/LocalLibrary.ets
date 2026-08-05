@@ -6,6 +6,7 @@ import { MusicStore } from '../services/MusicStore';
 import { AudioRendererController } from '../utils/AudioRendererController';
 import { CoverCache } from '../utils/CoverCache';
 import { AudioMetaReader } from '../utils/AudioMeta';
+import { CoverImageView } from '../components/CoverImageView';
 import { picker } from '@kit.CoreFileKit';
 import fs from '@ohos.file.fs';
 import { common } from '@kit.AbilityKit';
@@ -195,12 +196,7 @@ export struct LocalLibrary {
     Row() {
       Row() {
         Stack() {
-          Image(song.getMark())
-            .width(56)
-            .height(56)
-            .borderRadius(this.playingIndex === index ? 28 : 8)
-            .clip(true)
-            .animation({ duration: 300, curve: Curve.EaseOut })
+          CoverImageView({ src: song.src, coverSize: 56, coverRadius: this.playingIndex === index ? 28 : 8 })
 
           if (this.store.currentIndex === index && this.store.isPlaying) {
             Stack() {

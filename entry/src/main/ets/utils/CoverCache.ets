@@ -21,7 +21,11 @@ interface CoverSource {
 export class CoverCache {
   private static instance: CoverCache | null = null;
   private readonly cache = new Map<string, image.PixelMap>();
-  private readonly loading = new Set<string>();
+  // 在途请求：同一 src 的并发调用复用同一个 Promise，避免重复抽取，
+  // 也避免旧实现里「第二个调用者拿到 undefined 且永不重试」的空窗。
+  private readonly pending = new Map<string, Promise<image.PixelMap | undefined>>();
+  // 负缓存：确认无内嵌封面（或不可抽取）的 src，后续直接短路，防止列表滚动反复触发 I/O。
+  private readonly missing = new Set<string>();
 
   static getInstance(): CoverCache {
     if (!CoverCache.instance) {
@@ -34,26 +38,59 @@ export class CoverCache {
     return this.cache.get(src);
   }
 
+  /**
+   * 是否已确定该 src 没有可用封面（抽取失败或格式不支持）。
+   * UI 侧据此决定「继续等」还是「直接落默认图」。
+   */
+  isMissing(src: string): boolean {
+    return this.missing.has(src);
+  }
+
   async load(src: string): Promise<image.PixelMap | undefined> {
-    if (!src || this.cache.has(src) || this.loading.has(src)) {
-      return this.cache.get(src);
+    if (!src) {
+      return undefined;
+    }
+    const hit: image.PixelMap | undefined = this.cache.get(src);
+    if (hit !== undefined) {
+      return hit;
+    }
+    if (this.missing.has(src)) {
+      return undefined;
+    }
+    const inflight: Promise<image.PixelMap | undefined> | undefined = this.pending.get(src);
+    if (inflight !== undefined) {
+      return inflight;
     }
     if (!this.isExtractable(src)) {
+      this.missing.add(src);
       return undefined;
     }
-    this.loading.add(src);
-    try {
-      const pixelMap = await CoverCache.extractCover(src);
-      if (pixelMap) {
-        this.cache.set(src, pixelMap);
-      }
-      return pixelMap;
-    } catch (err) {
-      Logger.debug(TAG, `load failed for ${src}: ${(err as Error).message}`);
-      return undefined;
-    } finally {
-      this.loading.delete(src);
-    }
+    const task: Promise<image.PixelMap | undefined> = CoverCache.extractCover(src)
+      .then((pixelMap: image.PixelMap | undefined) => {
+        if (pixelMap !== undefined) {
+          this.cache.set(src, pixelMap);
+        } else {
+          this.missing.add(src);
+        }
+        this.pending.delete(src);
+        return pixelMap;
+      })
+      .catch((err: Error) => {
+        this.pending.delete(src);
+        this.missing.add(src);
+        Logger.debug(TAG, `load failed for ${src}: ${err.message}`);
+        return undefined;
+      });
+    this.pending.set(src, task);
+    return task;
+  }
+
+  /**
+   * 歌曲被移除时清理，防止长期占用内存。
+   */
+  evict(src: string): void {
+    this.cache.delete(src);
+    this.missing.delete(src);
   }
 
   /**

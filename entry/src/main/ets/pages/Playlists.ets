@@ -1,5 +1,5 @@
-import { image } from '@kit.ImageKit';
 import { SongItem, Playlist } from '../models/music';
+import { CoverImageView } from '../components/CoverImageView';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { MusicStore } from '../services/MusicStore';
 import { AudioRendererController } from '../utils/AudioRendererController';
@@ -111,9 +111,13 @@ struct Playlists {
     }
   }
 
-  private getPlaylistCover(playlist: Playlist): Resource | image.PixelMap {
+  /**
+   * 歌单封面取首曲的 src，交由 CoverImageView 自行订阅 coverRefreshToken 重读缓存。
+   * 直接返回 PixelMap 会让 Image 在 ForEach 复用时不刷新（封面停留在默认图）。
+   */
+  private getPlaylistCoverSrc(playlist: Playlist): string {
     const songs: SongItem[] = this.store.getPlaylistSongs(playlist);
-    return songs.length > 0 ? songs[0].getMark() : $r('app.media.ic_default_cover');
+    return songs.length > 0 ? songs[0].src : '';
   }
 
   private openCreateDialog(): void {
@@ -199,11 +203,7 @@ struct Playlists {
   buildPlaylistItem(playlist: Playlist, index: number) {
     Row() {
       Stack() {
-        Image(this.getPlaylistCover(playlist))
-          .width(56)
-          .height(56)
-          .borderRadius(10)
-          .clip(true)
+        CoverImageView({ src: this.getPlaylistCoverSrc(playlist), coverSize: 56, coverRadius: 10 })
 
         // 空歌单在封面上叠一层列表图标做区分
         if (playlist.songIds.length === 0) {

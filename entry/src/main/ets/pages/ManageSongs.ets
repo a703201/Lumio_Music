@@ -3,6 +3,7 @@ import { SongItem } from '../models/music';
 import { MusicStore } from '../services/MusicStore';
 import { AudioRendererController } from '../utils/AudioRendererController';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
+import { CoverImageView } from '../components/CoverImageView';
 
 @Builder
 export function ManageSongsBuilder() {
@@ -81,11 +82,7 @@ struct ManageSongs {
   buildSongItem(song: SongItem, index: number) {
     Row() {
       Stack() {
-        Image(song.getMark())
-          .width(48)
-          .height(48)
-          .borderRadius(8)
-          .clip(true)
+        CoverImageView({ src: song.src, coverSize: 48, coverRadius: 8 })
       }
 
       Column() {

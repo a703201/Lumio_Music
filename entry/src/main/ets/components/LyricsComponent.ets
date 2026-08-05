@@ -13,19 +13,16 @@
  * limitations under the License.
  */
 
-import { common } from '@kit.AbilityKit';
-import { util } from '@kit.ArkTS';
 import { SongItem } from '../songdatacontroller/SongData';
 import { BreakpointType } from '../common/utils/BreakpointSystem'
 import { StyleConstants } from '../common/constants/StyleConstants';
 import { BreakpointConstants } from '../common/constants/BreakpointConstants';
 import { LrcEntry } from '../lyric/LrcEntry';
-import { parseKrcLyric, parseLrcLyric } from '../lyric/LrcUtils';
+import { parseLrcLyric } from '../lyric/LrcUtils';
 import { EmbeddedLyricReader } from '../utils/EmbeddedLyricReader';
 import LrcView from '../lyric/LrcView';
 import { LyricScrollEffect, LyricTopPosition } from '../lyric/LyricConst';
 import { ControlAreaComponent } from './ControlAreaComponent';
-import { LyricFile } from '../lyric/LyricConst';
 import { PlayerConstants } from '../common/constants/PlayerConstants';
 import { Logger } from '../utils/Logger';
 import { AudioRendererController } from '../utils/AudioRendererController';
@@ -50,58 +47,40 @@ export struct LyricsComponent {
   @Link isTablet: boolean;
   @State intervalID: number = 0;
   @State pageShowTime: number = 0;
-  private context: common.UIAbilityContext | undefined = AppStorage.get('context');
 
   aboutToAppear() {
     this.getLrcEntryList();
   }
 
+  /**
+   * 歌词来源：**只从文件读，不在代码/资源包里内置歌词**。
+   * EmbeddedLyricReader 内部依次尝试
+   *   1) 音频内嵌标签（MP3 ID3 USLT/TXXX、FLAC VORBIS LYRICS、MP4 ©lyr / '----'）
+   *   2) 同目录同名 .lrc 外挂文件
+   * 两者都没有则显示"暂无歌词"。
+   */
   getLrcEntryList() {
     this.mLrcEntryList = [];
     const song = this.songList[this.selectIndex];
-    if (!this.context || !song) {
+    if (!song) {
       return;
     }
-    const context = this.context;
     const token = this.selectIndex;
-    // 1) 优先读取音频文件内嵌歌词（导入的本地歌曲主要走这里）
     EmbeddedLyricReader.read(song.src)
-      .then((embedded: string | undefined) => {
+      .then((lyricText: string | undefined) => {
         if (token !== this.selectIndex) {
+          return; // 期间已切歌，丢弃过期结果
+        }
+        if (!lyricText || lyricText.trim().length === 0) {
+          Logger.debug(TAG, 'no lyric found for ' + song.src);
           return;
         }
-        if (embedded && embedded.trim().length > 0) {
-          this.mLrcEntryList = parseLrcLyric(embedded);
-          Logger.debug(TAG, 'src=' + song.src + ' embeddedLen=' + (embedded ? embedded.length : -1) + ' finalLyricCount=' + this.mLrcEntryList.length);
-          return;
-        }
-        // 2) 兜底：rawfile 资源里的 LRC/KRC（如内置示例歌曲）
-        if (!song.lyric || song.lyric.length === 0) {
-          return;
-        }
-        try {
-          context.resourceManager.getRawFileContent(song.lyric)
-            .then((value: Uint8Array) => {
-              if (token !== this.selectIndex) {
-                return;
-              }
-              let textDecoder = util.TextDecoder.create(PlayerConstants.ENCODING, { ignoreBOM: true });
-              let stringData = textDecoder.decodeToString(value, { stream: false });
-              if (song.lyric.endsWith(LyricFile.KRC)) {
-                this.mLrcEntryList = parseKrcLyric(stringData);
-              } else if (song.lyric.endsWith(LyricFile.LRC)) {
-                this.mLrcEntryList = parseLrcLyric(stringData);
-              }
-            })
-            .catch(() => {
-              // ignore
-            });
-        } catch (e) {
-          // ignore
-        }
+        this.mLrcEntryList = parseLrcLyric(lyricText);
+        Logger.debug(TAG, 'src=' + song.src + ' lyricLen=' + lyricText.length +
+          ' entries=' + this.mLrcEntryList.length);
       })
-      .catch(() => {
-        // ignore
+      .catch((err: Error) => {
+        Logger.debug(TAG, 'read lyric failed: ' + err.message);
       });
   }
 

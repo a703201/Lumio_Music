@@ -17,6 +17,7 @@ import { AVSessionController } from '../utils/AVSessionController';
 import { Logger } from '../utils/Logger';
 import { MusicPlayMode, PlayModeSwitchList } from '../songdatacontroller/PlayerData';
 import { SongItem } from '../songdatacontroller/SongData';
+import { CoverImageView } from './CoverImageView';
 import { StyleConstants } from '../common/constants/StyleConstants';
 import { BreakpointConstants } from '../common/constants/BreakpointConstants';
 import { PlayerConstants } from '../common/constants/PlayerConstants';
@@ -476,10 +477,10 @@ struct MusicListContainer {
             }).getValue(this.currentBreakpoint))
             .margin({ bottom: $r('app.float.list_item_title_margin') })
           Row() {
-            Image(this.item!.getMark())
-              .width($r('app.float.list_item_image_size'))
-              .height($r('app.float.list_item_image_size'))
-              .margin({ right: $r('app.float.list_item_image_margin') })
+            Stack() {
+              CoverImageView({ src: this.item!.src, coverSize: 16, coverRadius: 2 })
+            }
+            .margin({ right: $r('app.float.list_item_image_margin') })
             Text(this.item!.singer)
               .opacity($r('app.float.singer_opacity'))
               .fontColor(this.isCurrent && this.isPlay ? Color.Red : Color.Black)

@@ -2,6 +2,7 @@ import { SongItem } from '../models/music';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { MusicStore } from '../services/MusicStore';
 import { AudioRendererController } from '../utils/AudioRendererController';
+import { CoverImageView } from '../components/CoverImageView';
 
 @Builder
 export function FavoritesBuilder() {
@@ -56,12 +57,7 @@ struct Favorites {
         .textAlign(TextAlign.Center)
 
       Stack() {
-        Image(song.getMark())
-          .width(48)
-          .height(48)
-          .borderRadius(this.playingIndex === song.id ? 24 : 8)
-          .clip(true)
-          .animation({ duration: 300, curve: Curve.EaseOut })
+        CoverImageView({ src: song.src, coverSize: 48, coverRadius: this.playingIndex === song.id ? 24 : 8 })
       }
 
       Column() {

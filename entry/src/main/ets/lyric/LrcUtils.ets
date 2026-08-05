@@ -31,6 +31,26 @@ const krcLineRegex = new RegExp('\\[(\\d+),(\\d+)\\](.*)');
 const krcWordRegex1 = new RegExp('<(\\d+),(\\d+),(\\d+)>([^<]*)', 'g');
 const krcWordRegex2 = new RegExp('<(\\d+),(\\d+),(\\d+)>(.*)');
 
+/**
+ * 非歌词的元数据/制作信息行（作词、作曲、编曲、制作人等）。
+ * 这类行多含 CJK（如「作词 : D-Smoke」），若不剔除会污染「语种多数决」统计，
+ * 导致外语原曲 + 中文翻译时把中文误判为原文、英文误判为翻译（即原文与翻译反了）。
+ */
+const CREDIT_KEYWORDS: string[] = [
+  '作词', '作曲', '编曲', '制作人', '混音', '母带', '出品', '发行', '录音', '企划', '统筹',
+  '原唱', '翻唱', '演唱', '吉他', '贝斯', '鼓', '钢琴', '弦乐', '和声', '监制', '文案', '设计',
+  '专辑', '来源', '校对', '歌词', '制作', '编辑', '提供', '授权'
+];
+
+function isCreditLine(text: string): boolean {
+  for (let k = 0; k < CREDIT_KEYWORDS.length; k++) {
+    if (text.includes(CREDIT_KEYWORDS[k])) {
+      return true;
+    }
+  }
+  return false;
+}
+
 
 export async function getRawStringData(context: Context, rawFilePath: string): Promise<string> {
   try {
@@ -63,6 +83,9 @@ export function parseLrcLyric(text: string): Array<LrcEntry> {
     let lineTime = lyric[i].match(lrcLineRegex);
     let lineText = lyric[i].replace(lrcLineRegex, '');
     if (lineTime && lineText) {
+      if (isCreditLine(lineText)) {
+        continue;
+      }
       for (let j = 0; j < lineTime.length; j++) {
         let min = Number(String(lineTime[j].match(lrcTimeRegex1)).slice(1));
         let sec = Number.parseFloat(String(lineTime[j].match(lrcTimeRegex2)));

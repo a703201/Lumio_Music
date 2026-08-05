@@ -1,4 +1,6 @@
 import { Logger } from '../utils/Logger';
+import { CoverCache } from '../utils/CoverCache';
+import { EmbeddedLyricReader } from '../utils/EmbeddedLyricReader';
 import { AudioMetaReader } from '../utils/AudioMeta';
 import { SongItem } from '../models/music';
 import { RepeatMode, Playlist } from '../models/music';
@@ -210,6 +212,12 @@ export class MusicStore {
   }
 
   removeSong(songId: number) {
+    // 先取出 src 再过滤，顺带清掉封面 / 歌词缓存，避免删歌后仍占内存
+    const removed: SongItem | undefined = this.songs.find(s => s.id === songId);
+    if (removed && removed.src) {
+      CoverCache.getInstance().evict(removed.src);
+      EmbeddedLyricReader.evict(removed.src);
+    }
     this.songs = this.songs.filter(s => s.id !== songId);
     this.playList = this.playList.filter(s => s.id !== songId);
     this.favorites.delete(songId);

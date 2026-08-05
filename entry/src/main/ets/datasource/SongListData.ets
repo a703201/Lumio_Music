@@ -24,7 +24,9 @@ const songList: SongItem[] = [
     label: $r('app.media.ic_dream'),
     src: 'Delacey - Dream It Possible.pcm',
     index: 0,
-    lyric: 'lrcfiles/DreamItPossible.lrc',
+    // 歌词不再随包硬编码：统一由 EmbeddedLyricReader 从音频文件的内嵌标签解析
+    //（ID3 USLT / VORBIS LYRICS / MP4 ©lyr），缺失时回落同名 .lrc 外挂文件。
+    lyric: '',
     isDarkBackground: true
   },
   {
