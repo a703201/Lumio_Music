@@ -25,7 +25,11 @@ export struct Mine {
   @State avatarStrokeWidth: number = 2;
   @State avatarRotation: number = 0;
   @State menuScales: number[] = [1.0, 1.0, 1.0, 1.0, 1.0];
-  @State statsCount: number[] = [0, 0, 0];
+  @State favCount: number = 0;
+  @State songCount: number = 0;
+  @State histCount: number = 0;
+  @State playlistCount: number = 0;
+  private countIntervalId: number = -1;
   @State appVersionDisplay: string = 'Lumio Music';
   private breatheInterval: number = -1;
   private rotateInterval: number = -1;
@@ -43,23 +47,9 @@ export struct Mine {
         this.avatarStrokeWidth = 2;
       }
     }, 2000);
-    // Stats count animation
-    const targetFav = this.store.getFavoriteSongs().length;
-    const targetSongs = this.store.songs.length;
-    const targetRecent = this.store.recentlyPlayed.length;
-    let step = 0;
-    const countInterval = setInterval(() => {
-      step++;
-      this.statsCount = [
-        Math.min(step * 2, targetFav),
-        Math.min(step * 3, targetSongs),
-        Math.min(step * 2, targetRecent)
-      ];
-      if (step >= Math.max(targetFav, targetSongs, targetRecent) / 3 + 1) {
-        clearInterval(countInterval);
-        this.statsCount = [targetFav, targetSongs, targetRecent];
-      }
-    }, 30);
+    // 实时计数：轮询 store 写入 @State，收藏/历史/歌单变化后即时刷新（无需退出重进）
+    this.refreshCounts();
+    this.countIntervalId = setInterval(() => { this.refreshCounts(); }, 600);
   }
 
   aboutToDisappear(): void {
@@ -69,6 +59,17 @@ export struct Mine {
     if (this.rotateInterval >= 0) {
       clearInterval(this.rotateInterval);
     }
+    if (this.countIntervalId >= 0) {
+      clearInterval(this.countIntervalId);
+      this.countIntervalId = -1;
+    }
+  }
+
+  private refreshCounts(): void {
+    this.favCount = this.store.getFavoriteSongs().length;
+    this.songCount = this.store.songs.length;
+    this.histCount = this.store.recentlyPlayed.length;
+    this.playlistCount = this.store.playlists.length;
   }
 
   @Builder
@@ -181,7 +182,7 @@ export struct Mine {
             .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 10 })))
             .animation({ duration: 400, curve: Curve.EaseOut, delay: 150 })
 
-          Text(SettingsStore.getInstance().getPrivacyStats() ? `已收藏 ${this.statsCount[0]} 首 · 共 ${this.statsCount[1]} 首歌曲` : '听歌统计已关闭')
+          Text(SettingsStore.getInstance().getPrivacyStats() ? `已收藏 ${this.favCount} 首 · 共 ${this.songCount} 首歌曲` : '听歌统计已关闭')
             .fontSize(14)
             .fontColor(this.getThemeColors().secondaryText)
             .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 10 })))
@@ -195,7 +196,7 @@ export struct Mine {
         // Quick stats
         Row() {
           Column() {
-            Text(`${SettingsStore.getInstance().getPrivacyStats() ? this.statsCount[1] : '—'}`)
+            Text(`${SettingsStore.getInstance().getPrivacyStats() ? this.songCount : '—'}`)
               .fontSize(20)
               .fontWeight(FontWeight.Bold)
               .fontColor('#FA2759')
@@ -207,7 +208,7 @@ export struct Mine {
           .layoutWeight(1)
 
           Column() {
-            Text(`${SettingsStore.getInstance().getPrivacyStats() ? this.statsCount[0] : '—'}`)
+            Text(`${SettingsStore.getInstance().getPrivacyStats() ? this.favCount : '—'}`)
               .fontSize(20)
               .fontWeight(FontWeight.Bold)
               .fontColor('#34C759')
@@ -219,7 +220,7 @@ export struct Mine {
           .layoutWeight(1)
 
           Column() {
-            Text(`${SettingsStore.getInstance().getPrivacyStats() ? this.statsCount[2] : '—'}`)
+            Text(`${SettingsStore.getInstance().getPrivacyStats() ? this.histCount : '—'}`)
               .fontSize(20)
               .fontWeight(FontWeight.Bold)
               .fontColor('#FF9500')
@@ -239,7 +240,7 @@ export struct Mine {
           this.buildMenuItem(
             $r('app.media.ic_hm_favorite'),
             '我的收藏',
-            `${this.store.getFavoriteSongs().length} 首歌曲`,
+            `${this.favCount} 首歌曲`,
             true,
             0,
             '#FA2759',
@@ -251,7 +252,7 @@ export struct Mine {
           this.buildMenuItem(
             $r('app.media.ic_song_list'),
             '我的歌单',
-            `${this.store.playlists.length} 个歌单`,
+            `${this.playlistCount} 个歌单`,
             true,
             1,
             '#5856D6',
@@ -263,7 +264,7 @@ export struct Mine {
           this.buildMenuItem(
             $r('app.media.ic_hm_list'),
             '播放历史',
-            `${this.store.recentlyPlayed.length} 首歌曲`,
+            `${this.histCount} 首歌曲`,
             true,
             2,
             '#FF9500',
@@ -318,7 +319,7 @@ export struct Mine {
     .layoutWeight(1)
     .scrollBar(BarState.Off)
     .backgroundColor(this.getThemeColors().bg)
-    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     .padding({ bottom: this.bottomHeight + 16 })
   }
 }

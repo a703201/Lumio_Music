@@ -63,17 +63,18 @@ export struct MusicInfoComponent {
   @Builder
   CoverInfo() {
     Row() {
-      Image(this.songList[this.selectIndex].getLabel())
-        .width(StyleConstants.FULL_WIDTH)
-        .aspectRatio(1)
-        .borderRadius($r('app.float.cover_radius_label'))
-        .shadow({
-          radius: $r('app.float.shadow_radius'),
-          color: $r('app.color.shadow_color'),
-          offsetX: 0,
-          offsetY: 8
-        })
-        .margin($r('app.float.lyric_margin_right_sm'))
+        Image(this.songList[this.selectIndex].getLabel())
+          .width(StyleConstants.FULL_WIDTH)
+          .aspectRatio(1)
+          .borderRadius($r('app.float.cover_radius_label'))
+          .shadow({
+            radius: $r('app.float.shadow_radius'),
+            color: $r('app.color.shadow_color'),
+            offsetX: 0,
+            offsetY: 8
+          })
+          .margin($r('app.float.lyric_margin_right_sm'))
+          .geometryTransition('player_cover')
     }
   }
 

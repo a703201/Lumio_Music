@@ -172,16 +172,6 @@ struct PlayHistory {
               .fontColor(this.getThemeColors().secondaryText)
               .margin({ top: 8 })
 
-            Button($r('app.string.empty_go_library'))
-              .fontSize(14)
-              .fontColor('#FFFFFF')
-              .backgroundColor('#FF9500')
-              .borderRadius(20)
-              .height(36)
-              .margin({ top: 20 })
-              .onClick(() => {
-                this.pathStack.pushPathByName('LocalLibrary', null);
-              })
           }
           .layoutWeight(1)
           .justifyContent(FlexAlign.Center)
@@ -202,6 +192,7 @@ struct PlayHistory {
       .width('100%')
       .height('100%')
       .backgroundColor(this.getThemeColors().bg)
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     }
     .hideTitleBar(true)
     .onReady((context: NavDestinationContext) => {

@@ -255,6 +255,7 @@ export struct PlayerInfoComponent {
     }
     .height(StyleConstants.FULL_HEIGHT)
     .width(StyleConstants.FULL_WIDTH)
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     .backgroundColor('transparent')
   }
 
@@ -298,10 +299,8 @@ export struct PlayerInfoComponent {
           let colorArr = ColorConversion.dealColor(color.red, color.green, color.blue);
           this.imageColor = `rgba(${colorArr[0]}, ${colorArr[1]}, ${colorArr[2]}, 1)`;
           this.imageGradientColors = this.buildGradientColors(colorArr[0], colorArr[1], colorArr[2]);
-          const lum = (0.2126 * colorArr[0] + 0.7152 * colorArr[1] + 0.0722 * colorArr[2]) / 255;
-          const bgDark = lum <= 0.5;
-          // 根据背景实际明暗决定歌词配色（深色背景浅色字 / 浅色背景深色字）
-          AppStorage.setOrCreate('lyricBgDark', bgDark);
+          // 背景始终压暗以保证文字/控件可读，故歌词恒定按深色背景渲染（浅色字）
+          AppStorage.setOrCreate('lyricBgDark', true);
         }
       })
       // 不再需要封面放大模糊，背景由提取色渐变+模糊生成
@@ -315,32 +314,24 @@ export struct PlayerInfoComponent {
    * 从主色生成一组柔和渐变 stop（深色/浅色模式自适应）。
    */
   private buildGradientColors(r: number, g: number, b: number): Array<[string, number]> {
-    const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-    const isDark = lum <= 0.5;
-    // 主色适度降饱和/提亮度，避免太艳
-    const main = this.adjustColor(r, g, b, isDark ? 0.75 : 1.15, isDark ? 1.1 : 0.95);
-    // 辅助色：向互补方向偏移一点色相并提亮/压暗
-    const second = this.adjustColor(r, g, b, isDark ? 0.55 : 1.35, isDark ? 1.25 : 0.85);
-    const third = this.adjustColor(r, g, b, isDark ? 0.35 : 1.15, isDark ? 1.35 : 0.75);
+    // 始终生成"压暗 + 保留色相"的深色渐变。避免取到白色/过亮主色导致整页发白、控件与文字看不见。
+    const darken = (rr: number, gg: number, bb: number, k: number): string => {
+      return `rgba(${Math.round(rr * k)}, ${Math.round(gg * k)}, ${Math.round(bb * k)}, 1)`;
+    };
+    const deep = darken(r, g, b, 0.28);
+    const lifted = darken(r, g, b, 0.62);
+    const base = darken(r, g, b, 0.42);
     return [
-      [main, 0.0],
-      [second, 0.45],
-      [third, 0.8],
-      [main, 1.0]
+      [deep, 0.0],
+      [lifted, 0.45],
+      [base, 0.8],
+      [deep, 1.0]
     ];
   }
 
   /**
    * 调整 RGB：saturation 为饱和度倍数，lightness 为亮度倍数（简单线性变换）。
    */
-  private adjustColor(r: number, g: number, b: number, saturation: number, lightness: number): string {
-    const avg = (r + g + b) / 3;
-    let nr = Math.min(255, Math.max(0, Math.round(avg + (r - avg) * saturation * lightness)));
-    let ng = Math.min(255, Math.max(0, Math.round(avg + (g - avg) * saturation * lightness)));
-    let nb = Math.min(255, Math.max(0, Math.round(avg + (b - avg) * saturation * lightness)));
-    return `rgba(${nr}, ${ng}, ${nb}, 1)`;
-  }
-
   private isPixelMap(value: Resource | PixelMap): boolean {
     return typeof (value as PixelMap).getImageInfo === 'function';
   }

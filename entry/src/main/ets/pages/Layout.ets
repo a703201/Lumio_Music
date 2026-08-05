@@ -1,4 +1,3 @@
-import { curves } from '@kit.ArkUI';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { LocalLibrary } from './LocalLibrary';
 import { Mine } from './Mine';
@@ -96,12 +95,9 @@ struct Layout {
   }
 
   private openPlayer(): void {
-    this.getUIContext().animateTo(
-      { curve: curves.interpolatingSpring(0, 1, 328, 36) },
-      () => {
-        this.pathStack.pushPathByName('PlayerPage', null);
-      }
-    );
+    // 直接 push：让底部栏封面与播放页封面的 geometryTransition('player_cover') 接管"一镜到底"，
+    // 封面从底部栏位置平滑飞到播放页位置，而不是整页滑动（背景位移）的感觉。
+    this.pathStack.pushPathByName('PlayerPage', null);
   }
 
   @Builder
@@ -133,7 +129,7 @@ struct Layout {
         Image(this.songList[this.selectIndex].getLabel())
           .width(48)
           .height(48)
-          .borderRadius(this.isPlaying ? 24 : 14)
+          .borderRadius(14)
           .clip(true)
           .rotate({ angle: this.isPlaying ? this.coverRotation : 0 })
           .animation({ duration: 40, curve: Curve.Linear })
@@ -151,10 +147,10 @@ struct Layout {
           .fillColor('#FFFFFF')
       }
     }
-    .width(56)
-    .height(56)
-    .backgroundColor(ACCENT)
-    .borderRadius(28)
+          .width(56)
+          .height(56)
+          .backgroundColor(ACCENT)
+          .borderRadius(16)
     .shadow({
       radius: 12,
       color: 'rgba(250, 39, 89, 0.35)',
@@ -221,7 +217,7 @@ struct Layout {
       .width('100%')
       .height('100%')
       .backgroundColor(this.getThemeColors().bg)
-      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.BOTTOM])
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     }
     .hideTitleBar(true)
   }

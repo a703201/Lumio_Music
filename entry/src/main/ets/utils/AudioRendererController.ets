@@ -25,6 +25,7 @@ import { BackgroundUtil } from './BackgroundUtil';
 import { MediaTools } from './MediaTools';
 import { Logger } from './Logger';
 import { PreferencesUtil } from './PreferencesUtil';
+import { MusicStore } from '../services/MusicStore';
 
 const TAG = 'AudioRendererController';
 
@@ -163,6 +164,11 @@ export class AudioRendererController {
     }
     BackgroundUtil.startContinuousTask(this.context);
     this.updateMusicIndex(musicIndex);
+    // 记录播放历史：每次起播（含切歌/点歌）都将当前歌曲写入"最近播放"
+    const playedSong: SongItem | undefined = this.songList[this.musicIndex];
+    if (playedSong) {
+      MusicStore.getInstance().addToRecentlyPlayed(playedSong);
+    }
     await this.loadAndPlay();
   }
 

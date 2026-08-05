@@ -215,6 +215,7 @@ struct Favorites {
       .width('100%')
       .height('100%')
       .backgroundColor(this.getThemeColors().bg)
+      .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     }
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;

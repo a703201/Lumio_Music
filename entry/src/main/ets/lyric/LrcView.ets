@@ -568,9 +568,9 @@ export default struct shiLrcView {
       this.context.font = this.fontWeight + ' ' + this.mCurrentTextSize + 'vp ' + this.fontFamily;
       this.context.fillStyle = this.mCurrentTextColor;
     } else {
-      // 已播放行比未播放行稍明显一点
-      this.context.globalAlpha = isPlayedLine ? 0.5 : 0.38;
-      this.context.filter = 'blur(1px)';
+      // 未播放/已播放行：高斯模糊遮挡（强模糊 + 低透明度），使文字被柔和遮挡而非单纯描边模糊
+      this.context.globalAlpha = isPlayedLine ? 0.55 : 0.38;
+      this.context.filter = isPlayedLine ? 'blur(3px)' : 'blur(5px)';
       this.context.font = this.fontWeight + ' ' + this.mNormalTextSize + 'vp ' + this.fontFamily;
       this.context.fillStyle = this.mNormalTextColor;
     }
@@ -591,7 +591,7 @@ export default struct shiLrcView {
         this.context.fillStyle = this.mTranslateColorCurrent;
       } else {
         this.context.globalAlpha = isPlayedLine ? 0.5 : 0.4;
-        this.context.filter = 'blur(1px)';
+        this.context.filter = isPlayedLine ? 'blur(3px)' : 'blur(5px)';
         this.context.fillStyle = this.mTranslateColorNormal;
       }
       this.context.font = this.fontWeight + ' ' + this.mTranslateTextSize + 'vp ' + this.fontFamily;
@@ -830,8 +830,8 @@ export default struct shiLrcView {
     if (!this.onLineClick) {
       return;
     }
-    // 点击坐标是视图坐标，需加上滚动偏移得到 Canvas 坐标
-    const canvasY: number = localY + this.curCanvasOffsetY;
+    // Canvas 绘制坐标与点击视图坐标 1:1 映射，无需再加滚动偏移，否则双重偏移导致命中错行（后半段点击跳回开头）
+    const canvasY: number = localY;
     for (let i = 0; i < this.lineRectangles.length; i++) {
       if (this.lineRectangles[i].isIn(localX, canvasY)) {
         this.onLineClick(i);
