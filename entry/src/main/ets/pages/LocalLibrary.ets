@@ -42,8 +42,8 @@ export struct LocalLibrary {
   @State emptyIconScale: number = 1.0;
   @State playingIndex: number = -1;
   @State selectedSong: SongItem | undefined = undefined;
-  @State detailVisible: boolean = false;
-  @State addSheetVisible: boolean = false;
+  @State sheetOpen: boolean = false;
+  @State sheetKind: 'detail' | 'add' = 'detail';
   private playingPulse: number = -1;
 
   aboutToAppear(): void {
@@ -195,12 +195,14 @@ export struct LocalLibrary {
 
   openAddToPlaylist(song: SongItem): void {
     this.selectedSong = song;
-    this.addSheetVisible = true;
+    this.sheetKind = 'add';
+    this.sheetOpen = true;
   }
 
   openSongDetail(song: SongItem): void {
     this.selectedSong = song;
-    this.detailVisible = true;
+    this.sheetKind = 'detail';
+    this.sheetOpen = true;
   }
 
   onCoverRefreshed() {
@@ -392,18 +394,17 @@ export struct LocalLibrary {
   }
 
   @Builder
-  detailSheet() {
-    SongDetailSheet({ songId: this.selectedSong?.id ?? 0 })
-  }
-
-  @Builder
-  addSheet() {
-    AddToPlaylistSheet({
-      songId: this.selectedSong?.id ?? 0,
-      onClose: () => {
-        this.addSheetVisible = false;
-      }
-    })
+  sheetContent() {
+    if (this.sheetKind === 'detail') {
+      SongDetailSheet({ songId: this.selectedSong?.id ?? 0 })
+    } else if (this.sheetKind === 'add') {
+      AddToPlaylistSheet({
+        songId: this.selectedSong?.id ?? 0,
+        onClose: () => {
+          this.sheetOpen = false;
+        }
+      })
+    }
   }
 
   build() {
@@ -531,14 +532,10 @@ export struct LocalLibrary {
     .padding({ bottom: this.bottomHeight + 16 })
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
     .backgroundColor(this.getThemeColors().bg)
-    .bindSheet($$this.detailVisible, this.detailSheet(), {
+    .bindSheet($$this.sheetOpen, this.sheetContent(), {
       detents: [SheetSize.MEDIUM, SheetSize.LARGE],
       dragBar: true,
-      preferType: SheetType.BOTTOM
-    })
-    .bindSheet($$this.addSheetVisible, this.addSheet(), {
-      detents: [SheetSize.MEDIUM, SheetSize.LARGE],
-      dragBar: true,
+      showClose: true,
       preferType: SheetType.BOTTOM
     })
   }

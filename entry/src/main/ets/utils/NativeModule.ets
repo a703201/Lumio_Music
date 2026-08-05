@@ -4,6 +4,7 @@ interface AudioMetadata {
   title: string;
   artist: string;
   album: string;
+  year: string;
   duration: number;
   sampleRate: number;
   channels: number;

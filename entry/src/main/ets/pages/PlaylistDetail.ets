@@ -35,11 +35,10 @@ struct PlaylistDetail {
   @State backScale: number = 1.0;
   @State playAllScale: number = 1.0;
   @State selectedSong: SongItem | undefined = undefined;
-  @State detailVisible: boolean = false;
-  @State addSheetVisible: boolean = false;
+  @State sheetOpen: boolean = false;
+  @State sheetKind: 'detail' | 'add' | 'picker' = 'detail';
 
   // 添加歌曲面板
-  @State isPickerOpen: boolean = false;
   @State candidates: SongItem[] = [];
   @State selectedIds: number[] = [];
 
@@ -131,12 +130,14 @@ struct PlaylistDetail {
 
   private openAddToPlaylist(song: SongItem): void {
     this.selectedSong = song;
-    this.addSheetVisible = true;
+    this.sheetKind = 'add';
+    this.sheetOpen = true;
   }
 
   private openSongDetail(song: SongItem): void {
     this.selectedSong = song;
-    this.detailVisible = true;
+    this.sheetKind = 'detail';
+    this.sheetOpen = true;
   }
 
   @Builder
@@ -251,7 +252,8 @@ struct PlaylistDetail {
       this.toast('本地库的歌曲都已在歌单中');
       return;
     }
-    this.isPickerOpen = true;
+    this.sheetKind = 'picker';
+    this.sheetOpen = true;
   }
 
   /**
@@ -282,7 +284,7 @@ struct PlaylistDetail {
       return;
     }
     const added: number = this.store.addSongsToPlaylist(this.playlistId, this.selectedIds);
-    this.isPickerOpen = false;
+    this.sheetOpen = false;
     this.reload();
     this.toast(`已添加 ${added} 首`);
   }
@@ -353,9 +355,9 @@ struct PlaylistDetail {
           .fontColor(this.getThemeColors().secondaryText)
           .backgroundColor(this.getThemeColors().secondaryBg)
           .borderRadius(21)
-          .onClick(() => {
-            this.isPickerOpen = false;
-          })
+        .onClick(() => {
+          this.sheetOpen = false;
+        })
 
         Button('添加')
           .layoutWeight(1)
@@ -581,20 +583,10 @@ struct PlaylistDetail {
       .width('100%')
       .height('100%')
       .backgroundColor(this.getThemeColors().bg)
-      .bindSheet($$this.isPickerOpen, this.songPickerBuilder(), {
-        detents: [SheetSize.LARGE, SheetSize.MEDIUM],
-        dragBar: true,
-        showClose: false,
-        preferType: SheetType.BOTTOM
-      })
-      .bindSheet($$this.detailVisible, this.detailSheet(), {
+      .bindSheet($$this.sheetOpen, this.sheetContent(), {
         detents: [SheetSize.MEDIUM, SheetSize.LARGE],
         dragBar: true,
-        preferType: SheetType.BOTTOM
-      })
-      .bindSheet($$this.addSheetVisible, this.addSheet(), {
-        detents: [SheetSize.MEDIUM, SheetSize.LARGE],
-        dragBar: true,
+        showClose: true,
         preferType: SheetType.BOTTOM
       })
     }
@@ -612,17 +604,18 @@ struct PlaylistDetail {
   }
 
   @Builder
-  detailSheet() {
-    SongDetailSheet({ songId: this.selectedSong?.id ?? 0 })
-  }
-
-  @Builder
-  addSheet() {
-    AddToPlaylistSheet({
-      songId: this.selectedSong?.id ?? 0,
-      onClose: () => {
-        this.addSheetVisible = false;
-      }
-    })
+  sheetContent() {
+    if (this.sheetKind === 'detail') {
+      SongDetailSheet({ songId: this.selectedSong?.id ?? 0 })
+    } else if (this.sheetKind === 'add') {
+      AddToPlaylistSheet({
+        songId: this.selectedSong?.id ?? 0,
+        onClose: () => {
+          this.sheetOpen = false;
+        }
+      })
+    } else if (this.sheetKind === 'picker') {
+      this.songPickerBuilder()
+    }
   }
 }

@@ -42,6 +42,7 @@ const char kNam[4] = { '\xa9', 'n', 'a', 'm' };
 const char kART[4] = { '\xa9', 'A', 'R', 'T' };
 const char kaART[4] = { 'a', 'A', 'R', 'T' };
 const char kAlb[4] = { '\xa9', 'a', 'l', 'b' };
+const char kDay[4] = { '\xa9', 'd', 'a', 'y' };
 
 int syncsafeToInt(const unsigned char* p) {
     return (p[0] << 21) | (p[1] << 14) | (p[2] << 7) | p[3];
@@ -72,6 +73,7 @@ AudioMetadata parseFlac(const std::vector<unsigned char>& buf) {
     m.title = "";
     m.artist = "未知艺术家";
     m.album = "未知专辑";
+    m.year = "";
     m.durationMs = 0;
     m.sampleRate = 44100;
     m.channels = 2;
@@ -156,6 +158,8 @@ AudioMetadata parseFlac(const std::vector<unsigned char>& buf) {
                         m.artist = val;
                     } else if (key == "ALBUM" && m.album == "未知专辑") {
                         m.album = val;
+                    } else if (key == "DATE" && m.year.empty()) {
+                        m.year = val;
                     }
                 }
             }
@@ -171,6 +175,7 @@ AudioMetadata parseMp3(const std::vector<unsigned char>& buf) {
     m.title = "";
     m.artist = "未知艺术家";
     m.album = "未知专辑";
+    m.year = "";
     m.durationMs = 0;
     m.sampleRate = 44100;
     m.channels = 2;
@@ -253,6 +258,8 @@ AudioMetadata parseMp3(const std::vector<unsigned char>& buf) {
                 m.artist = trimCopy(text);
             } else if (key == "TALB" && m.album == "未知专辑") {
                 m.album = trimCopy(text);
+            } else if ((key == "TYER" || key == "TDRC") && m.year.empty()) {
+                m.year = trimCopy(text);
             }
             p = static_cast<unsigned int>(bodyStart) + fsize;
         }
@@ -453,6 +460,8 @@ void walkAtoms(const std::vector<unsigned char>& buf, size_t start, size_t end,
                             m.artist = val;
                         } else if (tagEq(ct, kAlb) && m.album == "未知专辑") {
                             m.album = val;
+                        } else if (tagEq(ct, kDay) && m.year.empty()) {
+                            m.year = val;
                         }
                         break;
                     }
@@ -476,6 +485,7 @@ AudioMetadata parseMp4(const std::vector<unsigned char>& buf) {
     m.title = "";
     m.artist = "未知艺术家";
     m.album = "未知专辑";
+    m.year = "";
     m.durationMs = 0;
     m.sampleRate = 44100;
     m.channels = 2;
@@ -495,6 +505,7 @@ AudioMetadata parseAudioMetadata(const std::string& filePath) {
     metadata.title = "";
     metadata.artist = "未知艺术家";
     metadata.album = "未知专辑";
+    metadata.year = "";
     metadata.durationMs = 0;
     metadata.sampleRate = 44100;
     metadata.channels = 2;
@@ -541,6 +552,9 @@ AudioMetadata parseAudioMetadata(const std::string& filePath) {
     }
     if (parsed.album != "未知专辑") {
         metadata.album = parsed.album;
+    }
+    if (!parsed.year.empty()) {
+        metadata.year = parsed.year;
     }
     if (parsed.durationMs > 0) {
         metadata.durationMs = parsed.durationMs;

@@ -23,6 +23,7 @@ export interface AudioMeta {
   artist?: string;
   album?: string;
   author?: string;
+  year?: string;
 }
 
 /**
@@ -45,10 +46,19 @@ function parseMetaOnWorker(src: string): AudioMeta | undefined {
   const title: string = raw.title as string;
   const artist: string = raw.artist as string;
   const album: string = raw.album as string;
+  const rawYear: string = raw.year as string;
+  let year: string = '';
+  if (rawYear) {
+    const m: RegExpMatchArray | null = rawYear.match(/(19|20)\d{2}/);
+    if (m) {
+      year = m[0];
+    }
+  }
   const result: AudioMeta = {
     title: title,
     artist: artist,
-    album: album
+    album: album,
+    year: year
   };
   return result;
 }
@@ -71,7 +81,8 @@ export class AudioMetaReader {
         const merged: AudioMeta = {
           title: native.title,
           artist: native.artist ? native.artist : undefined,
-          album: native.album ? native.album : undefined
+          album: native.album ? native.album : undefined,
+          year: native.year ? native.year : (fromKit ? fromKit.year : undefined)
         };
         return merged;
       }
@@ -88,6 +99,18 @@ export class AudioMetaReader {
     return idx >= 0 ? path.substring(idx + 1) : path;
   }
 
+  /**
+   * 从 MediaKit 的 dateTime 字符串（如 "2019"、"2019-03-02"、"2019-03-02T08:00:00Z"）
+   * 中提取 4 位年份。无有效年份时返回 undefined。
+   */
+  private static extractYear(dateTime?: string): string | undefined {
+    if (!dateTime) {
+      return undefined;
+    }
+    const m: RegExpMatchArray | null = dateTime.match(/(19|20)\d{2}/);
+    return m ? m[0] : undefined;
+  }
+
   private static async readViaMediaKit(src: string): Promise<AudioMeta | null> {
     let extractor: media.AVMetadataExtractor | undefined;
     let file: fileIo.File | undefined;
@@ -100,7 +123,8 @@ export class AudioMetaReader {
         title: metadata.title,
         artist: metadata.artist,
         album: metadata.album,
-        author: metadata.author
+        author: metadata.author,
+        year: AudioMetaReader.extractYear(metadata.dateTime)
       };
     } catch (err) {
       // P2-13：日志脱敏，只打印文件名

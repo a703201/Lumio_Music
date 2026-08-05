@@ -57,6 +57,7 @@ static napi_value NativeParseAudioMetadata(napi_env env, napi_callback_info info
     napi_set_named_property(env, result, "title", MakeString(env, metadata.title));
     napi_set_named_property(env, result, "artist", MakeString(env, metadata.artist));
     napi_set_named_property(env, result, "album", MakeString(env, metadata.album));
+    napi_set_named_property(env, result, "year", MakeString(env, metadata.year));
 
     napi_value duration;
     napi_create_int32(env, metadata.durationMs, &duration);

@@ -30,8 +30,8 @@ struct Favorites {
   @State emptyIconScale: number = 1.0;
   @State playingIndex: number = -1;
   @State selectedSong: SongItem | undefined = undefined;
-  @State detailVisible: boolean = false;
-  @State addSheetVisible: boolean = false;
+  @State sheetOpen: boolean = false;
+  @State sheetKind: 'detail' | 'add' = 'detail';
 
   aboutToAppear(): void {
     this.favoriteSongs = this.store.getFavoriteSongs();
@@ -67,12 +67,14 @@ struct Favorites {
 
   openAddToPlaylist(song: SongItem): void {
     this.selectedSong = song;
-    this.addSheetVisible = true;
+    this.sheetKind = 'add';
+    this.sheetOpen = true;
   }
 
   openSongDetail(song: SongItem): void {
     this.selectedSong = song;
-    this.detailVisible = true;
+    this.sheetKind = 'detail';
+    this.sheetOpen = true;
   }
 
   @Builder
@@ -314,14 +316,10 @@ struct Favorites {
       .height('100%')
       .backgroundColor(this.getThemeColors().bg)
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
-      .bindSheet($$this.detailVisible, this.detailSheet(), {
+      .bindSheet($$this.sheetOpen, this.sheetContent(), {
         detents: [SheetSize.MEDIUM, SheetSize.LARGE],
         dragBar: true,
-        preferType: SheetType.BOTTOM
-      })
-      .bindSheet($$this.addSheetVisible, this.addSheet(), {
-        detents: [SheetSize.MEDIUM, SheetSize.LARGE],
-        dragBar: true,
+        showClose: true,
         preferType: SheetType.BOTTOM
       })
     }
@@ -332,17 +330,16 @@ struct Favorites {
   }
 
   @Builder
-  detailSheet() {
-    SongDetailSheet({ songId: this.selectedSong?.id ?? 0 })
-  }
-
-  @Builder
-  addSheet() {
-    AddToPlaylistSheet({
-      songId: this.selectedSong?.id ?? 0,
-      onClose: () => {
-        this.addSheetVisible = false;
-      }
-    })
+  sheetContent() {
+    if (this.sheetKind === 'detail') {
+      SongDetailSheet({ songId: this.selectedSong?.id ?? 0 })
+    } else if (this.sheetKind === 'add') {
+      AddToPlaylistSheet({
+        songId: this.selectedSong?.id ?? 0,
+        onClose: () => {
+          this.sheetOpen = false;
+        }
+      })
+    }
   }
 }
