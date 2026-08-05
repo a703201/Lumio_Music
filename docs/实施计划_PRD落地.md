@@ -55,3 +55,18 @@
 - **收藏 assetId 语义**：原为队列索引（易漂移），改为 song.id，需同步 `toggleFavorite` 与锁屏回写。
 - **歌单 UI 范围**：首版聚焦「建/删/查看/播放/加歌」，暂不做拖拽排序与云同步。
 - **API 迁移范围**：仅迁移有明确 `UIContext` 上下文的页面/组件；工具类静默注解，避免误改。
+
+## 5. 后续迭代补充（第三轮交互打磨）
+
+> 本计划原为 PRD 落地 5 项（W1~W5），第三轮交互打磨为独立后续迭代（对应 CHANGELOG `v2.3.0`，2026-08-06），W1~W5 结论不变。
+
+第三轮在 W1~W5 之上补齐交互与文档一致性，均已实现且经 `harmonyos-reviewer` 审查 **0 ERROR / 0 WARNING**：
+
+- **长按选项栏**：移除列表行 `ic_hm_more` 按钮，改 `bindContextMenu(... LongPress)` 长按唤出统一选项栏（PRD FR-25 / 模块 T-01）。
+- **半模态面板**：新增 `SongDetailSheet.ets`（详情，含年代/添加时间）与 `AddToPlaylistSheet.ets`（添加到歌单，含面板内新建），各页统一单一 `bindSheet` + `sheetKind` 分发（PRD FR-26/FR-27 / 模块 T-02/T-03）。
+- **年代全链路**：C++ → NAPI → `AudioMeta.year` → 详情面板异步显示，year 不落 `SongItem`（PRD FR-28 / 模块 T-04、I-01/I-02）。
+- **歌词手动滑动**：`LrcView.ets` onTouch 状态机，静止 5 秒回正（PRD FR-29 / 模块 K-05）。
+- **迷你播放器真实封面**：`Layout.playerButton` 经 `CoverCache.getLabel()` 取真图，一镜到底两端一致（PRD FR-30 / 模块 F-01）。
+- **构建**：`bash build_hap.sh` 稳定产出签名 HAP。
+
+详见 `docs/实施计划_第二轮增强.md` 第 5 节（F1~F7）与 `docs/PRD_HM_Player.md` 第 3.2 节（FR-25~FR-30）。

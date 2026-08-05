@@ -1,5 +1,10 @@
 # HM_Player 长期规范与架构事实
 
+## 项目身份与许可证
+- **品牌名：Lumio Music**（应用 `app_name`=`AppScope/resources/base/element/string.json` 早已是 "Lumio Music"；bundleName=`com.lumio.music`）。文档/许可证统一用 Lumio Music，勿回退成 HM Music/HM_Player。
+- ⚠️ **改 bundleName 后调试签名失效**：根 `build-profile.json5` 的 `.cer/.p7b/.p12` 是绑定旧 bundleName 生成的，改完需在 DevEco 重新 auto-sign（或换匹配新 bundleName 的证书）才能 `bash build_hap.sh` 继续出包。`entry/build/` 下 `BuildProfile.ets` 是生成物，下次构建会自动重生成。
+- **许可证：Apache-2.0**；根目录 `LICENSE`(完整文本)+`NOTICE`；版权人 **何宇翔**（Copyright 2026 何宇翔）。任何分发须保留声明+NOTICE+声明修改。
+
 ## ⚠️ ArkTS 红线（违反即编译失败/运行时崩溃）
 - `build()`/`@Builder` 体首条语句不能是 `const`/`let`（报 "Only UI component syntax"/"one root node"，错误级联误导）。改行内调用。
 - `CustomDialogController`/`DialogAlignment`/`NavPathStack`/`NavDestinationContext` 是全局环境声明，勿从 `@kit.ArkUI` import，裸用。

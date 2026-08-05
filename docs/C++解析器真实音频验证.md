@@ -90,3 +90,38 @@ g++ -std=c++17 -I entry/src/main/cpp \
 | zhou_shen.flac | 人是_ / 周深 / 4:35 / 44.1k / 2ch | 一致 |
 
 **结论**：4 项 P0/P1 缺陷均经 A/B 对照证实修复有效，且真实文件零回归。ArkTS 侧（拖拽 `ForEach.onMove`、呼吸动画守卫、`@Concurrent` taskpool）因沙箱无法出 HAP，采用静态复核 + 类型推导校验，待 DevEco 真机构建复验。
+
+---
+
+## 8. 年代(year)解析验证
+
+> 补充对象：第三轮新增的「年代(year)」全链路解析（对应 PRD FR-28 / 模块 T-04、I-01/I-02）
+> 验证日期：2026-08-06 ｜ 方式：基于既有 `g++` standalone harness + 真机复验建议
+
+### 8.1 全链路与验证现状
+
+| 层 | 实现 | 本轮验证覆盖 |
+|---|---|---|
+| C++ `audio_metadata.cpp` | FLAC `DATE` / MP3 `TYER`(优先)+`TDRC` / MP4 `©day` → 写入 `year` | ⚠️ 代码已落地，但 3 个真实样本均未显式携带对应标签，C++ `year` 分支**未被真实音频执行** |
+| NAPI `napi_init.cpp` | 随 `title/artist/...` 一并返回 `year` | ✅ 返回契约已接（`AudioMeta` 可读 `year`） |
+| ArkTS `AudioMeta.year` | MediaKit 优先：`AVMetadata.dateTime` → `extractYear` 正则 `/(19|20)\d{2}/`；NAPI 兜底 | ⚠️ `extractYear` 逻辑已实现，但需 MediaKit 实际返回 `dateTime` 的样本方可真机确认 |
+| 详情面板 `SongDetailSheet` | 打开时 `AudioMetaReader.read(src)` 异步取 `year` 显示 | ⚠️ 受上游两层的真机数据驱动 |
+
+### 8.2 验证缺口（非阻断，建议补测）
+
+- **FLAC `DATE` 分支**：`bet_on_me.flac` / `zhou_shen.flac` 的 VORBIS_COMMENT 未含 `DATE=YYYY` 字段，C++ 取到的 `year` 为空；需构造带 `DATE` 的 FLAC（如 `metaflac --set-tag=DATE=2021`）复验。
+- **MP4 `©day` 分支**：`lose_my_mind.m4a` 的 iTunes `ilst` 未含 `©day` 原子，C++ `year` 为空；需构造带 `©day` 的 M4A 复验。
+- **MP3 `TYER`/`TDRC` 分支**：本轮 3 个样本均无 MP3（与 §5 所述 MP3/VBR 缺口同源），C++ `year` 的 MP3 路径**完全未在真实音频上跑过**；建议补一个带 `TYER`（ID3v2.3）与 `TDRC`（ID3v2.4）的 MP3 样本，一并验证 §5 的 VBR 时长缺口。
+- **正则 `extractYear`**：`/(19|20)\d{2}/` 对 `AVMetadata.dateTime`（如 `2021-05-01T00:00:00.000Z`）抽 4 位年份，需在真机确认 MediaKit 实际 `dateTime` 格式与命中情况。
+
+### 8.3 复验清单（建议追加）
+
+| # | 验证项 | 期望结果 |
+|---|---|---|
+| 1 | 带 `DATE` 的 FLAC 经 `meta_test` 解析 | C++ 输出 `year` 等于标签年份 |
+| 2 | 带 `©day` 的 M4A 经 `meta_test` 解析 | C++ 输出 `year` 等于标签年份 |
+| 3 | 带 `TYER`/`TDRC` 的 MP3 经 `meta_test` 解析 | C++ 输出 `year` 等于标签年份（同时验证 MP3 路径，见 §5 缺口） |
+| 4 | 真机打开带年代标签歌曲的详情面板 | 「年代」字段显示正确 4 位年份，旧歌曲（无 `year` 字段）显示空而非崩溃 |
+| 5 | 无年代标签的音频 | `year` 为空，面板不显示年代、不报错 |
+
+> 说明：year 设计为「详情面板按需重读」，不落 `SongItem`、不改 `dataPreferences` 既有结构，故上述缺口不影响历史数据与新功能稳定性，仅需在真机补样本确认解析正确性。

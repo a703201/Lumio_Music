@@ -36,6 +36,8 @@ HM Music 是一款运行在 HarmonyOS 平台的**纯本地**音乐播放器，�
 
 **本轮新增能力**：自建歌单（Playlists / PlaylistDetail 两页 + `MusicStore` 歌单增删改查），API 弃用迁移（`Prompt.showToast` → `UIContext.getPromptAction()`）。
 
+**第三轮交互打磨（2026-08-06 落地，对应 CHANGELOG `v2.3.0`）**：长按选项栏、歌曲详情/添加到歌单半模态面板、单一 `bindSheet` 分发、音频元数据「年代(year)」全链路解析、歌词手动滑动、迷你播放器真实封面（一镜到底两端一致）等交互能力已补齐；本轮同样经 `harmonyos-reviewer` 审查 **0 ERROR / 0 WARNING**，`bash build_hap.sh` 稳定产出签名 HAP（详见第 6 节 M7 与第 3.2 节 FR-25~FR-30）。
+
 ---
 
 ## 2. 用户与场景
@@ -111,6 +113,12 @@ graph TD
 | FR-22 | 自建播放列表（Playlist） | P2 | ✅已实现 | **本轮**：Playlists + PlaylistDetail 两页，建/删/改名/加歌/移出/播放全部 |
 | FR-23 | 备份与恢复 | P3 | ✅已实现 | EntryBackupAbility |
 | FR-24 | 歌单拖拽排序 | P3 | ✅已实现 | **第二轮**：`ForEach.onMove`（API 12+）长按拖拽重排，`MusicStore.reorderPlaylistSongs` 持久化；云同步仍排除 |
+| FR-25 | 长按选项栏（替代列表行「更多」按钮） | P1 | ✅已实现 | `bindContextMenu(menu, ResponseType.LongPress)` 长按歌曲唤出统一选项栏（`@Builder buildSongMenu` / `buildPlaylistMenu`），移除行内 `ic_hm_more`；各页选项见功能模块拆解表 T-01 |
+| FR-26 | 歌曲详情半模态面板 | P1 | ✅已实现 | 新增 `components/SongDetailSheet.ets`（`bindSheet`，`detents:[MEDIUM,LARGE]`、`preferType:BOTTOM`），展示 文件名/标题/歌手/作曲家/合集/年代/添加时间 |
+| FR-27 | 添加到歌单半模态面板 | P1 | ✅已实现 | 新增 `components/AddToPlaylistSheet.ets`（Medium），列出自建歌单一键加入（去重提示「歌曲已在歌单中」）、面板内新建歌单并立即加入 |
+| FR-28 | 音频元数据「年代(year)」全链路解析 | P2 | ✅已实现 | C++ `audio_metadata.cpp`（FLAC `DATE`/MP3 `TYER`+`TDRC`/MP4 `©day`）→ NAPI 返回 `year` → `AudioMeta.year`（`extractYear` 正则 `/(19|20)\d{2}/`）→ 详情面板异步显示；year 不落 `SongItem` |
+| FR-29 | 歌词手动滑动浏览 | P1 | ✅已实现 | `LrcView.ets` `onTouch` 状态机（`userOffsetY` 叠加偏移、`isUserScrolling` 控制清晰/模糊、`scheduleAutoReturn` 5 秒 `setTimeout` 回正） |
+| FR-30 | 迷你播放器真实封面（一镜到底两端一致） | P0 | ✅已实现 | `Layout.playerButton` 经 `CoverCache.getLabel()` 取正在播放歌曲真实内嵌封面（替代默认占位图），保留 `geometryTransition('player_cover', {follow:true})` 一镜到底 |
 
 ---
 
@@ -140,9 +148,9 @@ graph TD
 | 层 | 代表文件 |
 |---|---|
 | 入口/生命周期 | `entryability/EntryAbility.ets` |
-| 导航框架 | `pages/Index.ets`、`pages/Layout.ets`、`resources/.../route_map.json` |
+| 导航框架 | `pages/Index.ets`、`pages/Layout.ets`（含底部迷你播放器，`playerButton` 经 `CoverCache.getLabel()` 取真实内嵌封面，保留 `geometryTransition('player_cover', {follow:true})` 一镜到底）、`resources/.../route_map.json` |
 | 业务页 | `LocalLibrary.ets`、`Mine.ets`、`PlayerPage.ets`、`Settings.ets`、`Favorites.ets`、`PlayHistory.ets`、`ManageSongs.ets`、`About.ets`、`PrivacyPolicy.ets` |
-| 播放组件 | `components/PlayerInfoComponent.ets`、`LyricsComponent.ets`、`LrcView.ets`、`MusicInfoComponent.ets`、`ControlAreaComponent.ets`、`TopAreaComponent.ets` |
+| 播放组件 | `components/PlayerInfoComponent.ets`、`LyricsComponent.ets`、`LrcView.ets`、`MusicInfoComponent.ets`、`ControlAreaComponent.ets`、`TopAreaComponent.ets`、`SongDetailSheet.ets`（歌曲详情半模态面板）、`AddToPlaylistSheet.ets`（添加到歌单半模态面板） |
 | 数据/服务 | `services/MusicStore.ets`、`songdatacontroller/SongData.ets`(SongItem)、`PlayerData.ets`(MusicPlayMode) |
 | 工具 | `utils/AudioRendererController.ets`、`AVSessionController.ets`、`AudioMeta.ets`、`CoverCache.ets`、`EmbeddedLyricReader.ets`、`PreferencesUtil.ets`、`SettingsStore.ets`、`ThemeManager.ets`、`MediaTools.ets`、`BackgroundUtil.ets` |
 | 原生桥 | `utils/NativeModule.ets` + `cpp/napi_init.cpp` |
@@ -155,6 +163,7 @@ graph TD
 - MP3 VBR 精确时长：检测 Xing/Info 头取总帧数（仅 Layer III，偏移按 side information 长度），优于 CBR 字节估算。
 - MP4 健壮性：`walkAtoms` 支持 64 位 `largesize`（减法比较防 `size64` 加法回绕死循环）、`mvhd` 同时支持 v0（32 位）/ v1（64 位）duration。
 - ID3v2 文本编码：`enc==2`（UTF-16BE 无 BOM）按大端解，中文不再乱码；Latin1/UTF-8 分支按缓冲区与帧边界钳制，杜绝越界读。
+- 年代解析（year）：`parseAudioMetadata` 在 FLAC 取 `DATE`、MP3 取 `TYER`（优先）+ `TDRC`、MP4 取 `©day`，经 `napi_init.cpp` 随其它字段一并返回 `year`；ArkTS 侧 `AudioMeta.year` 主路径从 MediaKit `AVMetadata.dateTime` 经 `extractYear`（`/(19|20)\d{2}/`）抽 4 位年份，NAPI 作为兜底；年代仅在详情面板按需重读，不落 `SongItem`。
 
 **职责边界（明确）**：C++ 仅负责「MediaKit 解析不到时的兜底元数据」（标题/艺术家/专辑/时长/采样率/声道），不抽取歌词/封面（歌词走 rawfile LRC，封面走 `AVMetadataExtractor.fetchAlbumCover`）；避免重复 I/O。
 
@@ -195,6 +204,7 @@ graph TD
 | M4 文档与告警收敛 | README 权限表、UIContext 迁移 | FR 状态回写、零弃用告警 | ✅ 完成 |
 | M5 真机验证 | 编译产包 + 格式矩阵 + 锁屏/卡片/投播联调 | DevEco 构建 release HAP | ⚠️ 待执行 |
 | M6 待决策 | 发现页接入或下线、歌单排序/云同步 | FR-21（已下线）/ FR-24（拖拽 ✅，云同步仍排除） | ✅ FR-21 下线、FR-24 拖拽完成；云同步仍为已知限制 |
+| M7 交互打磨 | 长按选项栏/半模态面板/年代解析/歌词滑动/真实封面 | FR-25~FR-30、模块 T-01~T-04、K-05、I-01/I-02 | ✅ 完成 |
 
 ---
 
@@ -219,6 +229,7 @@ graph TD
 
 ### 7.3 文档与代码一致性提示
 - 本文档基于 2026-08-05 工程快照；若 `CHANGELOG.md`/`module.json5` 后续变更，应同步更新本 PRD 第 1.3、第 7 节。
+- 一致性提示（2026-08-06 更新）：`CHANGELOG.md` 已新增 `v2.3.0`（2026-08-06，交互打磨与文档对齐）条目；但 `AppScope/app.json5` 的 `versionName` 仍为 `2.1.0`，未随本轮功能升版。本 PRD 表头「当前版本」亦维持 `2.1.0`（以 `versionName` 为准），与 CHANGELOG 按功能迭代划分里程碑的口径不同，属有意保留。
 
 ---
 

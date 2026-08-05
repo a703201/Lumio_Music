@@ -661,3 +661,33 @@ this.playlists = (Array.isArray(rawPlaylists) ? rawPlaylists : [])
 ---
 
 *报告生成于代码审查阶段，基于静态只读分析。P0/P1 的行号与代码片段均对应审查时的工作区状态。*
+
+---
+
+## 7. 第三轮交互打磨审查补充说明
+
+> 补充对象：第三轮交互打磨（对应 CHANGELOG `v2.3.0`，2026-08-06）
+> 审查角色：harmonyos-reviewer ｜ 方式：静态只读审查 ｜ 范围：长按选项栏、两个半模态面板、单一 `bindSheet` 分发、年代全链路、`LrcView` 手动滑动、迷你播放器真实封面
+
+### 7.1 审查结论
+
+- **结论：通过（0 ERROR / 0 WARNING）**。`harmonyos-reviewer` 对第三轮全部改动文件审查结果为 **0 ERROR / 0 WARNING**（另 2 条 INFO 为 `componentSnapshot.get` 既有噪音，非本轮引入）。
+- **ArkTS 红线项零复现**：`build()`/`@Builder` 首条语句非 `const`、无普通 `get` 访问器、无裸 `console`/`hilog`、无 `ESObject` 中转赋值、稳定 `ForEach` key、对象字面量非类型注解、`@State` 整体赋值等历史红线项，本轮新增/修改代码均符合。
+- **新增组件合规**：`components/SongDetailSheet.ets` / `AddToPlaylistSheet.ets` 仅使用 `@Builder` + `bindSheet` 组合，未引入受控权限；`@Builder sheetContent()` 按 `sheetKind` 分发，单一 `bindSheet` 绑定符合 ArkUI 规范（避免多绑定后者覆盖前者）。
+
+### 7.2 覆盖范围与验证
+
+| 审查点 | 对应 PRD / 拆解表 | 结果 |
+|---|---|---|
+| 长按 `bindContextMenu(menu, ResponseType.LongPress)` 选项栏（五页） | FR-25 / T-01 | ✅ 0 ERROR / 0 WARNING |
+| 单一 `bindSheet` + `sheetKind` + `@Builder sheetContent()` 分发 | FR-26/27 / T-02/T-03 / S-03 | ✅ 红线零复现 |
+| `SongDetailSheet.ets` 详情面板（年代异步读） | FR-26 / T-02 / I-01/I-02 | ✅ 合规 |
+| `AddToPlaylistSheet.ets` 添加到歌单（去重/新建） | FR-27 / T-03 | ✅ 合规 |
+| 年代全链路（C++ `year` → NAPI → `AudioMeta.year` → 面板） | FR-28 / T-04 | ✅ 合规；year 不落 `SongItem` |
+| `LrcView.ets` 手动滑动（onTouch 状态机） | FR-29 / K-05 | ✅ 合规 |
+| 迷你播放器真实封面（一镜到底两端一致） | FR-30 / F-01 | ✅ 合规；保留 `geometryTransition('player_cover', {follow:true})` |
+
+### 7.3 与既有审查的关系
+
+- 本报告 §1~§6（PRD 落地批次）、`docs/代码审查报告_第二轮增强.md`（第二轮增强批次）的结论与整改均不受影响；本轮改动未触及 C++ 内存安全红线（`audio_metadata.cpp` 仅增量补充 `year` 字段解析，未改既有边界逻辑）。
+- ArkTS 红线基线（本报告附录）在第三轮继续保持零复现。
