@@ -1,6 +1,6 @@
-# HM_Player · PRD 落地实施计划
+# Lumio Music · PRD 落地实施计划
 
-> 规划角色：harmonyos-pm ｜ 依据：`docs/PRD_HM_Player.md` + `docs/功能模块拆解表.md` + 工程现状源码
+> 规划角色：harmonyos-pm ｜ 依据：`docs/PRD_Lumio_Music.md` + `docs/功能模块拆解表.md` + 工程现状源码
 > 目标版本：在 v2.1.0 基础上完成 5 项 PRD 改进，产出可上架/可继续迭代的工程增量。
 
 ## 1. 范围与验收总览
@@ -35,7 +35,7 @@
 
 ### W4 文档
 - `README.md`：权限表、技术栈 C++ 描述、已知限制、发现页/歌单状态。
-- `docs/PRD_HM_Player.md` / `docs/功能模块拆解表.md`：回写完成状态。
+- `docs/PRD_Lumio_Music.md` / `docs/功能模块拆解表.md`：回写完成状态。
 
 ### W5 API 迁移
 - 全局检索 `promptAction.showToast` / `getContext()` 弃用用法，迁移到 `this.getUIContext().getPromptAction().showToast(...)`；无 `UIContext` 上下文的工具类维持原样并标注。
@@ -69,4 +69,4 @@
 - **迷你播放器真实封面**：`Layout.playerButton` 经 `CoverCache.getLabel()` 取真图，一镜到底两端一致（PRD FR-30 / 模块 F-01）。
 - **构建**：`bash build_hap.sh` 稳定产出签名 HAP。
 
-详见 `docs/实施计划_第二轮增强.md` 第 5 节（F1~F7）与 `docs/PRD_HM_Player.md` 第 3.2 节（FR-25~FR-30）。
+详见 `docs/实施计划_第二轮增强.md` 第 5 节（F1~F7）与 `docs/PRD_Lumio_Music.md` 第 3.2 节（FR-25~FR-30）。

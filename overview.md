@@ -1,4 +1,4 @@
-# HM_Player — 六项体验修复交付概览
+# Lumio Music — 六项体验修复交付概览
 
 > HarmonyOS 6.1.1 / API 24，ArkTS/ArkUI。本会话由「鸿蒙全流程专家团」编排：`code-developer` 实现 → `code-reviewer` 静态合规审查 → 主理人复核并落地两处优化。沙箱禁 hvigor，**未在本地构建**，请在 DevEco 执行 `hvigor assembleHap` 验收。
 

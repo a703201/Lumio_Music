@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# HM_Player 签名 HAP 构建脚本
+# Lumio Music 签名 HAP 构建脚本
 # 关键：在 WorkBuddy 的 bash 环境里，NODE_OPTIONS 被注入了 genie-safe-delete.cjs
 # 会 fail-closed 拦截 hvigor 清理构建产物（configure_fingerprint.json / report-*.json）
 # 导致 BuildNativeWithCmake / wrapUpBeforeExit 崩溃。本脚本前置关闭这些守卫。

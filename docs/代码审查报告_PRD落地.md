@@ -1,6 +1,6 @@
 # 代码审查报告 · PRD 落地批次
 
-| 项目 | HM_Player（HM Music / Lumio Music） |
+| 项目 | Lumio Music |
 |---|---|
 | 目标平台 | HarmonyOS 6.1.1 / API 24（`compatibleSdkVersion` = 6.1.0(23)） |
 | 技术栈 | ArkTS + ArkUI + C++ NAPI |

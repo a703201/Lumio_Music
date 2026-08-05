@@ -5,13 +5,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:/Users/a7032/.ohos/config/default_HM_Player_w5wyUuW11u2eTX2OretX6kP4OVqyEGyP3FXlMedJzkk=.cer",
+          "certpath": "C:\\Users\\a7032\\.ohos\\config\\default_Lumio_Music_hRUlq04PupK9R-lFEei8NzYA29c2T_GXvumZ8DK4wys=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001AA8B6CCDF57C64BE1759F4AE02321B07FFB93AA8CE552021095767619B01DB326B99720947DAA",
-          "profile": "C:/Users/a7032/.ohos/config/default_HM_Player_w5wyUuW11u2eTX2OretX6kP4OVqyEGyP3FXlMedJzkk=.p7b",
+          "keyPassword": "0000001B5803706C7F0CF974930617F1465BCA3EDE8D3BC28262A6DD3300D65721C087C1CF1698219EE4B8",
+          "profile": "C:\\Users\\a7032\\.ohos\\config\\default_Lumio_Music_hRUlq04PupK9R-lFEei8NzYA29c2T_GXvumZ8DK4wys=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:/Users/a7032/.ohos/config/default_HM_Player_w5wyUuW11u2eTX2OretX6kP4OVqyEGyP3FXlMedJzkk=.p12",
-          "storePassword": "0000001AB3E4B2AFA94014D1FED3529B9B7FA22F04E94AAA5556A0FA4986BF0A1D5917D8298408E59646"
+          "storeFile": "C:\\Users\\a7032\\.ohos\\config\\default_Lumio_Music_hRUlq04PupK9R-lFEei8NzYA29c2T_GXvumZ8DK4wys=.p12",
+          "storePassword": "0000001BDA709720AC16CBC588C22FC0F73FB8E1ABCBB07AC3AFD6F78E58292EDE35096BD7A3345EB3A069"
         }
       }
     ],
@@ -20,7 +20,7 @@
         "name": "default",
         "signingConfig": "default",
         "compileSdkVersion": "6.1.1(24)",
-        "compatibleSdkVersion": "6.1.0(23)",
+        "compatibleSdkVersion": "6.1.1(24)",
         "targetSdkVersion": "6.1.1(24)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
@@ -45,8 +45,8 @@
         "bundleName": "com.lumio.music",
         "config": [
           {
-            "name": "Device status detection",
-            "capability": "com.huawei.service.device_security.device_verify"
+            "capability": "com.huawei.service.device_security.device_verify",
+            "name": "Device status detection"
           }
         ]
       }

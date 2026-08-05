@@ -96,7 +96,7 @@
 ### 目录结构
 
 ```
-HM_Player/
+Lumio_Music/
 ├── AppScope/                     # 应用级配置（包名、版本、图标）
 ├── entry/src/main/
 │   ├── ets/
