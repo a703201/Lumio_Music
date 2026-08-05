@@ -97,6 +97,17 @@ export struct PlayerInfoComponent {
         .objectFit(ImageFit.Cover)
         .opacity(0.5)
         .blur(PlayerConstants.IMAGE_BLUR)
+
+      // 暗色渐变蒙层：保证浅色封面背景下白字依然清晰可读（修复"偏白背景看不清"）
+      Column()
+        .width(StyleConstants.FULL_WIDTH)
+        .height(StyleConstants.FULL_HEIGHT)
+        .linearGradient({
+          angle: 90,
+          colors: [['#00000000', 0.0], ['#00000099', 0.5], ['#000000EE', 1.0]]
+        })
+        .hitTestBehavior(HitTestMode.None)
+
       Row() {
         if (this.isFoldFull) {
           Column() {
@@ -288,7 +299,8 @@ export struct PlayerInfoComponent {
           this.imageColor = `rgba(${colorArr[0]}, ${colorArr[1]}, ${colorArr[2]}, 1)`;
           const lum = (0.2126 * colorArr[0] + 0.7152 * colorArr[1] + 0.0722 * colorArr[2]) / 255;
           const bgDark = lum <= 0.5;
-          AppStorage.setOrCreate('lyricBgDark', bgDark);
+          // 播放页叠加了暗色蒙层，歌词区域恒按深色背景渲染（浅色字），保证始终可读
+          AppStorage.setOrCreate('lyricBgDark', true);
         }
       })
       let headFilter = effectKit.createEffect(pixelMap);

@@ -21,6 +21,7 @@ const KEY_REPEAT_MODE: string = 'repeat_mode';
 const KEY_THEME_MODE: string = 'theme_mode';
 const KEY_NOTIFICATION_LOCK: string = 'notification_lock_screen';
 const KEY_PRIVACY_STATS: string = 'privacy_stats';
+const KEY_REDUCE_MOTION: string = 'reduce_motion';
 
 export class SettingsStore {
   private static instance: SettingsStore | null = null;
@@ -33,6 +34,7 @@ export class SettingsStore {
   private themeMode: ThemeMode = 'system';
   private notificationLockScreen: boolean = true;
   private privacyStats: boolean = true;
+  private reduceMotion: boolean = false;
 
   private constructor() {
   }
@@ -68,6 +70,7 @@ export class SettingsStore {
 
       this.notificationLockScreen = await this.pref.get(KEY_NOTIFICATION_LOCK, true) as boolean;
       this.privacyStats = await this.pref.get(KEY_PRIVACY_STATS, true) as boolean;
+      this.reduceMotion = await this.pref.get(KEY_REDUCE_MOTION, false) as boolean;
       this.initialized = true;
     } catch (err) {
       Logger.error('SettingsStore init failed');
@@ -130,6 +133,16 @@ export class SettingsStore {
   async setPrivacyStats(value: boolean): Promise<void> {
     this.privacyStats = value;
     await this.putBoolean(KEY_PRIVACY_STATS, value);
+  }
+
+  // ===== 无障碍：降低动态效果 =====
+  getReduceMotion(): boolean {
+    return this.reduceMotion;
+  }
+
+  async setReduceMotion(value: boolean): Promise<void> {
+    this.reduceMotion = value;
+    await this.putBoolean(KEY_REDUCE_MOTION, value);
   }
 
   private async putBoolean(key: string, value: boolean): Promise<void> {

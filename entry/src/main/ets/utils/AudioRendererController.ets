@@ -30,6 +30,8 @@ const TAG = 'AudioRendererController';
 
 export class AudioRendererController {
   public avPlayer?: media.AVPlayer;
+  // 冷启动修复：createAVPlayer 是异步的，play() 必须先 await 它就绪，否则会在 avPlayer 未创建时静默返回。
+  private avPlayerReady: Promise<void> | undefined = undefined;
   private context: common.UIAbilityContext | undefined = AppStorage.get('context');
   private songItemBuilder: SongItemBuilder = new SongItemBuilder();
   private playMode: MusicPlayMode = MusicPlayMode.ORDER;
@@ -61,14 +63,16 @@ export class AudioRendererController {
     return audioRendererController;
   }
 
-  private async initAVPlayer(): Promise<void> {
-    try {
-      this.avPlayer = await media.createAVPlayer();
-      this.setAVPlayerCallbacks();
-      Logger.info(TAG, 'createAVPlayer succeeded');
-    } catch (err) {
-      Logger.error(TAG, `createAVPlayer failed: ${err.code} - ${err.message}`);
-    }
+  private initAVPlayer(): void {
+    this.avPlayerReady = (async () => {
+      try {
+        this.avPlayer = await media.createAVPlayer();
+        this.setAVPlayerCallbacks();
+        Logger.info(TAG, 'createAVPlayer succeeded');
+      } catch (err) {
+        Logger.error(TAG, `createAVPlayer failed: ${err.code} - ${err.message}`);
+      }
+    })();
   }
 
   private setAVPlayerCallbacks(): void {
@@ -142,6 +146,13 @@ export class AudioRendererController {
   }
 
   public async play(musicIndex: number = this.musicIndex): Promise<void> {
+    if (this.avPlayerReady) {
+      try {
+        await this.avPlayerReady;
+      } catch (e) {
+        Logger.error(TAG, 'avPlayer init failed, cannot play');
+      }
+    }
     if (!this.avPlayer) {
       Logger.error(TAG, 'avPlayer is undefined');
       return;

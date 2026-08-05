@@ -25,6 +25,14 @@
       }
     },
     {
+      "name": "SettingsCategory",
+      "pageSourceFile": "src/main/ets/pages/SettingsCategory.ets",
+      "buildFunction": "SettingsCategoryBuilder",
+      "data": {
+        "description": "this is SettingsCategory"
+      }
+    },
+    {
       "name": "About",
       "pageSourceFile": "src/main/ets/pages/About.ets",
       "buildFunction": "AboutBuilder",

@@ -201,29 +201,39 @@ export struct LyricsComponent {
                   bottom: $r('app.float.info_margin_bottom')
                 })
 
-                LrcView({
-                  lyricMilliSecondsTime: this.time,
-                  mLrcEntryList: this.mLrcEntryList,
-                  lyricScrollEffect: this.lyricScrollEffect,
-                  lyricTopPosition: LyricTopPosition.Middle,
-                  showTranslation: this.showTranslation,
-                  backgroundIsDark: this.lyricBgDark
-                })
-                  .layoutWeight(1)
+                Stack({ alignContent: Alignment.TopStart }) {
+                  LrcView({
+                    lyricMilliSecondsTime: this.time,
+                    mLrcEntryList: this.mLrcEntryList,
+                    lyricScrollEffect: this.lyricScrollEffect,
+                    lyricTopPosition: LyricTopPosition.Middle,
+                    showTranslation: this.showTranslation,
+                    backgroundIsDark: this.lyricBgDark
+                  })
+                    .width('100%')
+                    .height('100%')
+                  LyricShimmer()
+                }
+                .layoutWeight(1)
               }
             }
           }
         }
         .layoutWeight(1)
       } else {
-        LrcView({
-          lyricMilliSecondsTime: this.time,
-          mLrcEntryList: this.mLrcEntryList,
-          lyricScrollEffect: this.lyricScrollEffect,
-          lyricTopPosition: LyricTopPosition.Middle,
-          showTranslation: this.showTranslation,
-          backgroundIsDark: this.lyricBgDark
-        })
+        Stack({ alignContent: Alignment.TopStart }) {
+          LrcView({
+            lyricMilliSecondsTime: this.time,
+            mLrcEntryList: this.mLrcEntryList,
+            lyricScrollEffect: this.lyricScrollEffect,
+            lyricTopPosition: LyricTopPosition.Middle,
+            showTranslation: this.showTranslation,
+            backgroundIsDark: this.lyricBgDark
+          })
+            .width('100%')
+            .height('100%')
+          LyricShimmer()
+        }
           .layoutWeight(1)
       }
 
@@ -268,5 +278,39 @@ export struct LyricsComponent {
     .onClick(() => {
       this.pageShowTime = 0;
     })
+  }
+}
+
+/**
+ * 歌词流光效果：在歌词区域之上叠加一条斜向移动的高光带，循环扫过。
+ * 半透明、hitTest 透传，不阻挡歌词的点击/滑动交互。
+ */
+@Component
+struct LyricShimmer {
+  @State tx: number = -340;
+
+  aboutToAppear(): void {
+    // 无限循环：在 [-340, 340] 之间来回平移，形成持续"流光"扫过效果
+    animateTo({ duration: 2800, iterations: -1, curve: Curve.Linear }, () => {
+      this.tx = this.tx <= -340 ? 340 : -340;
+    });
+  }
+
+  build() {
+    Stack() {
+      Rect()
+        .width('55%')
+        .height('170%')
+        .linearGradient({
+          angle: 20,
+          colors: [['#ffffff00', 0.0], ['#ffffff22', 0.5], ['#ffffff00', 1.0]]
+        })
+        .translate({ x: this.tx, y: -40 })
+        .rotate({ angle: 18 })
+    }
+    .width(StyleConstants.FULL_WIDTH)
+    .height(StyleConstants.FULL_HEIGHT)
+    .clip(true)
+    .hitTestBehavior(HitTestMode.None)
   }
 }
