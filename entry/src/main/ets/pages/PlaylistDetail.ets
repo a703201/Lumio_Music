@@ -4,6 +4,8 @@ import { MusicStore } from '../services/MusicStore';
 import { AudioRendererController } from '../utils/AudioRendererController';
 import { Logger } from '../utils/Logger';
 import { CoverImageView } from '../components/CoverImageView';
+import { SongDetailSheet } from '../components/SongDetailSheet';
+import { AddToPlaylistSheet } from '../components/AddToPlaylistSheet';
 
 const TAG: string = 'PlaylistDetail';
 
@@ -32,6 +34,9 @@ struct PlaylistDetail {
   @State itemScales: number[] = [];
   @State backScale: number = 1.0;
   @State playAllScale: number = 1.0;
+  @State selectedSong: SongItem | undefined = undefined;
+  @State detailVisible: boolean = false;
+  @State addSheetVisible: boolean = false;
 
   // 添加歌曲面板
   @State isPickerOpen: boolean = false;
@@ -114,6 +119,121 @@ struct PlaylistDetail {
         }
       }
     });
+  }
+
+  private toggleFavoriteSong(song: SongItem): void {
+    const isFav: boolean = this.store.isFavorite(song.id);
+    this.store.toggleFavorite(song.id);
+    this.getUIContext().getPromptAction().showToast({
+      message: isFav ? '已取消收藏' : '已收藏'
+    });
+  }
+
+  private openAddToPlaylist(song: SongItem): void {
+    this.selectedSong = song;
+    this.addSheetVisible = true;
+  }
+
+  private openSongDetail(song: SongItem): void {
+    this.selectedSong = song;
+    this.detailVisible = true;
+  }
+
+  @Builder
+  buildSongMenu(song: SongItem, index: number) {
+    Column() {
+      Row() {
+        Image($r('app.media.ic_hm_play'))
+          .width(18)
+          .fillColor(this.getThemeColors().primaryText)
+          .margin({ right: 12 })
+        Text('播放')
+          .fontSize(14)
+          .fontColor(this.getThemeColors().primaryText)
+      }
+      .width('100%')
+      .height(44)
+      .padding({ left: 16, right: 16 })
+      .onClick(() => {
+        this.playAt(index);
+      })
+
+      Divider().color(this.getThemeColors().separator).strokeWidth(0.5)
+
+      Row() {
+        Image($r('app.media.ic_hm_favorite'))
+          .width(18)
+          .fillColor(this.getThemeColors().primaryText)
+          .margin({ right: 12 })
+        Text(this.store.isFavorite(song.id) ? '取消收藏' : '收藏')
+          .fontSize(14)
+          .fontColor(this.getThemeColors().primaryText)
+      }
+      .width('100%')
+      .height(44)
+      .padding({ left: 16, right: 16 })
+      .onClick(() => {
+        this.toggleFavoriteSong(song);
+      })
+
+      Divider().color(this.getThemeColors().separator).strokeWidth(0.5)
+
+      Row() {
+        Image($r('app.media.ic_hm_folder'))
+          .width(18)
+          .fillColor(this.getThemeColors().primaryText)
+          .margin({ right: 12 })
+        Text('添加到歌单')
+          .fontSize(14)
+          .fontColor(this.getThemeColors().primaryText)
+      }
+      .width('100%')
+      .height(44)
+      .padding({ left: 16, right: 16 })
+      .onClick(() => {
+        this.openAddToPlaylist(song);
+      })
+
+      Divider().color(this.getThemeColors().separator).strokeWidth(0.5)
+
+      Row() {
+        Image($r('app.media.ic_sort_list'))
+          .width(18)
+          .fillColor(this.getThemeColors().primaryText)
+          .margin({ right: 12 })
+        Text('详细')
+          .fontSize(14)
+          .fontColor(this.getThemeColors().primaryText)
+      }
+      .width('100%')
+      .height(44)
+      .padding({ left: 16, right: 16 })
+      .onClick(() => {
+        this.openSongDetail(song);
+      })
+
+      Divider().color(this.getThemeColors().separator).strokeWidth(0.5)
+
+      Row() {
+        Image($r('app.media.ic_hm_trash'))
+          .width(18)
+          .fillColor('#FA2759')
+          .margin({ right: 12 })
+        Text('移出歌单')
+          .fontSize(14)
+          .fontColor('#FA2759')
+      }
+      .width('100%')
+      .height(44)
+      .padding({ left: 16, right: 16 })
+      .onClick(() => {
+        this.confirmRemove(song);
+      })
+    }
+    .width(176)
+    .backgroundColor(this.getThemeColors().bg)
+    .borderRadius(12)
+    .shadow({ radius: 8, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 2 })
   }
 
   /**
@@ -307,6 +427,7 @@ struct PlaylistDetail {
     .onClick(() => {
       this.playAt(index);
     })
+    .bindContextMenu(this.buildSongMenu(song, index), ResponseType.LongPress)
     .onTouch((event: TouchEvent) => {
       if (event.type === TouchType.Down) {
         const scales: number[] = [...this.itemScales];
@@ -466,6 +587,16 @@ struct PlaylistDetail {
         showClose: false,
         preferType: SheetType.BOTTOM
       })
+      .bindSheet($$this.detailVisible, this.detailSheet(), {
+        detents: [SheetSize.MEDIUM, SheetSize.LARGE],
+        dragBar: true,
+        preferType: SheetType.BOTTOM
+      })
+      .bindSheet($$this.addSheetVisible, this.addSheet(), {
+        detents: [SheetSize.MEDIUM, SheetSize.LARGE],
+        dragBar: true,
+        preferType: SheetType.BOTTOM
+      })
     }
     .onReady((context: NavDestinationContext) => {
       this.pathStack = context.pathStack;
@@ -478,5 +609,20 @@ struct PlaylistDetail {
       this.reload();
     })
     .hideTitleBar(true)
+  }
+
+  @Builder
+  detailSheet() {
+    SongDetailSheet({ songId: this.selectedSong?.id ?? 0 })
+  }
+
+  @Builder
+  addSheet() {
+    AddToPlaylistSheet({
+      songId: this.selectedSong?.id ?? 0,
+      onClose: () => {
+        this.addSheetVisible = false;
+      }
+    })
   }
 }

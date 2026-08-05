@@ -7,6 +7,8 @@ import { AudioRendererController } from '../utils/AudioRendererController';
 import { CoverCache } from '../utils/CoverCache';
 import { AudioMetaReader } from '../utils/AudioMeta';
 import { CoverImageView } from '../components/CoverImageView';
+import { SongDetailSheet } from '../components/SongDetailSheet';
+import { AddToPlaylistSheet } from '../components/AddToPlaylistSheet';
 import { picker } from '@kit.CoreFileKit';
 import fs from '@ohos.file.fs';
 import { common } from '@kit.AbilityKit';
@@ -39,6 +41,9 @@ export struct LocalLibrary {
   @State importScale: number = 1.0;
   @State emptyIconScale: number = 1.0;
   @State playingIndex: number = -1;
+  @State selectedSong: SongItem | undefined = undefined;
+  @State detailVisible: boolean = false;
+  @State addSheetVisible: boolean = false;
   private playingPulse: number = -1;
 
   aboutToAppear(): void {
@@ -180,6 +185,24 @@ export struct LocalLibrary {
     this.itemScales = this.filteredSongs.map(() => 1.0);
   }
 
+  toggleFavoriteSong(song: SongItem): void {
+    const isFav: boolean = this.store.isFavorite(song.id);
+    this.store.toggleFavorite(song.id);
+    this.getUIContext().getPromptAction().showToast({
+      message: isFav ? '已取消收藏' : '已收藏'
+    });
+  }
+
+  openAddToPlaylist(song: SongItem): void {
+    this.selectedSong = song;
+    this.addSheetVisible = true;
+  }
+
+  openSongDetail(song: SongItem): void {
+    this.selectedSong = song;
+    this.detailVisible = true;
+  }
+
   onCoverRefreshed() {
     const kw = this.searchText.trim();
     if (kw === '') {
@@ -247,22 +270,17 @@ export struct LocalLibrary {
           .margin({ right: 4 })
       }
 
-      Image($r('app.media.ic_hm_more'))
-        .width(20)
-        .height(20)
-        .fillColor(this.getThemeColors().secondaryText)
-        .padding(8)
-        .bindMenu(this.buildSongMenu(song))
     }
     .width('100%')
     .height(72)
-    .padding({ left: 16, right: 8 })
+    .padding({ left: 16, right: 16 })
     .backgroundColor(this.store.currentIndex === index ? 'rgba(250, 39, 89, 0.05)' : this.getThemeColors().cardBg)
     .borderRadius(12)
     .margin({ bottom: 8 })
     .scale({ x: this.itemScales[index] ?? 1.0, y: this.itemScales[index] ?? 1.0 })
     .transition(TransitionEffect.OPACITY.combine(TransitionEffect.translate({ y: 30 })))
     .animation({ duration: 300, curve: Curve.EaseOut, delay: index * 50 })
+    .bindContextMenu(this.buildSongMenu(song), ResponseType.LongPress)
     .onTouch((event: TouchEvent) => {
       if (event.type === TouchType.Down) {
         let scales = [...this.itemScales];
@@ -298,7 +316,61 @@ export struct LocalLibrary {
       Divider().color(this.getThemeColors().separator).strokeWidth(0.5)
 
       Row() {
-        Image($r('app.media.ic_close'))
+        Image($r('app.media.ic_hm_favorite'))
+          .width(18)
+          .fillColor(this.getThemeColors().primaryText)
+          .margin({ right: 12 })
+        Text(this.store.isFavorite(song.id) ? '取消收藏' : '收藏')
+          .fontSize(14)
+          .fontColor(this.getThemeColors().primaryText)
+      }
+      .width('100%')
+      .height(44)
+      .padding({ left: 16, right: 16 })
+      .onClick(() => {
+        this.toggleFavoriteSong(song);
+      })
+
+      Divider().color(this.getThemeColors().separator).strokeWidth(0.5)
+
+      Row() {
+        Image($r('app.media.ic_hm_folder'))
+          .width(18)
+          .fillColor(this.getThemeColors().primaryText)
+          .margin({ right: 12 })
+        Text('添加到歌单')
+          .fontSize(14)
+          .fontColor(this.getThemeColors().primaryText)
+      }
+      .width('100%')
+      .height(44)
+      .padding({ left: 16, right: 16 })
+      .onClick(() => {
+        this.openAddToPlaylist(song);
+      })
+
+      Divider().color(this.getThemeColors().separator).strokeWidth(0.5)
+
+      Row() {
+        Image($r('app.media.ic_sort_list'))
+          .width(18)
+          .fillColor(this.getThemeColors().primaryText)
+          .margin({ right: 12 })
+        Text('详细')
+          .fontSize(14)
+          .fontColor(this.getThemeColors().primaryText)
+      }
+      .width('100%')
+      .height(44)
+      .padding({ left: 16, right: 16 })
+      .onClick(() => {
+        this.openSongDetail(song);
+      })
+
+      Divider().color(this.getThemeColors().separator).strokeWidth(0.5)
+
+      Row() {
+        Image($r('app.media.ic_hm_trash'))
           .width(18)
           .fillColor('#FA2759')
           .margin({ right: 12 })
@@ -313,10 +385,25 @@ export struct LocalLibrary {
         this.deleteSong(song);
       })
     }
-    .width(160)
+    .width(176)
     .backgroundColor(this.getThemeColors().bg)
     .borderRadius(12)
     .shadow({ radius: 8, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 2 })
+  }
+
+  @Builder
+  detailSheet() {
+    SongDetailSheet({ songId: this.selectedSong?.id ?? 0 })
+  }
+
+  @Builder
+  addSheet() {
+    AddToPlaylistSheet({
+      songId: this.selectedSong?.id ?? 0,
+      onClose: () => {
+        this.addSheetVisible = false;
+      }
+    })
   }
 
   build() {
@@ -444,6 +531,16 @@ export struct LocalLibrary {
     .padding({ bottom: this.bottomHeight + 16 })
     .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP])
     .backgroundColor(this.getThemeColors().bg)
+    .bindSheet($$this.detailVisible, this.detailSheet(), {
+      detents: [SheetSize.MEDIUM, SheetSize.LARGE],
+      dragBar: true,
+      preferType: SheetType.BOTTOM
+    })
+    .bindSheet($$this.addSheetVisible, this.addSheet(), {
+      detents: [SheetSize.MEDIUM, SheetSize.LARGE],
+      dragBar: true,
+      preferType: SheetType.BOTTOM
+    })
   }
 }
 

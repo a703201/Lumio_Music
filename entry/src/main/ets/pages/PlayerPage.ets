@@ -51,7 +51,6 @@ struct PlayerPage {
   build() {
     NavDestination() {
       PlayerInfoComponent({ isShowPlay: this.isShowPlay })
-        .geometryTransition(PLAYER_COVER_ID)
     }
     .ignoreLayoutSafeArea([LayoutSafeAreaType.SYSTEM], [LayoutSafeAreaEdge.TOP, LayoutSafeAreaEdge.BOTTOM])
     .hideTitleBar(true)

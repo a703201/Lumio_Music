@@ -177,6 +177,26 @@ export default struct shiLrcView {
    */
   private curCanvasOffsetY: number = 0;
   /**
+   * 用户手动滑动时叠加的额外偏移。
+   */
+  private userOffsetY: number = 0;
+  /**
+   * 是否处于用户手动滑动浏览模式。
+   */
+  private isUserScrolling: boolean = false;
+  /**
+   * 停止滑动后自动回正的定时器 id。
+   */
+  private scrollIdleTimer: number = -1;
+  /**
+   * 触摸手势状态（用于区分 tap / pan）。
+   */
+  private touchStartX: number = 0;
+  private touchStartY: number = 0;
+  private touchStartTime: number = 0;
+  private lastTouchY: number = 0;
+  private hasMoved: boolean = false;
+  /**
    * How many degrees is each angle of a star.
    */
   private starAverageAngle: number = 0;
@@ -561,12 +581,18 @@ export default struct shiLrcView {
     // 记录本行点击热区（Canvas 坐标系）
     const lineTop: number = this.lrcY;
 
-    // 非当前行：模糊弱化（低透明度）
+    // 非当前行：用户手动滑动时清晰显示，方便查看；平时模糊弱化
     if (isCurrentLine) {
       this.context.globalAlpha = 1.0;
       this.context.filter = 'none';
       this.context.font = this.fontWeight + ' ' + this.mCurrentTextSize + 'vp ' + this.fontFamily;
       this.context.fillStyle = this.mCurrentTextColor;
+    } else if (this.isUserScrolling) {
+      // 手动浏览模式：全部清晰，仅通过透明度区分已播放/未播放
+      this.context.globalAlpha = isPlayedLine ? 0.72 : 0.55;
+      this.context.filter = 'none';
+      this.context.font = this.fontWeight + ' ' + this.mNormalTextSize + 'vp ' + this.fontFamily;
+      this.context.fillStyle = this.mNormalTextColor;
     } else {
       // 未播放/已播放行：高斯模糊遮挡（强模糊 + 低透明度），使文字被柔和遮挡而非单纯描边模糊
       this.context.globalAlpha = isPlayedLine ? 0.55 : 0.38;
@@ -589,6 +615,10 @@ export default struct shiLrcView {
         this.context.globalAlpha = 0.85;
         this.context.filter = 'none';
         this.context.fillStyle = this.mTranslateColorCurrent;
+      } else if (this.isUserScrolling) {
+        this.context.globalAlpha = isPlayedLine ? 0.65 : 0.5;
+        this.context.filter = 'none';
+        this.context.fillStyle = this.mTranslateColorNormal;
       } else {
         this.context.globalAlpha = isPlayedLine ? 0.5 : 0.4;
         this.context.filter = isPlayedLine ? 'blur(3px)' : 'blur(5px)';
@@ -661,7 +691,8 @@ export default struct shiLrcView {
     this.lineRectangles = [];
 
     this.context.globalCompositeOperation = 'source-over';
-    this.lrcY = this.initFirstLineY + desOffsetY;
+    const totalOffsetY: number = desOffsetY + this.userOffsetY;
+    this.lrcY = this.initFirstLineY + totalOffsetY;
     this.curCanvasOffsetY = desOffsetY;
 
     if (this.mLrcEntryList && this.mLrcEntryList.length > 0) {
@@ -738,6 +769,9 @@ export default struct shiLrcView {
    * @param line
    */
   smoothScrollTo(line: number) {
+    if (this.isUserScrolling) {
+      return;
+    }
     let offset = this.getOffset(line);
     Logger.info('[smoothScrollTo] line:' + line + ',offset:' + offset);
     this.startAnimator(offset);
@@ -760,6 +794,14 @@ export default struct shiLrcView {
       return;
     }
     let line = this.findShowLine(this.lyricMilliSecondsTime);
+    if (this.isUserScrolling) {
+      // 手动浏览期间：只更新时间高亮，不自动滚动
+      if (line !== this.mCurrentLine) {
+        this.mCurrentLine = line;
+      }
+      this.drawContent(this.curCanvasOffsetY);
+      return;
+    }
     if (line !== this.mCurrentLine) {
       this.mCurrentLine = line;
       this.smoothScrollTo(line);
@@ -840,6 +882,73 @@ export default struct shiLrcView {
     }
   }
 
+  /**
+   * 取消自动回正定时器。
+   */
+  private cancelAutoReturn(): void {
+    if (this.scrollIdleTimer >= 0) {
+      clearTimeout(this.scrollIdleTimer);
+      this.scrollIdleTimer = -1;
+    }
+  }
+
+  /**
+   * 用户停止滑动后 5 秒自动回正到当前播放行，并恢复模糊。
+   */
+  private scheduleAutoReturn(): void {
+    this.cancelAutoReturn();
+    this.scrollIdleTimer = setTimeout(() => {
+      this.scrollIdleTimer = -1;
+      this.isUserScrolling = false;
+      this.userOffsetY = 0;
+      this.smoothScrollTo(this.mCurrentLine);
+    }, 5000);
+  }
+
+  /**
+   * 处理 Canvas 触摸：区分 tap（歌词点击跳转）与垂直 pan（手动滑动浏览）。
+   */
+  private handleTouch(event: TouchEvent): void {
+    const touch: TouchObject = event.touches[0];
+    if (!touch) {
+      return;
+    }
+    switch (event.type) {
+      case TouchType.Down:
+        this.cancelAutoReturn();
+        this.touchStartX = touch.x;
+        this.touchStartY = touch.y;
+        this.lastTouchY = touch.y;
+        this.touchStartTime = Date.now();
+        this.hasMoved = false;
+        break;
+      case TouchType.Move:
+        const deltaY: number = touch.y - this.lastTouchY;
+        const totalMoveY: number = Math.abs(touch.y - this.touchStartY);
+        if (totalMoveY > 8) {
+          this.hasMoved = true;
+          this.isUserScrolling = true;
+        }
+        if (this.isUserScrolling) {
+          this.userOffsetY = this.userOffsetY + deltaY;
+          this.lastTouchY = touch.y;
+          this.drawContent(this.curCanvasOffsetY);
+        }
+        break;
+      case TouchType.Up:
+      case TouchType.Cancel:
+        if (!this.hasMoved) {
+          // 视为点击，注意点击坐标需叠加当前用户偏移（热区是 Canvas 坐标）
+          this.handleClick(touch.x, touch.y);
+        } else if (this.isUserScrolling) {
+          this.scheduleAutoReturn();
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
   build() {
     Canvas(this.context)
       .onAreaChange((oldArea: Area, newArea: Area) => {
@@ -860,6 +969,9 @@ export default struct shiLrcView {
       })
       .onClick((event: ClickEvent) => {
         this.handleClick(event.x, event.y);
+      })
+      .onTouch((event: TouchEvent) => {
+        this.handleTouch(event);
       })
   }
 }

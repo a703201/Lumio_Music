@@ -188,6 +188,67 @@ struct Playlists {
   }
 
   @Builder
+  buildPlaylistMenu(playlist: Playlist) {
+    Column() {
+      Row() {
+        Image($r('app.media.ic_play_all'))
+          .width(18)
+          .fillColor(this.getThemeColors().primaryText)
+          .margin({ right: 12 })
+        Text('播放')
+          .fontSize(14)
+          .fontColor(this.getThemeColors().primaryText)
+      }
+      .width('100%')
+      .height(44)
+      .padding({ left: 16, right: 16 })
+      .onClick(() => {
+        this.playPlaylist(playlist);
+      })
+
+      Divider().color(this.getThemeColors().separator).strokeWidth(0.5)
+
+      Row() {
+        Image($r('app.media.ic_music_list'))
+          .width(18)
+          .fillColor(this.getThemeColors().primaryText)
+          .margin({ right: 12 })
+        Text('重命名')
+          .fontSize(14)
+          .fontColor(this.getThemeColors().primaryText)
+      }
+      .width('100%')
+      .height(44)
+      .padding({ left: 16, right: 16 })
+      .onClick(() => {
+        this.openRenameDialog(playlist);
+      })
+
+      Divider().color(this.getThemeColors().separator).strokeWidth(0.5)
+
+      Row() {
+        Image($r('app.media.ic_hm_trash'))
+          .width(18)
+          .fillColor('#FA2759')
+          .margin({ right: 12 })
+        Text('删除歌单')
+          .fontSize(14)
+          .fontColor('#FA2759')
+      }
+      .width('100%')
+      .height(44)
+      .padding({ left: 16, right: 16 })
+      .onClick(() => {
+        this.confirmDelete(playlist);
+      })
+    }
+    .width(160)
+    .backgroundColor(this.getThemeColors().bg)
+    .borderRadius(12)
+    .shadow({ radius: 8, color: 'rgba(0, 0, 0, 0.1)', offsetX: 0, offsetY: 2 })
+  }
+
+  @Builder
   nameDialogBuilder() {
     PlaylistNameDialog({
       controller: this.nameDialogController,
@@ -242,25 +303,6 @@ struct Playlists {
         .onClick(() => {
           this.playPlaylist(playlist);
         })
-
-      Image($r('app.media.ic_hm_more'))
-        .width(18)
-        .height(18)
-        .fillColor(this.getThemeColors().secondaryText)
-        .bindMenu([
-          {
-            value: '重命名',
-            action: () => {
-              this.openRenameDialog(playlist);
-            }
-          },
-          {
-            value: '删除歌单',
-            action: () => {
-              this.confirmDelete(playlist);
-            }
-          }
-        ])
     }
     .width('100%')
     .height(76)
@@ -274,6 +316,7 @@ struct Playlists {
     .onClick(() => {
       this.pathStack.pushPathByName('PlaylistDetail', playlist.id);
     })
+    .bindContextMenu(this.buildPlaylistMenu(playlist), ResponseType.LongPress)
     .onTouch((event: TouchEvent) => {
       if (event.type === TouchType.Down) {
         const scales: number[] = [...this.itemScales];

@@ -126,13 +126,12 @@ struct Layout {
   private playerButton() {
     Stack() {
       if (this.songList.length > 0) {
-        Image(this.songList[this.selectIndex].getLabel())
+        // 一镜到底共享元素：使用稳定的 Resource 封面，避免 PixelMap 尺寸异步变化导致过渡失败
+        Image(this.songList[this.selectIndex].label ?? $r('app.media.ic_default_cover'))
           .width(48)
           .height(48)
           .borderRadius(14)
           .clip(true)
-          .rotate({ angle: this.isPlaying ? this.coverRotation : 0 })
-          .animation({ duration: 40, curve: Curve.Linear })
           .shadow({
             radius: 6,
             color: 'rgba(0, 0, 0, 0.20)',
@@ -140,6 +139,21 @@ struct Layout {
             offsetY: 2
           })
           .geometryTransition(PLAYER_COVER_ID, { follow: true })
+
+        // 暂停时在封面中央显示暂停图标
+        if (!this.isPlaying) {
+          Column()
+            .width(48)
+            .height(48)
+            .borderRadius(14)
+            .backgroundColor('rgba(0, 0, 0, 0.35)')
+            .justifyContent(FlexAlign.Center)
+            .hitTestBehavior(HitTestMode.None)
+          SymbolGlyph($r('sys.symbol.pause_fill'))
+            .fontSize(22)
+            .fontColor(['#FFFFFF'])
+            .hitTestBehavior(HitTestMode.None)
+        }
       } else {
         Image($r('app.media.ic_hm_play'))
           .width(24)
@@ -147,10 +161,10 @@ struct Layout {
           .fillColor('#FFFFFF')
       }
     }
-          .width(56)
-          .height(56)
-          .backgroundColor(ACCENT)
-          .borderRadius(16)
+    .width(56)
+    .height(56)
+    .backgroundColor(ACCENT)
+    .borderRadius(16)
     .shadow({
       radius: 12,
       color: 'rgba(250, 39, 89, 0.35)',

@@ -87,7 +87,22 @@ export struct PlayerInfoComponent {
 
   build() {
     Stack() {
-      // 动态渐变背景：从封面取色生成柔和渐变，再整体模糊，替代"封面放大+模糊"
+      // 背景层：封面放大 + 高斯模糊（参考 example 的稳态实现），保证转场/首帧稳定
+      Image(this.imageLabel)
+        .size(this.currentBreakpoint === BreakpointConstants.BREAKPOINT_LG ?
+          {
+            width: PlayerConstants.BACK_IMAGE
+          } :
+          {
+            height: PlayerConstants.BACK_IMAGE
+          })
+        .aspectRatio(1)
+        .objectFit(ImageFit.Cover)
+        .opacity(0.5)
+        .blur(PlayerConstants.IMAGE_BLUR)
+        .hitTestBehavior(HitTestMode.None)
+
+      // 动态渐变叠层：从封面取色生成柔和渐变，进一步提升氛围感
       Column()
         .width(StyleConstants.FULL_WIDTH)
         .height(StyleConstants.FULL_HEIGHT)
@@ -95,17 +110,14 @@ export struct PlayerInfoComponent {
           angle: 135,
           colors: this.imageGradientColors
         })
-        .blur(PlayerConstants.IMAGE_BLUR)
+        .opacity(0.65)
         .hitTestBehavior(HitTestMode.None)
-
-      // 柔和动态流光/光晕层
-      BackgroundGlow({ gradientColors: this.imageGradientColors })
 
       // 自适应明暗蒙层：保证文字可读
       Column()
         .width(StyleConstants.FULL_WIDTH)
         .height(StyleConstants.FULL_HEIGHT)
-        .backgroundColor(this.lyricBgDark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.15)')
+        .backgroundColor(this.lyricBgDark ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.20)')
         .hitTestBehavior(HitTestMode.None)
 
       Row() {
@@ -255,7 +267,6 @@ export struct PlayerInfoComponent {
     }
     .height(StyleConstants.FULL_HEIGHT)
     .width(StyleConstants.FULL_WIDTH)
-    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
     .backgroundColor('transparent')
   }
 
@@ -334,44 +345,5 @@ export struct PlayerInfoComponent {
    */
   private isPixelMap(value: Resource | PixelMap): boolean {
     return typeof (value as PixelMap).getImageInfo === 'function';
-  }
-}
-
-/**
- * 背景柔和流光：基于当前渐变色的低透明度光晕缓慢移动/呼吸，
- * 不遮挡内容，替代原有歌词区黑色斜线。
- */
-@Component
-struct BackgroundGlow {
-  @Prop gradientColors: Array<[string, number]> = [['#ffffff', 0.0], ['#ffffff', 1.0]];
-  @State glowOffset: number = 0;
-  @State glowScale: number = 1.0;
-
-  aboutToAppear(): void {
-    // 缓慢循环：平移 + 轻微缩放，形成柔和光晕流动
-    animateTo({ duration: 10000, iterations: -1, curve: Curve.EaseInOut }, () => {
-      this.glowOffset = this.glowOffset <= 0 ? 1 : 0;
-      this.glowScale = this.glowScale <= 1.0 ? 1.15 : 1.0;
-    });
-  }
-
-  build() {
-    Column() {
-      Column()
-        .width('140%')
-        .height('140%')
-        .linearGradient({
-          angle: 45 + this.glowOffset * 90,
-          colors: this.gradientColors
-        })
-        .opacity(0.12)
-        .blur(60)
-        .scale({ x: this.glowScale, y: this.glowScale })
-        .translate({ x: this.glowOffset * -40, y: this.glowOffset * -40 })
-    }
-    .width(StyleConstants.FULL_WIDTH)
-    .height(StyleConstants.FULL_HEIGHT)
-    .clip(true)
-    .hitTestBehavior(HitTestMode.None)
   }
 }
