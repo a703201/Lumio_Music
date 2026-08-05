@@ -68,7 +68,16 @@ export default struct shiLrcView {
   @Prop @Watch('playLyrics') isPlay: boolean = false;
   @Prop @Watch('onTranslationToggled') showTranslation: boolean = true;
   @Prop @Watch('onBgChanged') backgroundIsDark: boolean = true;
-  private mNormalTextColor = '#99ffffff';
+  /**
+   * 歌词行点击回调：参数为命中行号。
+   * 注意：回调不作为响应式状态，故不用 @Prop 装饰（ArkTS V1 不支持函数型 @Prop）。
+   */
+  onLineClick?: (index: number) => void;
+  /**
+   * 每行歌词的点击热区（Canvas 坐标系）。
+   */
+  private lineRectangles: Rectangle[] = [];
+  private mNormalTextColor = '#80ffffff';
   private viewWidth: number = 360;
   private viewHeight: number = 500;
   private settings: RenderingContextSettings = new RenderingContextSettings(true);
@@ -97,19 +106,19 @@ export default struct shiLrcView {
   /**
    * Text size of the lyrics, in vp.
    */
-  private mNormalTextSize: number = 20;
+  private mNormalTextSize: number = 18;
   /**
-   * Spacing of each line of lyrics, in vp. This spacing plays the star animation or white dot disappearing effect.
+   * Spacing of each line of lyrics, in vp.
    */
-  private mDividerHeight = 24;
+  private mDividerHeight = 28;
   /**
    * 原文与翻译之间的额外间距（vp）。
    */
-  private mTranslateGap: number = 14;
+  private mTranslateGap: number = 10;
   /**
    * Size of the current lyrics, in vp.
    */
-  private mCurrentTextSize: number = 24;
+  private mCurrentTextSize: number = 22;
   /**
    * Lyrics font.
    */
@@ -125,7 +134,7 @@ export default struct shiLrcView {
   /**
    * 翻译文字字号（小于正文）。
    */
-  private mTranslateTextSize: number = 15;
+  private mTranslateTextSize: number = 14;
   /**
    * 翻译文字颜色：非当前行（暗）/ 当前行（亮）。
    */
@@ -194,8 +203,8 @@ export default struct shiLrcView {
     }
 
     this.animator = this.getUIContext().createAnimator({
-      duration: 400,
-      easing: 'linear',
+      duration: 350,
+      easing: 'ease-in-out',
       delay: 0,
       fill: 'forwards',
       direction: 'normal',
@@ -541,15 +550,27 @@ export default struct shiLrcView {
   /**
    * Draws each line of lyrics and returns the height of each line.
    * @param lyric
-   * @param isCurrent
+   * @param lineIndex
    * @returns
    */
-  private drawLyricLine(lyric: LrcEntry, isCurrent: boolean): number {
+  private drawLyricLine(lyric: LrcEntry, lineIndex: number): number {
     let lineHeight = 0;
-    if (isCurrent) {
+    const isCurrentLine: boolean = this.mCurrentLine === lineIndex;
+    const isPlayedLine: boolean = lineIndex < this.mCurrentLine;
+
+    // 记录本行点击热区（Canvas 坐标系）
+    const lineTop: number = this.lrcY;
+
+    // 非当前行：模糊弱化（低透明度）
+    if (isCurrentLine) {
+      this.context.globalAlpha = 1.0;
+      this.context.filter = 'none';
       this.context.font = this.fontWeight + ' ' + this.mCurrentTextSize + 'vp ' + this.fontFamily;
       this.context.fillStyle = this.mCurrentTextColor;
     } else {
+      // 已播放行比未播放行稍明显一点
+      this.context.globalAlpha = isPlayedLine ? 0.5 : 0.38;
+      this.context.filter = 'blur(1px)';
       this.context.font = this.fontWeight + ' ' + this.mNormalTextSize + 'vp ' + this.fontFamily;
       this.context.fillStyle = this.mNormalTextColor;
     }
@@ -557,15 +578,23 @@ export default struct shiLrcView {
     let textMetrics: TextMetrics = this.context.measureText(lyric.lineWords);
 
     if (textMetrics.width > this.lrcWidth) {
-      lineHeight = this.drawMultipleLine(lyric, textMetrics, isCurrent);
+      lineHeight = this.drawMultipleLine(lyric, textMetrics, isCurrentLine);
     } else {
-      lineHeight = this.drawSingleLine(lyric, textMetrics, isCurrent);
+      lineHeight = this.drawSingleLine(lyric, textMetrics, isCurrentLine);
     }
 
-    // 翻译：字号更小、颜色更暗，绘制在正文下方以区分原文
+    // 翻译：字号更小，跟随当前/非当前状态
     if (this.showTranslation && lyric.translation && lyric.translation.length > 0) {
+      if (isCurrentLine) {
+        this.context.globalAlpha = 0.85;
+        this.context.filter = 'none';
+        this.context.fillStyle = this.mTranslateColorCurrent;
+      } else {
+        this.context.globalAlpha = isPlayedLine ? 0.5 : 0.4;
+        this.context.filter = 'blur(1px)';
+        this.context.fillStyle = this.mTranslateColorNormal;
+      }
       this.context.font = this.fontWeight + ' ' + this.mTranslateTextSize + 'vp ' + this.fontFamily;
-      this.context.fillStyle = isCurrent ? this.mTranslateColorCurrent : this.mTranslateColorNormal;
       this.context.textBaseline = 'bottom';
       this.context.textAlign = 'start';
       let tMetrics = this.context.measureText(lyric.translation);
@@ -573,6 +602,15 @@ export default struct shiLrcView {
       this.drawWrappedTranslation(lyric.translation);
       lineHeight += this.mDividerHeight * 0.5 + this.mTranslateGap + tMetrics.height;
     }
+
+    // 重置滤镜与透明度
+    this.context.filter = 'none';
+    this.context.globalAlpha = 1.0;
+
+    // 保存热区（左右扩展至 view 边界，便于点击）
+    const lineBottom: number = this.lrcY;
+    this.lineRectangles[lineIndex] =
+      new Rectangle(0, lineTop, this.viewWidth, lineBottom + this.mDividerHeight * 0.5);
     return lineHeight;
   }
 
@@ -620,6 +658,7 @@ export default struct shiLrcView {
     Logger.info(TAG, JSON.stringify(change))
     this.context.clearRect(0, 0, this.viewWidth, this.lrcY + this.viewHeight);
     this.reset();
+    this.lineRectangles = [];
 
     this.context.globalCompositeOperation = 'source-over';
     this.lrcY = this.initFirstLineY + desOffsetY;
@@ -628,28 +667,17 @@ export default struct shiLrcView {
     if (this.mLrcEntryList && this.mLrcEntryList.length > 0) {
       let index = 0;
       for (let mLrcEntryListElement of this.mLrcEntryList) {
-        let isCurrentLine = this.mCurrentLine === index ? true : false;
-        this.drawLyricLine(mLrcEntryListElement, isCurrentLine);
+        this.drawLyricLine(mLrcEntryListElement, index);
         index++;
       }
     } else {
-      this.drawLyricLine(EMPTY_LYRIC, true);
+      this.drawLyricLine(EMPTY_LYRIC, 0);
     }
 
     this.updateLyricArea(this.paddingLeft, this.paddingTop, this.viewWidth - this.paddingRight,
       this.viewHeight - this.paddingBottom);
 
-    if (this.mLrcEntryList && this.mLrcEntryList.length > 0) {
-      this.context.globalCompositeOperation = 'source-in';
-      let grad = this.context.createLinearGradient(0, 0, 0, this.viewHeight);
-      grad.addColorStop(0.0, '#00ffffff');
-      grad.addColorStop(0.15, '#ffffffff');
-      grad.addColorStop(0.3, '#ffffffff');
-      grad.addColorStop(0.7, '#4dffffff');
-      grad.addColorStop(1.0, '#00ffffff');
-      this.context.fillStyle = grad;
-      this.context.fillRect(0, 0, this.viewWidth, this.viewHeight);
-    }
+    // 移除旧的 source-in 垂直渐变，改为每行独立的清晰/模糊/透明度层次。
   }
 
   /**
@@ -762,14 +790,14 @@ export default struct shiLrcView {
    */
   private applyColorScheme(): void {
     if (this.backgroundIsDark) {
-      // 深色背景：浅色文字（默认方案）
-      this.mNormalTextColor = '#99ffffff';
+      // 深色背景：当前行清晰高亮，非当前行（未播放/已播放）模糊弱化
+      this.mNormalTextColor = '#80ffffff';
       this.mCurrentTextColor = '#FFFFFF';
       this.mTranslateColorNormal = '#80ffffff';
       this.mTranslateColorCurrent = '#d6ffffff';
     } else {
       // 浅色背景：深色文字
-      this.mNormalTextColor = '#99000000';
+      this.mNormalTextColor = '#4d000000';
       this.mCurrentTextColor = '#000000';
       this.mTranslateColorNormal = '#66000000';
       this.mTranslateColorCurrent = '#99000000';
@@ -795,6 +823,23 @@ export default struct shiLrcView {
     this.applyColorScheme();
   }
 
+  /**
+   * 处理歌词点击：坐标 → 行号 → 回调。
+   */
+  private handleClick(localX: number, localY: number): void {
+    if (!this.onLineClick) {
+      return;
+    }
+    // 点击坐标是视图坐标，需加上滚动偏移得到 Canvas 坐标
+    const canvasY: number = localY + this.curCanvasOffsetY;
+    for (let i = 0; i < this.lineRectangles.length; i++) {
+      if (this.lineRectangles[i].isIn(localX, canvasY)) {
+        this.onLineClick(i);
+        break;
+      }
+    }
+  }
+
   build() {
     Canvas(this.context)
       .onAreaChange((oldArea: Area, newArea: Area) => {
@@ -812,6 +857,9 @@ export default struct shiLrcView {
           let offset = this.getOffset(line);
           this.drawContent(-offset, true);
         }
+      })
+      .onClick((event: ClickEvent) => {
+        this.handleClick(event.x, event.y);
       })
   }
 }

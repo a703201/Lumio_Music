@@ -36,6 +36,8 @@ export struct PlayerInfoComponent {
   @StorageProp('selectIndex') @Watch('getImageColor') selectIndex: number = 0;
   @StorageProp('coverRefreshToken') @Watch('getImageColor') coverRefreshToken: number = 0;
   @StorageLink('imageColor') imageColor: string = 'rgba(0, 0, 2, 1.00)';
+  @State imageGradientColors: Array<[string, number]> = [['#000002', 0.0], ['#0a0a14', 0.5], ['#000002', 1.0]];
+  @StorageProp('lyricBgDark') lyricBgDark: boolean = true;
   @StorageLink('topHeight') topHeight: number = 0;
   @StorageLink('bottomHeight') bottomHeight: number = 0;
   @State imageLabel: PixelMap | Resource = this.songList[this.selectIndex].getLabel();
@@ -85,27 +87,25 @@ export struct PlayerInfoComponent {
 
   build() {
     Stack() {
-      Image(this.imageLabel)
-        .size(this.currentBreakpoint === BreakpointConstants.BREAKPOINT_LG ?
-          {
-            width: PlayerConstants.BACK_IMAGE
-          } :
-          {
-            height: PlayerConstants.BACK_IMAGE
-          })
-        .aspectRatio(1)
-        .objectFit(ImageFit.Cover)
-        .opacity(0.5)
-        .blur(PlayerConstants.IMAGE_BLUR)
-
-      // 暗色渐变蒙层：保证浅色封面背景下白字依然清晰可读（修复"偏白背景看不清"）
+      // 动态渐变背景：从封面取色生成柔和渐变，再整体模糊，替代"封面放大+模糊"
       Column()
         .width(StyleConstants.FULL_WIDTH)
         .height(StyleConstants.FULL_HEIGHT)
         .linearGradient({
-          angle: 90,
-          colors: [['#00000000', 0.0], ['#00000099', 0.5], ['#000000EE', 1.0]]
+          angle: 135,
+          colors: this.imageGradientColors
         })
+        .blur(PlayerConstants.IMAGE_BLUR)
+        .hitTestBehavior(HitTestMode.None)
+
+      // 柔和动态流光/光晕层
+      BackgroundGlow({ gradientColors: this.imageGradientColors })
+
+      // 自适应明暗蒙层：保证文字可读
+      Column()
+        .width(StyleConstants.FULL_WIDTH)
+        .height(StyleConstants.FULL_HEIGHT)
+        .backgroundColor(this.lyricBgDark ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.15)')
         .hitTestBehavior(HitTestMode.None)
 
       Row() {
@@ -255,7 +255,7 @@ export struct PlayerInfoComponent {
     }
     .height(StyleConstants.FULL_HEIGHT)
     .width(StyleConstants.FULL_WIDTH)
-    .backgroundColor(this.imageColor)
+    .backgroundColor('transparent')
   }
 
   /**
@@ -297,26 +297,90 @@ export struct PlayerInfoComponent {
           let color = colorPicker.getLargestProportionColor();
           let colorArr = ColorConversion.dealColor(color.red, color.green, color.blue);
           this.imageColor = `rgba(${colorArr[0]}, ${colorArr[1]}, ${colorArr[2]}, 1)`;
+          this.imageGradientColors = this.buildGradientColors(colorArr[0], colorArr[1], colorArr[2]);
           const lum = (0.2126 * colorArr[0] + 0.7152 * colorArr[1] + 0.0722 * colorArr[2]) / 255;
           const bgDark = lum <= 0.5;
-          // 播放页叠加了暗色蒙层，歌词区域恒按深色背景渲染（浅色字），保证始终可读
-          AppStorage.setOrCreate('lyricBgDark', true);
+          // 根据背景实际明暗决定歌词配色（深色背景浅色字 / 浅色背景深色字）
+          AppStorage.setOrCreate('lyricBgDark', bgDark);
         }
       })
-      let headFilter = effectKit.createEffect(pixelMap);
-      if (headFilter !== null) {
-        headFilter.blur(PlayerConstants.IMAGE_BLUR);
-        headFilter.getEffectPixelMap().then((value) => {
-          this.imageLabel = value;
-        })
-      }
+      // 不再需要封面放大模糊，背景由提取色渐变+模糊生成
     })
       .catch((error: BusinessError) => {
         Logger.error(`${error.code} + ${error.message}`);
       })
   }
 
+  /**
+   * 从主色生成一组柔和渐变 stop（深色/浅色模式自适应）。
+   */
+  private buildGradientColors(r: number, g: number, b: number): Array<[string, number]> {
+    const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    const isDark = lum <= 0.5;
+    // 主色适度降饱和/提亮度，避免太艳
+    const main = this.adjustColor(r, g, b, isDark ? 0.75 : 1.15, isDark ? 1.1 : 0.95);
+    // 辅助色：向互补方向偏移一点色相并提亮/压暗
+    const second = this.adjustColor(r, g, b, isDark ? 0.55 : 1.35, isDark ? 1.25 : 0.85);
+    const third = this.adjustColor(r, g, b, isDark ? 0.35 : 1.15, isDark ? 1.35 : 0.75);
+    return [
+      [main, 0.0],
+      [second, 0.45],
+      [third, 0.8],
+      [main, 1.0]
+    ];
+  }
+
+  /**
+   * 调整 RGB：saturation 为饱和度倍数，lightness 为亮度倍数（简单线性变换）。
+   */
+  private adjustColor(r: number, g: number, b: number, saturation: number, lightness: number): string {
+    const avg = (r + g + b) / 3;
+    let nr = Math.min(255, Math.max(0, Math.round(avg + (r - avg) * saturation * lightness)));
+    let ng = Math.min(255, Math.max(0, Math.round(avg + (g - avg) * saturation * lightness)));
+    let nb = Math.min(255, Math.max(0, Math.round(avg + (b - avg) * saturation * lightness)));
+    return `rgba(${nr}, ${ng}, ${nb}, 1)`;
+  }
+
   private isPixelMap(value: Resource | PixelMap): boolean {
     return typeof (value as PixelMap).getImageInfo === 'function';
+  }
+}
+
+/**
+ * 背景柔和流光：基于当前渐变色的低透明度光晕缓慢移动/呼吸，
+ * 不遮挡内容，替代原有歌词区黑色斜线。
+ */
+@Component
+struct BackgroundGlow {
+  @Prop gradientColors: Array<[string, number]> = [['#ffffff', 0.0], ['#ffffff', 1.0]];
+  @State glowOffset: number = 0;
+  @State glowScale: number = 1.0;
+
+  aboutToAppear(): void {
+    // 缓慢循环：平移 + 轻微缩放，形成柔和光晕流动
+    animateTo({ duration: 10000, iterations: -1, curve: Curve.EaseInOut }, () => {
+      this.glowOffset = this.glowOffset <= 0 ? 1 : 0;
+      this.glowScale = this.glowScale <= 1.0 ? 1.15 : 1.0;
+    });
+  }
+
+  build() {
+    Column() {
+      Column()
+        .width('140%')
+        .height('140%')
+        .linearGradient({
+          angle: 45 + this.glowOffset * 90,
+          colors: this.gradientColors
+        })
+        .opacity(0.12)
+        .blur(60)
+        .scale({ x: this.glowScale, y: this.glowScale })
+        .translate({ x: this.glowOffset * -40, y: this.glowOffset * -40 })
+    }
+    .width(StyleConstants.FULL_WIDTH)
+    .height(StyleConstants.FULL_HEIGHT)
+    .clip(true)
+    .hitTestBehavior(HitTestMode.None)
   }
 }
