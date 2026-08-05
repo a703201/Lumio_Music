@@ -4,6 +4,7 @@ import { Mine } from './Mine';
 import { MusicStore } from '../services/MusicStore';
 import { SongItem } from '../models/music';
 import { common } from '@kit.AbilityKit';
+import { image } from '@kit.ImageKit';
 import { PreferencesUtil } from '../utils/PreferencesUtil';
 
 const ACCENT: string = '#FA2759';
@@ -23,8 +24,8 @@ export function LayoutBuilder() {
 struct Layout {
   @Consume('navPathStack') pathStack: NavPathStack;
   @StorageLink('isPlay') isPlaying: boolean = false;
-  @StorageLink('songList') songList: SongItem[] = [];
-  @StorageLink('selectIndex') selectIndex: number = 0;
+  @StorageLink('songList') @Watch('refreshPlayerCover') songList: SongItem[] = [];
+  @StorageProp('selectIndex') @Watch('refreshPlayerCover') selectIndex: number = 0;
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('bottomHeight') bottomHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
@@ -39,6 +40,9 @@ struct Layout {
   private rotateTimer: number = -1;
   @State currentIndex: number = 0;
   @State coverRotation: number = 0;
+  // 底部迷你播放条的封面：缓存当前播放歌曲的真实封面（取自 CoverCache；未抽取到时回退默认图），
+  // 通过 refreshPlayerCover() 在切歌 / 封面抽取完成（coverRefreshToken）时刷新。
+  @State playerCover: Resource | image.PixelMap = $r('app.media.ic_default_cover');
 
   private tabs: TabItem[] = [
     { title: '音乐库', icon: $r('sys.symbol.music_square_stack_fill') },
@@ -53,6 +57,7 @@ struct Layout {
       }
     }, 40);
     this.maybeShowPermissionGuide();
+    this.refreshPlayerCover();
   }
 
   // 首次启动展示权限用途说明，仅弹一次（持久化标记）
@@ -91,7 +96,20 @@ struct Layout {
   }
 
   private onCoverRefreshed(): void {
-    // coverRefreshToken 变化即触发本组件重建，迷你播放条会通过 getLabel() 重新读取 CoverCache 中的封面。
+    // coverRefreshToken 变化（导入/重启后 CoverCache 批量抽取完成）即重读当前播放歌曲的封面。
+    this.refreshPlayerCover();
+  }
+
+  /**
+   * 刷新迷你播放条封面：始终取当前播放歌曲的真实封面（CoverCache 命中时为 PixelMap，否则回退默认图）。
+   * 在切歌（selectIndex 变化）、队列变化（songList 变化）、封面抽取完成（coverRefreshToken）时调用。
+   */
+  private refreshPlayerCover(): void {
+    if (this.songList.length === 0 || !this.songList[this.selectIndex]) {
+      this.playerCover = $r('app.media.ic_default_cover');
+      return;
+    }
+    this.playerCover = this.songList[this.selectIndex].getLabel();
   }
 
   private openPlayer(): void {
@@ -126,8 +144,8 @@ struct Layout {
   private playerButton() {
     Stack() {
       if (this.songList.length > 0) {
-        // 一镜到底共享元素：使用稳定的 Resource 封面，避免 PixelMap 尺寸异步变化导致过渡失败
-        Image(this.songList[this.selectIndex].label ?? $r('app.media.ic_default_cover'))
+        // 一镜到底共享元素：与播放页同用 getLabel() 取到的真实封面，两端内容一致、过渡更稳
+        Image(this.playerCover)
           .width(48)
           .height(48)
           .borderRadius(14)
