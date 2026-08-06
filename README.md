@@ -11,9 +11,11 @@
 
 ## 演示
 
-本应用为 HarmonyOS 移动端原生应用，无法通过 Web 链接在线访问。请通过以下方式查看演示：
+本应用为 HarmonyOS 移动端原生应用，无法通过 Web 链接在线访问。以下是真机演示视频：
 
-🎬 **[真机演示视频（点击下载）](./Video/Demo.mp4)**（~50MB）
+<video src="https://raw.githubusercontent.com/a703201/Lumio_Music/main/Video/Demo.mp4" controls width="100%" poster="https://github.com/user-attachments/assets/bec472ea-0320-4c85-85a5-1c898d9d9aee"></video>
+
+> 💡 如果视频无法在线播放，可 [点击此处下载](./Video/Demo.mp4) 后本地观看（~50MB）。
 
 演示内容包括：
 - 音乐库导入本地音频（系统文件选择器）
@@ -29,7 +31,7 @@
 **本地体验**：具备 HarmonyOS 6.1.1 DevEco Studio 环境的开发者，可直接克隆本仓库并运行 `bash build_hap.sh` 构建签名 HAP。
 
 ```bash
-git clone https://github.com/<your-username>/Lumio_Music.git
+git clone https://github.com/a703201/Lumio_Music.git
 cd Lumio_Music
 bash build_hap.sh
 # 产物：entry/build/default/outputs/default/entry-default-signed.hap
