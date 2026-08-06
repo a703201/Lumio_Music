@@ -1,44 +1,95 @@
-# Lumio Music — 六项体验修复交付概览
+# Lumio Music — 项目交付概览
 
-> HarmonyOS 6.1.1 / API 24，ArkTS/ArkUI。本会话由「鸿蒙全流程专家团」编排：`code-developer` 实现 → `code-reviewer` 静态合规审查 → 主理人复核并落地两处优化。沙箱禁 hvigor，**未在本地构建**，请在 DevEco 执行 `hvigor assembleHap` 验收。
+> HarmonyOS 6.1.1 / API 24，ArkTS + ArkUI + C++ NAPI。
+> 版本 `2.1.0`（`AppScope/app.json5`），bundleName `com.Lumio.music`。
+> 许可证 Apache-2.0，Copyright 2026 何宇翔。
 
-## 1. 歌词只显示两个样例歌曲（Issue 1）
-- **根因**：`EmbeddedLyricReader.parseMp4DataAtom` 仅 `decodeUtf8`，UTF‑16 编码的 `©lyr` 被解成乱码（无 `[mm:ss]` 时间戳）→ `parseLrcLyric` 返回空。
-- **修复**：
-  - 新增 `detectAndDecode()`：依次处理 UTF‑16 LE/BE（含 BOM）、UTF‑8（含 BOM），无 BOM 但奇数位 `0x00` 占比 >0.3 推断为 UTF‑16 LE，其余按 UTF‑8。
-  - `parseMp4DataAtom` 两处解码改用 `detectAndDecode`。
-  - `parseMp4` 增加裸 `lyr` atom 兜底（并收紧末端偏移，避免 4 字节尾噪）。
-  - `LyricsComponent.getLrcEntryList` 增加诊断日志（`embeddedLen` / `finalLyricCount`），便于确认修复效果。
+## 1. 项目定位
 
-## 2. “词”图标作为翻译开关（Issue 4）
-- `LyricsComponent`：`@State showTranslation`，图标 `onClick` 切换 + 关闭时 `.opacity(0.4)`，传入两个 `LrcView`。
-- `LrcView`：`@Prop showTranslation @Watch('onTranslationToggled')`，关闭时不绘制翻译并收起其间距（`getLineHeight`/`getOffset` 同步门控）。
+Lumio Music 是一款运行在 HarmonyOS 平台的**纯本地**音乐播放器，不依赖云端曲库，所有歌曲由用户通过系统文件选择器导入到应用沙箱。主打「简洁流畅的本地听歌体验」，深度接入华为 **HDS 设计系统**与沉浸光感，播放器进出采用「一镜到底」共享元素动画。
 
-## 3. 原歌词与翻译间隔加大（Issue 3）
-- `LrcView` 新增 `mTranslateGap = 14`vp，`drawLyricLine` 与 `getLineHeight` 翻译块均加入该间隔，绘制与滚动偏移一致。
+## 2. 核心功能（FR-01 ~ FR-34）
 
-## 4. 歌词颜色随背景自适应（Issue 2）
-- `PlayerInfoComponent.getImageColor()` 计算封面主色相对亮度，`AppStorage.setOrCreate('lyricBgDark', lum<=0.5)`。
-- `LyricsComponent` 增加 `@StorageProp('lyricBgDark')` 并传入 `LrcView`。
-- `LrcView`：`@Prop backgroundIsDark @Watch('onBgChanged')` + `applyColorScheme()`，深底用浅字（原默认）、浅底用深字，渐变随之适配。
+| 领域 | 功能 | 状态 |
+|------|------|------|
+| 音乐库 | 导入（DocumentViewPicker）、列表/搜索、空状态引导 | ✅ |
+| 播放 | 播放控制、迷你播放器+一镜到底、播放器页、歌词（含翻译/明暗自适应/手动滑动）、封面抽取与缓存 | ✅ |
+| 歌单 | 自建歌单（建/删/改名/加歌/移出/播放全部/拖拽排序） | ✅ |
+| 歌曲操作 | 长按选项栏（替代右侧「更多」按钮）、详情半模态面板（含年代）、添加到歌单半模态面板 | ✅ |
+| 系统集成 | 锁屏/通知中心媒体控制、投播（Cast）、桌面播控卡片、后台持续播放 | ✅ |
+| 设计 | HDS 沉浸光感、智感握姿底栏自适应、主题（系统/浅/深） | ✅ |
+| 元数据 | C++ NAPI 原生解析（FLAC/MP3/MP4）+ MediaKit 双路、年代全链路解析 | ✅ |
+| 设置 | 设置主页+子页、清空历史、版本信息、隐私政策、开发者跳转 | ✅ |
+| 基础设施 | 响应式封面组件（CoverImageView）、IDataSource 懒加载、数据备份恢复 | ✅ |
+| 开发辅助 | Python 验证脚本（C++/歌词解析器离线验证） | ✅ |
 
-## 5. 播放页背景强高斯模糊（Issue 5）
-- `PlayerConstants.IMAGE_BLUR` 15 → 60。
-- `PlayerInfoComponent` 背景 `Image` 在 `.opacity(0.5)` 后追加 `.blur(IMAGE_BLUR)`（对预模糊 PixelMap 与 Resource 兜底均生效）。
+## 3. 技术架构
 
-## 6. 导入/重启后封面不刷新（Issue 6）
-- **根因**：`getMark()/getLabel()` 读非响应式 `CoverCache` 单例，仅 `PlayerInfoComponent` 监听 `coverRefreshToken`。
-- **修复**：`LocalLibrary`/`Favorites`/`PlayHistory`/`Find`/`ManageSongs`/`Layout` 均增加 `@StorageProp('coverRefreshToken') @Watch`，handler 重新赋值 `@State` 歌曲数组触发重绘；不改封面抽取管线。`LocalLibrary` 的 handler 额外保留当前搜索过滤与 `itemScales`。
+```
+┌──────────────────────────────────────────────────────────────┐
+│                      ArkTS / ArkUI 前端                       │
+│  HdsNavigation + HdsTabs  │  Navigation + NavPathStack 路由  │
+│  11 条 NavDestination 路由（route_map.json）                 │
+├──────────────────────────────────────────────────────────────┤
+│  业务层        │ LocalLibrary / Mine / PlayerPage / Settings  │
+│                │ SettingsCategory / About / PrivacyPolicy    │
+│                │ Favorites / Playlists / PlaylistDetail       │
+│                │ PlayHistory / ManageSongs                    │
+│  组件层        │ PlayerInfo / Lyrics / LrcView / CoverImageView│
+│                │ ControlArea / TopArea / SongDetailSheet       │
+│                │ AddToPlaylistSheet / MusicInfo               │
+│  数据层        │ MusicStore（单例）│ SongDataSource            │
+│                │ SongItemBuilder │ SettingsStore              │
+│  工具层        │ AudioRendererController │ AVSessionController │
+│                │ AudioMeta（MediaKit+NAPI 双路）│ CoverCache   │
+│                │ EmbeddedLyricReader │ ThemeManager │ Logger   │
+├──────────────────────────────────────────────────────────────┤
+│              C++ NAPI 原生层（libnative_module.so）           │
+│  audio_metadata.cpp: FLAC/MP3/MP4 真实元数据解析（兜底路径）  │
+│  napi_init.cpp: NAPI 模块注册                                │
+└──────────────────────────────────────────────────────────────┘
+```
 
-## 合规审查结论
-- `code-reviewer` 确认：**无阻塞性问题**。ArkTS 红线（build/@Builder 首语句非 const/let、无普通 `get` 访问器、统一 `Logger`、无 `instanceof PixelMap`、无对象字面量类型注解）均符合；装饰器与 `@Watch` 处理方法正确；裸 `lyr` 对齐无越界。
-- 已消化的两条优化：裸 `lyr` 末端偏移收紧、`LocalLibrary` 刷新时保留搜索过滤。
+## 4. 权限（最小化，3 项）
 
-## 验收步骤（DevEco）
-1. `hvigor assembleHap` 构建通过（本机会话无法代验）。
-2. 导入若干 UTF‑16 内嵌歌词的 m4a/mp4，确认歌词显示（看 Log `embeddedLen>0`、`finalLyricCount>0`）。
-3. 歌词页右下角“词”图标点击 → 翻译显隐切换。
-4. 切换深浅封面歌曲，确认歌词文字明暗自适应、可读。
-5. 观察原文/翻译之间间距明显。
-6. 播放页背景明显高斯模糊。
-7. 导入歌曲后立即看到封面；重启应用后各列表页封面正常显示（不再回退默认）。
+| 权限 | 用途 | 时机 |
+|------|------|------|
+| `KEEP_BACKGROUND_RUNNING` | 后台持续播放 | inuse |
+| `INTERNET` | 关于页网页跳转 / 投播设备网络发现 | always |
+| `GET_NETWORK_INFO` | 查询网络状态 | always |
+
+> 无 `READ_MEDIA`/`WRITE_MEDIA`/`DETECT_GESTURE` — 歌曲经 DocumentViewPicker 选择后拷入沙箱，不访问系统媒体库。
+
+## 5. 构建与验证状态
+
+| 项 | 状态 |
+|------|------|
+| `bash build_hap.sh` 产出签名 HAP | ✅ BUILD SUCCESSFUL |
+| `harmonyos-reviewer` 审查 | ✅ 0 ERROR / 0 WARNING |
+| C++ 解析器真实音频验证（g++ harness） | ✅ 3 个真实文件 + 5 个合成样本 A/B 对照 |
+| C++ 内存安全（P0×6 + P1 修复） | ✅ 全部修复（size_t + uint64 边界校验） |
+| ArkTS 红线（build 首语句/get 访问器等） | ✅ 零复现 |
+| 权限与 README 一致性 | ✅ 3 项逐项核对一致 |
+
+产物路径：`entry/build/default/outputs/default/entry-default-signed.hap`
+
+## 6. 文档体系
+
+| 文档 | 路径 | 说明 |
+|------|------|------|
+| README | `README.md` | 用户/开发者入口文档 |
+| CHANGELOG | `CHANGELOG.md` | 版本演进日志 |
+| PRD | `docs/PRD_Lumio_Music.md` | 产品需求文档（FR-01~FR-34） |
+| 模块拆解 | `docs/功能模块拆解表.md` | 模块→文件映射（A~W 共 23 个一级模块） |
+| 审查报告 1 | `docs/代码审查报告_PRD落地.md` | PRD 落地批次（P0×6/P1×10/P2×13） |
+| 审查报告 2 | `docs/代码审查报告_第二轮增强.md` | 第二轮增强（P0×3/P1×7/P2×11） |
+| 实施计划 1 | `docs/实施计划_PRD落地.md` | W1~W5 + 第三轮 F1~F7 |
+| 实施计划 2 | `docs/实施计划_第二轮增强.md` | A~E + 第三轮交互打磨 |
+| C++ 验证 | `docs/C++解析器真实音频验证.md` | 真实音频 + 合成样本验证报告 |
+
+## 7. 已知限制
+
+- **智感握姿主动感知**：6.1.1 SDK 无 `@kit.MultimodalAwarenessKit`，仅底栏布局自适应生效。
+- **空间音频 / 多频段 EQ**：`setSpatializationEnabled` 需系统权限，多频段 EQ 无公开 API，设置页仅只读展示。
+- **歌单云同步**：无账号体系，仅支持本地歌单（含手动拖拽排序）。
+- **音频格式真机矩阵**：C++ 解析器已做「失败回退文件名」兜底不崩，冷门编码分支需真机复验。

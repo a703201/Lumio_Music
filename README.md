@@ -61,7 +61,9 @@
 
 ### 设置
 - **清空播放历史**：一键清除最近播放记录。
+- **设置子页**（`SettingsCategory`）：点击设置项进入分类子页，支持自动下一首开关、播放模式选择、主题切换（系统/浅色/深色）、锁屏媒体控制开关。
 - **版本信息**：跳转关于页查看版本与功能特色。
+- **隐私政策**：查看应用隐私政策。
 - **开发者**：点击跳转开发者简历网页 `https://www.a703201sworld.top/resume/`（开发者署名：何宇翔）。
 
 ### 沉浸与握姿适配
@@ -82,6 +84,7 @@
 | 开发工具 | DevEco Studio |
 | 目标平台 | HarmonyOS **6.1.1 (API 24)**，兼容 6.1.0(23) |
 | 目标设备 | phone |
+| bundleName | `com.Lumio.music`（见 `AppScope/app.json5`） |
 
 ---
 
@@ -90,45 +93,114 @@
 ### 导航模型
 - `Index.ets`：`HdsNavigation` 根容器，承载 `NavPathStack`，首屏 push `Layout`。
 - `Layout.ets`：`HdsTabs` 主布局，内含两个 Tab 子组件 —— **音乐库**（`LocalLibrary`）、**我的**（`Mine`），以及底部的迷你播放器（一镜到底共享元素）。
-- **推送页（NavDestination）**：`PlayerPage`、`Settings`、`About`、`PrivacyPolicy`、`Favorites`、`PlayHistory`、`ManageSongs`、`Playlists`、`PlaylistDetail`，通过 `route_map.json` 注册并以 `pushPathByName` 入栈（`PlaylistDetail` 以歌单 id 作为路由参数，页面内按 id 实时取数，不缓存对象副本）。
+- **推送页（NavDestination）**：`PlayerPage`、`Settings`、`SettingsCategory`、`About`、`PrivacyPolicy`、`Favorites`、`PlayHistory`、`ManageSongs`、`Playlists`、`PlaylistDetail`，通过 `route_map.json` 注册并以 `pushPathByName` 入栈（`PlaylistDetail` 以歌单 id 作为路由参数，页面内按 id 实时取数，不缓存对象副本；`SettingsCategory` 以分类 id 作为路由参数，按 id 渲染对应设置子项）。
 - **Tab 子组件**（非独立页面）：`LocalLibrary`、`Mine` 直接作为 `HdsTabs` 的 `TabContent` 内容。
 
 ### 目录结构
 
 ```
 Lumio_Music/
-├── AppScope/                     # 应用级配置（包名、版本、图标）
+├── AppScope/                        # 应用级配置（包名、版本、图标）
+│   └── resources/base/element/
+│       └── string.json              # app_name = "Lumio Music"
 ├── entry/src/main/
 │   ├── ets/
 │   │   ├── entryability/
-│   │   │   └── EntryAbility.ets  # 应用入口 Ability
+│   │   │   └── EntryAbility.ets     # 应用入口 Ability（initStore、窗口沉浸、桌面卡片回控）
+│   │   ├── entrybackupability/
+│   │   │   └── EntryBackupAbility.ets # 数据备份恢复
+│   │   ├── formability/
+│   │   │   └── FormAbility.ets      # 桌面卡片能力
 │   │   ├── pages/
-│   │   │   ├── Index.ets         # 入口：HdsNavigation 根容器
-│   │   │   ├── Layout.ets        # 主布局：HdsTabs + 迷你播放器（一镜到底共享元素）
-│   │   │   ├── LocalLibrary.ets  # 音乐库 Tab（合并 Songs+Moment，含导入）
-│   │   │   ├── Mine.ets          # 我的 Tab（可滚动）
-│   │   │   ├── PlayerPage.ets    # 播放器页（一镜到底目标）
-│   │   │   ├── Settings.ets      # 设置：清空历史 / 版本 / 开发者
-│   │   │   ├── About.ets         # 关于
-│   │   │   ├── Favorites.ets     # 收藏列表
-│   │   │   ├── Playlists.ets     # 我的歌单（新建/重命名/删除/拖拽调序）
-│   │   │   ├── PlaylistDetail.ets# 歌单详情（播放全部/加歌/移出/拖拽排序）
-│   │   │   ├── ManageSongs.ets   # 曲库管理（移除歌曲）
-│   │   │   └── PlayHistory.ets   # 播放历史
+│   │   │   ├── Index.ets            # 入口：HdsNavigation 根容器
+│   │   │   ├── Layout.ets           # 主布局：HdsTabs + 迷你播放器（一镜到底共享元素）
+│   │   │   ├── LocalLibrary.ets     # 音乐库 Tab（合并 Songs+Moment，含导入）
+│   │   │   ├── Mine.ets             # 我的 Tab（可滚动，含统计面板/歌单/历史入口）
+│   │   │   ├── PlayerPage.ets       # 播放器页（一镜到底目标）
+│   │   │   ├── Settings.ets         # 设置：清空历史 / 版本 / 开发者
+│   │   │   ├── SettingsCategory.ets # 设置子页：自动下一首/播放模式/主题/锁屏开关
+│   │   │   ├── About.ets            # 关于（版本 + 功能特色）
+│   │   │   ├── PrivacyPolicy.ets    # 隐私政策
+│   │   │   ├── Favorites.ets        # 收藏列表
+│   │   │   ├── Playlists.ets        # 我的歌单（新建/重命名/删除/拖拽调序）
+│   │   │   ├── PlaylistDetail.ets   # 歌单详情（播放全部/加歌/移出/拖拽排序）
+│   │   │   ├── ManageSongs.ets      # 曲库管理（移除歌曲）
+│   │   │   └── PlayHistory.ets      # 播放历史
 │   │   ├── services/
-│   │   │   └── MusicStore.ets    # 全局状态与曲库数据（单例，含收藏/歌单/历史）
-│   │   ├── models/               # 数据模型（SongItem 等）
-│   │   ├── components/           # 通用组件
-│   │   │   ├── SongDetailSheet.ets     # 歌曲详情半模态面板（Medium，含年代）
-│   │   │   └── AddToPlaylistSheet.ets  # 添加到歌单半模态面板（含新建歌单）
-│   │   └── common/utils/         # 工具类（断点系统、颜色转换等）
+│   │   │   └── MusicStore.ets       # 全局状态与曲库数据（单例，含收藏/歌单/历史）
+│   │   ├── models/
+│   │   │   ├── music.ets            # SongItem 数据模型
+│   │   │   └── lyric.ets            # LyricLine 数据模型
+│   │   ├── songdatacontroller/
+│   │   │   ├── SongData.ets         # SongItem 定义
+│   │   │   ├── PlayerData.ets       # MusicPlayMode 枚举（ORDER/RANDOM/SINGLE_CYCLE）
+│   │   │   └── SongItemBuilder.ets  # 从 rawfile/沙箱构建 SongItem（fd 生命周期管理）
+│   │   ├── datasource/
+│   │   │   ├── SongDataSource.ets   # IDataSource 实现（列表懒加载）
+│   │   │   └── SongListData.ets     # 初始示例数据（实际由 MusicStore 管理）
+│   │   ├── components/
+│   │   │   ├── PlayerInfoComponent.ets    # 播放页封面+背景模糊
+│   │   │   ├── LyricsComponent.ets        # 歌词容器（翻译开关+明暗自适应）
+│   │   │   ├── MusicInfoComponent.ets      # 标题/艺术家/专辑展示
+│   │   │   ├── ControlAreaComponent.ets   # 进度条/播放控制
+│   │   │   ├── TopAreaComponent.ets        # 顶栏（返回/收藏等）
+│   │   │   ├── CoverImageView.ets          # 响应式封面组件（coverRefreshToken 刷新）
+│   │   │   ├── SongDetailSheet.ets         # 歌曲详情半模态面板（含年代）
+│   │   │   └── AddToPlaylistSheet.ets      # 添加到歌单半模态面板（含新建歌单）
+│   │   ├── lyric/
+│   │   │   ├── LrcView.ets           # Canvas 歌词渲染（手动滑动+5秒回正）
+│   │   │   ├── LrcUtils.ets         # LRC/KRC 解析 + rawfile 兜底
+│   │   │   ├── LrcEntry.ets        # 歌词行数据结构
+│   │   │   └── LyricConst.ets       # 歌词常量
+│   │   ├── utils/                   # 工具类
+│   │   │   ├── AudioRendererController.ets  # AVPlayer 播放引擎（队列/模式/后台）
+│   │   │   ├── AVSessionController.ets      # 系统媒体会话（锁屏/投播/卡片）
+│   │   │   ├── AudioMeta.ets               # 元数据读取（MediaKit+NAPI 双路）
+│   │   │   ├── NativeModule.ets             # C++ NAPI 桥接
+│   │   │   ├── CoverCache.ets              # 封面抽取+缓存（单例）
+│   │   │   ├── EmbeddedLyricReader.ets     # 内嵌歌词解析（FLAC/MP4/MP3）
+│   │   │   ├── PreferencesUtil.ets        # dataPreferences 封装
+│   │   │   ├── SettingsStore.ets           # 设置项持久化（app_settings）
+│   │   │   ├── ThemeManager.ets            # 主题色令牌（浅/深/系统）
+│   │   │   ├── MediaTools.ets             # 媒体工具
+│   │   │   ├── BackgroundUtil.ets          # 后台长时任务
+│   │   │   ├── Logger.ets                  # 统一日志（domain 0xFF00）
+│   │   │   ├── AppInfoUtil.ets             # 运行时版本读取
+│   │   │   └── ResourceConversion.ets      # 资源转换
+│   │   ├── common/
+│   │   │   ├── constants/           # 常量（断点/播放器/路由/样式/内容）
+│   │   │   └── utils/              # 断点系统、颜色转换
+│   │   └── widget/pages/
+│   │       └── WidgetCard.ets       # 桌面卡片 UI + 回控
+│   ├── cpp/                         # C++ 原生模块（NAPI）
+│   │   ├── audio_metadata.cpp/.h    # FLAC/MP3/MP4 元数据解析
+│   │   ├── napi_init.cpp            # NAPI 模块注册
+│   │   └── CMakeLists.txt           # 编译配置（libnative_module.so）
 │   ├── resources/base/
-│   │   ├── media/                # 资源（含 ic_hm_* 图标）
-│   │   └── profile/              # main_pages / route_map 等配置
-│   └── module.json5              # 权限与 Ability 声明
-├── build-profile.json5           # 编译 / SDK 版本
-├── cpp/                          # C++ 原生模块（音频元数据）
-└── oh-package.json5
+│   │   ├── media/                   # 资源（含 ic_hm_* 图标等 87 个 SVG）
+│   │   └── profile/                  # main_pages / route_map / form_config 等
+│   └── module.json5                 # 权限与 Ability 声明
+├── tools/                           # 开发辅助脚本（Python）
+│   ├── dump_3files.py               # C++ 解析器验证：3 个真实音频 dump
+│   ├── probe_lyrics.py              # 歌词编码探测工具
+│   ├── verify_reader.py            # EmbeddedLyricReader 验证
+│   └── verify_reversal.py           # 回绕缺陷验证
+├── build_hap.sh                     # 签名 HAP 构建脚本（规避环境问题）
+├── build-profile.json5              # 编译 / SDK 版本 / 签名配置
+├── oh-package.json5                 # 依赖（hypium 测试 + hamock）
+├── LICENSE                          # Apache-2.0 完整文本
+├── NOTICE                           # 版权声明
+├── CHANGELOG.md                     # 版本演进日志
+├── README.md                        # 本文件
+├── overview.md                      # 交付概览
+└── docs/                            # 项目文档
+    ├── PRD_Lumio_Music.md            # 产品需求文档
+    ├── 功能模块拆解表.md            # 模块→文件映射
+    ├── 代码审查报告_PRD落地.md       # 第一轮审查报告
+    ├── 代码审查报告_第二轮增强.md    # 第二轮审查报告
+    ├── 实施计划_PRD落地.md          # PRD 落地实施计划
+    ├── 实施计划_第二轮增强.md       # 第二轮增强实施计划
+    └── C++解析器真实音频验证.md      # C++ 解析器验证报告
 ```
 
 ---
@@ -140,6 +212,7 @@ Lumio_Music/
 - **智感握姿（底栏自适应）**：`barFloatingStyle({ adaptToHandedness: true })`，底部栏布局跟随握持姿态。
 - **页面合并与减负**：原「歌曲」+「音乐库」合并为单一音乐库页，导入功能下沉至音乐库；**移除不可用的扫描功能**，设置页**移除不可调整的播放模式项**，界面更聚焦。
 - **列表操作收进长按菜单**：去掉列表行右侧的「更多」按钮，操作全部收进 `bindContextMenu` 长按选项栏，列表更清爽，点击区域也不再误触。
+- **响应式封面组件**：新增 `CoverImageView.ets` 组件，监听 `coverRefreshToken` + `src` 双信号自动刷新封面，解决列表项 `ForEach` 复用时 `Image(song.getMark())` 从默认 Resource 切换到真实 PixelMap 不重渲染的问题。
 - **单一 `bindSheet` 分发**：ArkUI 中同一组件**只能挂一个 `bindSheet`**（后挂覆盖先挂）。各页面统一改为「一个 `bindSheet` + `sheetOpen` 开关 + `sheetKind`（`detail` / `add` / `picker`）判别 + `@Builder sheetContent()` 按 kind 渲染」，避免多面板互相顶掉。
 
 ---
@@ -193,6 +266,17 @@ entry/build/default/outputs/default/entry-default-signed.hap
 > 脚本会**前置 JBR**、**清空 `NODE_OPTIONS` / `BASH_ENV`**、并以 `--no-daemon` 运行，保证一次跑通。
 
 > 需安装 **HarmonyOS 6.1.x SDK（API 23 / 24）**。当前工程已通过 `bash build_hap.sh` 验证 **BUILD SUCCESSFUL**，可产出签名 HAP；同时经 `harmonyos-reviewer` 审查 **0 ERROR / 0 WARNING**。
+
+### 开发辅助脚本（tools/）
+
+| 脚本 | 用途 |
+|------|------|
+| `dump_3files.py` | 用 `g++` 编译 standalone harness，对 3 个真实音频文件（FLAC/M4A/中文 FLAC）运行 C++ 解析器验证 |
+| `probe_lyrics.py` | 探测音频文件内嵌歌词的编码格式（UTF-16 LE/BE/UTF-8），辅助 `EmbeddedLyricReader` 调试 |
+| `verify_reader.py` | 验证 `EmbeddedLyricReader` 对 FLAC/MP4/MP3 内嵌歌词的解析正确性 |
+| `verify_reversal.py` | 构造畸形文件验证 C++ 解析器对 32 位长度回绕缺陷的修复有效性 |
+
+> 这些脚本在沙箱环境无法出 HAP 时用于离线验证 C++ 侧逻辑，真机构建无需依赖。
 
 ---
 

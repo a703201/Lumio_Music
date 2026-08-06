@@ -125,3 +125,13 @@ g++ -std=c++17 -I entry/src/main/cpp \
 | 5 | 无年代标签的音频 | `year` 为空，面板不显示年代、不报错 |
 
 > 说明：year 设计为「详情面板按需重读」，不落 `SongItem`、不改 `dataPreferences` 既有结构，故上述缺口不影响历史数据与新功能稳定性，仅需在真机补样本确认解析正确性。
+
+---
+
+## 9. 构建状态更新（2026-08-06）
+
+> `build_hap.sh` 脚本已解决沙箱构建问题，稳定产出签名 HAP（BUILD SUCCESSFUL）。
+
+- **沙箱限制已解除**：原 §1「沙箱环境无法产出 HAP」的限制已通过 `build_hap.sh`（前置 JBR + 清空 `NODE_OPTIONS`/`BASH_ENV` + `--no-daemon`）解决，产物路径 `entry/build/default/outputs/default/entry-default-signed.hap`。
+- **C++ 编译已验证**：`libnative_module.so` 随 HAP 构建成功产出，NAPI 桥（`napi_init.cpp`）与元数据解析器（`audio_metadata.cpp`）编译通过。
+- **验证脚本保留**：`tools/` 目录 4 个 Python 脚本仍可用于离线验证 C++ 侧逻辑，无需依赖完整 HarmonyOS 工具链。

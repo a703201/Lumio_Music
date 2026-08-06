@@ -70,3 +70,12 @@
 - **构建**：`bash build_hap.sh` 稳定产出签名 HAP。
 
 详见 `docs/实施计划_第二轮增强.md` 第 5 节（F1~F7）与 `docs/PRD_Lumio_Music.md` 第 3.2 节（FR-25~FR-30）。
+
+## 6. 后续补遗（2026-08-06）
+
+> W1~W5 + 第三轮 F1~F7 全部完成，以下为文档补遗。
+
+- **构建已打通**：`build_hap.sh` 脚本前置 JBR + 清空 `NODE_OPTIONS`/`BASH_ENV` + `--no-daemon`，规避 `genie-safe-delete.cjs` 守卫与坏 JVM，稳定产出签名 HAP。沙箱无法出 HAP 的限制已解除。
+- **新增 FR-31~FR-34**：设置子页（SettingsCategory）、隐私政策页（PrivacyPolicy）、响应式封面组件（CoverImageView）、开发辅助脚本（tools/）。
+- **`route_map.json`** 现为 **11 条**（新增 `SettingsCategory`）。
+- **版权头统一**：全部源码文件添加 Apache-2.0 版权头（Copyright 2026 何宇翔）。

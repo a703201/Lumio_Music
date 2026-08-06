@@ -662,6 +662,8 @@ this.playlists = (Array.isArray(rawPlaylists) ? rawPlaylists : [])
 
 *报告生成于代码审查阶段，基于静态只读分析。P0/P1 的行号与代码片段均对应审查时的工作区状态。*
 
+> **2026-08-06 更新**：全部 P0×6 / P1×10 修复已合入并通过 `harmonyos-reviewer` 审查（0 ERROR / 0 WARNING）。`build_hap.sh` 脚本已解决沙箱构建问题，稳定产出签名 HAP（BUILD SUCCESSFUL）。`route_map.json` 现为 **11 条**（新增 `SettingsCategory`）。新增组件 `CoverImageView.ets`（响应式封面）与 `PrivacyPolicy.ets`（隐私政策页）已落地。
+
 ---
 
 ## 7. 第三轮交互打磨审查补充说明

@@ -32,6 +32,11 @@
 - **添加到歌单半模态面板**：新增 `components/AddToPlaylistSheet.ets`（Medium 高度），列出自建歌单一键加入，重复加入提示「歌曲已在歌单中」，面板内支持**新建歌单并立即加入**，通过 `onClose` 回调关闭。
 - **年代（year）从音频元数据解析（全链路 4 层）**：C++ `audio_metadata.cpp` 补 FLAC `DATE` / MP3 `TYER`+`TDRC` / MP4 `©day` → NAPI `napi_init.cpp` 返回 `year` → ArkTS `AudioMeta.year`（MediaKit 优先路径从 `AVMetadata.dateTime` 经 `extractYear` 正则 `/(19|20)\d{2}/` 抽取）→ `SongDetailSheet` 打开时 `AudioMetaReader.read(src)` 异步取值显示。
 - **歌词手动滑动浏览**：`lyric/LrcView.ets` 的 Canvas 歌词支持上下滑动手势自由浏览；滑动时**取消模糊**、全部歌词清晰显示；手指静止 **5 秒**后自动平滑回到「正在播放」行并恢复模糊。实现为 `onTouch` 手势状态机（`userOffsetY` 叠加偏移、`isUserScrolling` 控制清晰/模糊、`scheduleAutoReturn` 5 秒 `setTimeout` 回正）。
+- **响应式封面组件**：新增 `components/CoverImageView.ets`，解决列表项 `ForEach` 复用时 `Image(song.getMark())` 从默认 Resource 切换到真实 PixelMap 不重渲染的问题。组件监听 `@StorageProp('coverRefreshToken')` + `@Prop src` 双信号，在 `aboutToAppear` 和 token 变化时主动重读 `CoverCache` 获取真实封面。
+- **设置子页**：新增 `pages/SettingsCategory.ets`（`route_map` 注册），按分类 id 渲染对应设置子项（自动下一首/播放模式/主题/锁屏开关），替代原设置页内联展开方式。
+- **隐私政策页**：新增 `pages/PrivacyPolicy.ets`（`route_map` 注册），展示应用隐私政策（无账号/无数据上传/权限说明）。
+- **统一版权声明**：全部源码文件（`.ets` / `.cpp` / `.h` / `.py`）统一添加 Apache-2.0 版权头（Copyright 2026 何宇翔）。
+- **开发辅助脚本**：新增 `tools/` 目录，含 4 个 Python 脚本（`dump_3files.py` / `probe_lyrics.py` / `verify_reader.py` / `verify_reversal.py`），在沙箱无法出 HAP 时提供 C++ 解析器与歌词解析器的独立验证手段。
 
 ### 优化
 - 各页面功能布局重新梳理，聚焦核心听歌体验。
@@ -60,11 +65,12 @@
 - **下线发现页（FR-21）**：`Find.ets` 经复核为孤儿文件（未注册导航、无引用），已删除，零构建影响。
 
 ### 文档与版本
-- `README.md`：新增「歌曲操作（长按选项栏 + 半模态面板）」小节；「播放体验」补充歌词手动滑动 + 5 秒回正、迷你播放器真实封面与暂停图标；「构建与运行」命令行方式改为 `bash build_hap.sh` 并标注签名 HAP 输出路径；「已知问题与限制」补充白屏与 `bindSheet` 单绑定两条（均已修复）；「设计亮点」补充长按菜单与单一 `bindSheet` 分发；目录结构补两个新组件。权限表（3 项）保持不变。
-- `docs/功能模块拆解表.md`：补录 `SongDetailSheet` / `AddToPlaylistSheet` 两个新组件，以及长按 `bindContextMenu` 选项栏在 LocalLibrary / Favorites / PlayHistory / PlaylistDetail / Playlists 五处的改造落点。
+- `README.md`：新增「歌曲操作（长按选项栏 + 半模态面板）」小节；「播放体验」补充歌词手动滑动 + 5 秒回正、迷你播放器真实封面与暂停图标；「构建与运行」命令行方式改为 `bash build_hap.sh` 并标注签名 HAP 输出路径；「已知问题与限制」补充白屏与 `bindSheet` 单绑定两条（均已修复）；「设计亮点」补充长按菜单与单一 `bindSheet` 分发与响应式封面组件；目录结构全面补全（含 `datasource/`、`lyric/`、`tools/`、`SettingsCategory`、`PrivacyPolicy`、`CoverImageView` 等）；新增「开发辅助脚本」小节。权限表（3 项）保持不变。
+- `docs/功能模块拆解表.md`：补录 `SongDetailSheet` / `AddToPlaylistSheet` / `CoverImageView` 三个组件，以及长按 `bindContextMenu` 选项栏在 LocalLibrary / Favorites / PlayHistory / PlaylistDetail / Playlists 五处的改造落点。
 - 经 `code-reviewer` 审查（初版 🔴 驳回 P0×3 + P1×7 + P2×11），全部整改闭环；PRD / README / 功能模块拆解表 / 本 CHANGELOG 同步回写。
 - `AppScope/app.json5` 版本号同步至 **`2.1.0`**（`versionCode` 2010000）。
 - 新增 `utils/AppInfoUtil.ets`：通过 `bundleManager.getBundleInfoForSelfSync` 运行时读取 `versionName`，关于页 / 设置页「版本信息」/ 我的页「关于」的版本文案均改为引用该值，**自动跟随工程配置**，不再硬编码。
+- `route_map.json` 条目数从 10 增至 **11**（新增 `SettingsCategory`）。
 
 ---
 
