@@ -16,7 +16,6 @@
 
 import { Logger } from '../utils/Logger';
 import { common, Want } from '@kit.AbilityKit';
-import { audio } from '@kit.AudioKit';
 import { getAppVersionDisplay } from '../utils/AppInfoUtil';
 import { MusicStore } from '../services/MusicStore';
 import { SettingsStore, ThemeMode, RepeatModeSetting } from '../utils/SettingsStore';
@@ -53,7 +52,6 @@ struct SettingsCategory {
   @State notificationLockScreen: boolean = true;
   @State privacyStats: boolean = true;
   @State reduceMotion: boolean = false;
-  @State spatialAudioEnabled: boolean = false;
   @State cacheSizeText: string = '约 0.0 MB';
   @State appVersionDisplay: string = 'Lumio Music';
 
@@ -72,7 +70,6 @@ struct SettingsCategory {
       this.syncFromStore();
     }
     this.refreshCacheSize();
-    this.querySpatialAudio();
   }
 
   private syncFromStore(): void {
@@ -131,17 +128,6 @@ struct SettingsCategory {
   private themeIndex(): number {
     const order: ThemeMode[] = ['system', 'light', 'dark'];
     return order.indexOf(this.themeMode);
-  }
-
-  // ===== 空间音频（只读）=====
-  private querySpatialAudio(): void {
-    try {
-      const spatializationManager = audio.getAudioManager().getSpatializationManager();
-      this.spatialAudioEnabled = spatializationManager.isSpatializationEnabledForCurrentDevice();
-    } catch (e) {
-      Logger.error('querySpatialAudio failed');
-      this.spatialAudioEnabled = false;
-    }
   }
 
   // ===== 外跳网页 =====
@@ -406,14 +392,6 @@ struct SettingsCategory {
           const order: RepeatModeSetting[] = ['list', 'single', 'random'];
           this.repeatMode = order[i];
           this.settings.setRepeatMode(order[i]);
-        }
-      )
-      this.buildNavItem(
-        $r('app.media.ic_music'), '空间音频',
-        this.spatialAudioEnabled ? '当前设备已开启' : '当前设备未开启', 2, '#00C7BE',
-        () => {
-          this.querySpatialAudio();
-          this.toast(this.spatialAudioEnabled ? '空间音频：已开启' : '空间音频：未开启（或设备不支持）');
         }
       )
     }

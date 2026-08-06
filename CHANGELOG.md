@@ -40,6 +40,11 @@
 - `route_map.json` 随功能增至 **11 条**（新增 `SettingsCategory`）。
 - PRD、本 CHANGELOG、app.json5 版本口径统一为 v2.3.0。
 
+### NFR 尾项闭合（2026-08-06 继续）
+- **移除空间音频「开关」**：`SettingsCategory.ets` 原空间音频条目仅展示 `isSpatializationEnabledForCurrentDevice()` 的只读状态，无实际开关能力（`setSpatializationEnabled` 需系统权限）。移除 `querySpatialAudio()` / `@State spatialAudioEnabled` / UI 条目，`Settings.ets` 播放分类副标题同步去「空间音频」。
+- **Logger 新增 `%{private}s` 变体**：`Logger.debugPrivate()` / `infoPrivate()` / `warnPrivate()` / `errorPrivate()`，release 构建自动隐藏私有字段，调用方可选择性将敏感数据（文件路径等）标记为私有。
+- **`readFile` 内存优化**：FLAC / MP3 元数据位于文件头部，改为只读前 **2MB**——不再将整首歌曲（无损 FLAC 可达 40MB+）全量读入内存；MP4/M4A 因 moov atom 可能在文件末尾，保持全量读取。无损 FLAC 峰值内存降低 >90%。
+
 ---
 
 ## v2.1.0（2026-07-30）· HDS 沉浸重构与功能基线

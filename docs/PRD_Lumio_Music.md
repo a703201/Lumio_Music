@@ -195,7 +195,7 @@ graph TD
 | 发现页/播放列表未接入 | 功能半成品 | ✅ 歌单已补全并上导航 + 支持拖拽调序；✅ 发现页（`Find.ets`）确认为孤儿文件已删除下线 |
 | API 24 弃用告警（Prompt/promptAction） | 不影响出包，但非零告警 | ✅ 已解决：全部迁移至 `UIContext.getPromptAction()` / `UIContext.animateTo()` |
 | 智感握姿主动感知需更高 SDK | 仅底栏自适应生效 | ⚠️ 保留为**已知限制**（SDK 能力缺口）：6.1.1 无 `@kit.MultimodalAwarenessKit`，升级后再补 `motion.on('holdingHandChanged')` |
-| 空间音频开关 / 多频段 EQ | 无法提供开关 | ⚠️ 保留为**已知限制**：`setSpatializationEnabled` 需系统权限，多频段 EQ 无公开 API，设置页仅只读展示 |
+| 空间音频开关 / 多频段 EQ | 无法提供开关 | ⚠️ 保留为**已知限制**：`setSpatializationEnabled` 需系统权限，多频段 EQ 无公开 API。空间音频条目已从设置页移除（无实际操控能力） |
 | 媒体格式兼容性依赖真机 | 部分格式未验证 | ⚠️ 待验证：C++ 解析器已做「失败回退文件名」兜底不会崩，冷门编码分支需真机矩阵复验 |
 | 沙箱内无法产出 HAP | 本会话不能编译验证 | ✅ 已解决：`build_hap.sh` 脚本前置 JBR + 清空 `NODE_OPTIONS`/`BASH_ENV` + `--no-daemon`，规避 `genie-safe-delete.cjs` 守卫拦截与坏 JVM，稳定产出 `entry/build/default/outputs/default/entry-default-signed.hap` |
 
@@ -229,7 +229,7 @@ graph TD
 
 ### 7.2 已知限制（第二轮复核后）
 - 智感握姿仅底栏布局自适应生效（6.1.1 无 `MultimodalAwarenessKit`）——SDK 能力缺口，非实现缺陷。
-- 空间音频只能只读查询，多频段 EQ 无公开 API——设置页仅展示不提供开关。
+- 空间音频 `setSpatializationEnabled` 需系统权限，多频段 EQ 无公开 API——两者均为 SDK 能力缺口，非实现缺陷。空间音频条目已从设置页移除。
 - 发现页（原 `Find.ets`）已在第二轮下线删除；如需重启需从零设计，不保留骨架。
 - 歌单支持手动拖拽排序；**云同步仍排除**（无账户体系，保留为已知限制）。
 - 音频格式兼容性依赖真机验证；C++ 解析器对无法识别的文件一律回退「文件名作标题」，畸形/截断文件边界钳制不崩溃。

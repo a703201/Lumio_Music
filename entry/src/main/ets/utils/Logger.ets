@@ -50,4 +50,21 @@ export class Logger {
   static error(...args: string[]): void {
     hilog.error(Logger.domain, Logger.prefix, '%{public}s', args.join(' '));
   }
+
+  // ===== %{private}s 变体：标记为隐私数据，release 构建自动隐藏 =====
+  static debugPrivate(...args: string[]): void {
+    hilog.debug(Logger.domain, Logger.prefix, '%{private}s', args.join(' '));
+  }
+
+  static infoPrivate(...args: string[]): void {
+    hilog.info(Logger.domain, Logger.prefix, '%{private}s', args.join(' '));
+  }
+
+  static warnPrivate(...args: string[]): void {
+    hilog.warn(Logger.domain, Logger.prefix, '%{private}s', args.join(' '));
+  }
+
+  static errorPrivate(...args: string[]): void {
+    hilog.error(Logger.domain, Logger.prefix, '%{private}s', args.join(' '));
+  }
 }

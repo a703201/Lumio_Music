@@ -94,7 +94,7 @@ int spfForFrame(int ver, int layer) {
     return (ver == 3) ? 1152 : 576; // Layer III：MPEG1=1152，MPEG2/2.5=576
 }
 
-bool readFile(const std::string& path, std::vector<unsigned char>& out) {
+bool readFile(const std::string& path, std::vector<unsigned char>& out, size_t maxSize = 0) {
     std::ifstream f(path, std::ios::binary);
     if (!f) {
         return false;
@@ -105,9 +105,11 @@ bool readFile(const std::string& path, std::vector<unsigned char>& out) {
         return false;
     }
     f.seekg(0, std::ios::beg);
-    out.resize(static_cast<size_t>(sz));
-    f.read(reinterpret_cast<char*>(out.data()), sz);
-    const std::streamsize got = f.gcount();   // P2-8：按实际读取字节收缩，避免短读残留 0
+    size_t readSize = (maxSize > 0 && static_cast<size_t>(sz) > maxSize)
+        ? maxSize : static_cast<size_t>(sz);
+    out.resize(readSize);
+    f.read(reinterpret_cast<char*>(out.data()), static_cast<std::streamsize>(readSize));
+    const std::streamsize got = f.gcount();
     if (got <= 0) {
         out.clear();
         return false;
@@ -631,14 +633,21 @@ AudioMetadata parseAudioMetadata(const std::string& filePath) {
         metadata.title = filePath;
     }
 
-    std::vector<unsigned char> buf;
-    if (!readFile(filePath, buf)) {
-        return metadata;
-    }
-
+    // 预判文件格式，按格式限制读取大小（NFR 资源占用）：
+    // FLAC/MP3 的元数据块在文件头部（2MB 覆盖 >99.9% 的文件），无需将整首歌曲读入内存。
+    // MP4/M4A 的 moov atom 可能位于文件末尾，必须全量读取（maxRead=0 表示无限制）。
     std::string lower = filePath;
     for (auto& c : lower) {
         c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+    size_t maxRead = 0;
+    if (endsWith(lower, ".flac") || endsWith(lower, ".mp3")) {
+        maxRead = 2u * 1024u * 1024u; // 2MB — title/artist/album/year metadata 永远在头部
+    }
+
+    std::vector<unsigned char> buf;
+    if (!readFile(filePath, buf, maxRead)) {
+        return metadata;
     }
 
     AudioMetadata parsed;

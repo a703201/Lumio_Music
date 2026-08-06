@@ -55,7 +55,7 @@ struct Settings {
    */
   private categories(): Array<CategoryItem> {
     return [
-      { id: 'playback', title: '播放', subtitle: '自动下一首 · 播放模式 · 空间音频', icon: $r('app.media.ic_repeat'), iconColor: '#FF9500' },
+      { id: 'playback', title: '播放', subtitle: '自动下一首 · 播放模式', icon: $r('app.media.ic_repeat'), iconColor: '#FF9500' },
       { id: 'appearance', title: '用户界面', subtitle: '深色模式 · 主题', icon: $r('app.media.ic_hm_moon'), iconColor: '#5E5CE6' },
       { id: 'accessibility', title: '无障碍', subtitle: '降低动态效果', icon: $r('app.media.ic_hm_profile'), iconColor: '#007AFF' },
       { id: 'storage', title: '存储', subtitle: '缓存 · 播放历史 · 本地管理', icon: $r('app.media.ic_hm_trash'), iconColor: '#FF9500' },
