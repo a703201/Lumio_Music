@@ -9,6 +9,34 @@
 
 ---
 
+## 演示
+
+本应用为 HarmonyOS 移动端原生应用，无法通过 Web 链接在线访问。请通过以下方式查看演示：
+
+🎬 **[真机演示视频（点击下载）](./Video/Demo.mp4)**（~50MB）
+
+演示内容包括：
+- 音乐库导入本地音频（系统文件选择器）
+- 歌曲播放、收藏、添加到歌单
+- 长按选项栏操作
+- 歌曲详情半模态面板（含年代、文件名、添加时间）
+- 歌词手动滑动浏览（5 秒自动回正）
+- 迷你播放器真实封面 + 一镜到底过渡
+- 桌面音乐卡片
+- 设置子页（主题切换、播放模式、锁屏控制）
+- 自建歌单（新建、拖拽排序、播放全部）
+
+**本地体验**：具备 HarmonyOS 6.1.1 DevEco Studio 环境的开发者，可直接克隆本仓库并运行 `bash build_hap.sh` 构建签名 HAP。
+
+```bash
+git clone https://github.com/<your-username>/Lumio_Music.git
+cd Lumio_Music
+bash build_hap.sh
+# 产物：entry/build/default/outputs/default/entry-default-signed.hap
+```
+
+---
+
 ## 功能特性
 
 ### 音乐库（核心）
