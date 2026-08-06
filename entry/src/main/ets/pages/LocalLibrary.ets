@@ -60,11 +60,16 @@ export struct LocalLibrary {
   @State selectedSong: SongItem | undefined = undefined;
   @State sheetOpen: boolean = false;
   @State sheetKind: 'detail' | 'add' = 'detail';
+  /** 错误消息（非空时页面展示错误态+重试按钮；覆盖导入失败/store加载失败） */
+  @State errorMessage: string = '';
   private playingPulse: number = -1;
 
   aboutToAppear(): void {
     this.filteredSongs = [...this.store.songs];
     this.itemScales = this.filteredSongs.map(() => 1.0);
+    if (this.store.loadError) {
+      this.errorMessage = '数据加载失败，请重试';
+    }
     this.startEmptyPulse();
     this.startPlayingPulse();
   }
@@ -72,6 +77,24 @@ export struct LocalLibrary {
   aboutToDisappear(): void {
     if (this.playingPulse >= 0) {
       clearInterval(this.playingPulse);
+    }
+  }
+
+  /** 重试加载数据（store 初始化失败或导入失败后点击重试） */
+  async retryLoad(): Promise<void> {
+    this.errorMessage = '';
+    this.isLoading = true;
+    try {
+      const context: common.UIAbilityContext = AppStorage.get<common.UIAbilityContext>('context') as common.UIAbilityContext;
+      await this.store.init(context);
+      this.store.loadError = false;
+      this.filteredSongs = [...this.store.songs];
+      this.itemScales = this.filteredSongs.map(() => 1.0);
+      AudioRendererController.getInstance().reconcileWithLibrary(this.store.songs);
+    } catch (e) {
+      this.errorMessage = '重试失败，请检查存储权限';
+    } finally {
+      this.isLoading = false;
     }
   }
 
@@ -174,6 +197,7 @@ export struct LocalLibrary {
         this.isLoading = false;
       }
     } catch (err) {
+      this.errorMessage = '导入失败：' + ((err as Error).message ?? '未知错误');
       Logger.error('Pick music failed');
       this.isLoading = false;
     }
@@ -500,12 +524,47 @@ export struct LocalLibrary {
 
       if (this.isLoading) {
         Column() {
+          LoadingProgress()
+            .width(36)
+            .height(36)
+            .color(ACCENT)
+            .margin({ bottom: 16 })
           Text('正在导入...')
             .fontSize(14)
             .fontColor(this.getThemeColors().secondaryText)
-            .margin({ top: 100 })
         }
         .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+      } else if (this.errorMessage !== '') {
+        Column() {
+          Image($r('app.media.ic_hm_library'))
+            .width(72)
+            .height(72)
+            .fillColor(this.getThemeColors().secondaryText)
+            .margin({ bottom: 16 })
+            .opacity(0.5)
+
+          Text(this.errorMessage)
+            .fontSize(15)
+            .fontColor(this.getThemeColors().secondaryText)
+            .fontWeight(FontWeight.Medium)
+            .textAlign(TextAlign.Center)
+            .maxLines(3)
+            .padding({ left: 32, right: 32 })
+            .margin({ bottom: 20 })
+
+          Button('重试')
+            .fontSize(14)
+            .fontColor(Color.White)
+            .backgroundColor(ACCENT)
+            .borderRadius(20)
+            .padding({ left: 24, right: 24, top: 8, bottom: 8 })
+            .onClick(() => {
+              this.retryLoad();
+            })
+        }
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
       } else if (this.filteredSongs.length === 0) {
         Column() {
           Image($r('app.media.ic_hm_library'))

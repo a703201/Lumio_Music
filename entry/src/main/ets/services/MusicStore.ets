@@ -53,6 +53,8 @@ export class MusicStore {
   public favorites: Set<number> = new Set();
   public playlists: Playlist[] = [];
   public recentlyPlayed: SongItem[] = [];
+  /** 持久化加载失败标记：页面据此展示错误态+重试按钮 */
+  public loadError: boolean = false;
 
   private constructor() {
   }
@@ -68,7 +70,9 @@ export class MusicStore {
     try {
       this.preferences = await dataPreferences.getPreferences(context, PREF_NAME);
       await this.loadState();
+      this.loadError = false;
     } catch (err) {
+      this.loadError = true;
       Logger.error('Failed to init preferences');
     }
   }
@@ -308,6 +312,7 @@ export class MusicStore {
 
   private async loadState(): Promise<void> {
     if (!this.preferences) return;
+    this.loadError = false;
     try {
       const songsStr = await this.preferences.get(KEY_SONGS, '[]') as string;
       const songsData = JSON.parse(songsStr) as SongData[];
@@ -366,6 +371,7 @@ export class MusicStore {
       const currentIndex = await this.preferences.get(KEY_CURRENT_INDEX, 0) as number;
       this.currentIndex = currentIndex;
     } catch (err) {
+      this.loadError = true;
       Logger.error('Failed to load state');
     }
   }

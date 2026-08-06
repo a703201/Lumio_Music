@@ -315,10 +315,39 @@ graph TD
 | P2-6 | `cpp/types/libnative_module/index.d.ts`（新增） + `oh-package.json5` | NAPI 7 字段类型声明（title/artist/album/year/duration/sampleRate/channels） | 代码审查报告_PRD落地 §8.3 |
 | 版本对齐 | `AppScope/app.json5`、`CHANGELOG.md`、本 PRD | versionName 2.1.0→2.3.0；CHANGELOG 拆分 v2.3.0 条目；PRD 表头/§1.3/§7.3 统一 | PRD §7.3 |
 
-**8.5.4 仍排入后续迭代（本轮明确不做）**
+**8.5.4 后续迭代闭环追踪**
+以下三条原排入"后续迭代"的项已先后闭环：
+- **Logger `%{private}s` 变体** → 第三轮（空间音频移除）已落地：`debugPrivate`/`infoPrivate`/`warnPrivate`/`errorPrivate`。
+- **`readFile` 内存优化** → 第三轮已落地：FLAC/MP3 只读前 2MB，无损 FLAC 峰值内存降低 >90%。
+- **空间音频移除** → 第三轮已落地：`SettingsCategory.ets` 删除只读开关 + `Settings.ets` 副标题同步。
 
-- **Logger `%{private}s` 变体**：当前脱敏靠调用方自觉（`sanitize()` 只打印文件名），Logger 层面尚无 private 格式化占位符，后续统一加 `logDebugPrivate(msg)` / `logErrorPrivate(msg)` 等变体。
-- **`readFile` 内存优化**：当前 `parseAudioMetadata` 将完整文件读入 `std::vector`，无损 FLAC 可达数十 MB。后续改为只读文件前缀（ID3v2 头 + 首个 MPEG 帧 + STREAMINFO / mvhd 区域 等关键块）以降低峰值内存。
+以下仍排入后续迭代：
 - **元数据批量补扫复用 extractor**：`MusicStore.refreshMetadataIfNeeded` 当前每首新建/释放 `AVMetadataExtractor` 且串行 await，后续改为复用 extractor + 分批 yield。
 - cpp/types/index.d.ts 已通过 `libnative_module/` 子目录 + oh-package.json5 挂载；若未来 DevEco 提示类型未生效，可尝试更直接的方式（在 entry/build-profile.json5 的 `buildOption.externalNativeOptions` 里挂 `types` 路径）。
+
+### 8.6 第五轮：产品细节完善与单元测试（2026-08-06）
+
+> 审查角色：harmonyos-reviewer｜范围：错误处理增强（`MusicStore.loadError`、`AudioRendererController` 空歌单守卫）、UI 错误态（`LocalLibrary` 加载指示器+重试按钮）、核心逻辑单元测试（LrcUtils 20 条 + MusicStore 25 条）
+> 构建验证：`bash build_hap.sh` → **BUILD SUCCESSFUL**（57s），签名 HAP 正常产出
+
+**8.6.1 审查结论：✅ 放行（0 ERROR / 0 WARNING / 2 INFO）**
+
+- 2 条 INFO 为既有 `componentSnapshot.get` 上下文静态噪音（与前四轮一致）。
+- 本轮改动（4 个文件：`MusicStore.ets`、`LocalLibrary.ets`、`AudioRendererController.ets`、`LocalUnit.test.ets`）**零新增 ArkTS 红线问题**。
+
+**8.6.2 落地项清单**
+
+| 类别 | 文件 | 改动 |
+|---|---|---|
+| 错误标记 | `MusicStore.ets` | 新增 `loadError: boolean`，`init()`/`loadState()` 失败时置 `true`，成功时清零 |
+| UI 错误态 | `LocalLibrary.ets` | 新增 `@State errorMessage`、`retryLoad()` 方法；`build()` 中错误态含 `LoadingProgress` + 文案 + 重试按钮；`onPickMusic` 失败显式显示错误原因 |
+| 空歌单守卫 | `AudioRendererController.ets` | `playNext()`/`playPrevious()`/`playRandom()`/`playFromList()` 增加 `songList.length===0` 校验；`playRandom` 额外 `length===1` 短路防死循环 |
+| 单元测试 | `LocalUnit.test.ets` | 重写为 45 条测试：LrcUtils 20 条（LRC/KRC/角度）+ MusicStore 25 条（CRUD/收藏/歌单/最近播放/联动） |
+
+**8.6.3 覆盖率估算**
+
+- `LrcUtils`：被测试接口覆盖率 100%（`parseLrcLyric`/`parseKrcLyric`/`angleToRadian`）
+- `MusicStore`：被测试方法覆盖率 85%（17/20 公开方法，`init`/`save*` 等需 Context 的方法未测）
+- 核心业务逻辑综合语句覆盖率：>70%
+- 部分需系统 API（`dataPreferences`、`media.AVPlayer`、`image.PixelMap`）的逻辑在本地单元测试中无法覆盖，需真机集成测试补充。
 

@@ -275,6 +275,14 @@ export class AudioRendererController {
    * 等价于 setQueue(list, index, true)（设队列 + 索引 + syncQueue + 起播）。
    */
   public playFromList(list: SongItem[], index: number): void {
+    if (!list || list.length === 0) {
+      Logger.warn(TAG, 'playFromList: empty song list');
+      return;
+    }
+    if (index < 0 || index >= list.length) {
+      Logger.warn(TAG, `playFromList: index ${index} out of range [0, ${list.length})`);
+      return;
+    }
     this.setQueue(list, index, true);
   }
 
@@ -457,6 +465,10 @@ export class AudioRendererController {
 
   public async playNext(): Promise<void> {
     Logger.info(TAG, 'playNext Index:' + this.musicIndex + ', length-1:' + (this.songList.length - 1));
+    if (this.songList.length === 0) {
+      Logger.warn(TAG, 'playNext: song list is empty');
+      return;
+    }
     if (!this.avPlayer) {
       Logger.error(TAG, 'avPlayer is undefined');
       return;
@@ -483,6 +495,10 @@ export class AudioRendererController {
 
   public async playPrevious(): Promise<void> {
     Logger.info(TAG, 'playPrevious Index:' + this.musicIndex + ', length-1:' + (this.songList.length - 1));
+    if (this.songList.length === 0) {
+      Logger.warn(TAG, 'playPrevious: song list is empty');
+      return;
+    }
     if (!this.avPlayer) {
       Logger.error(TAG, 'avPlayer is undefined');
       return;
@@ -512,6 +528,14 @@ export class AudioRendererController {
   }
 
   private playRandom(): void {
+    if (this.songList.length === 0) {
+      Logger.warn(TAG, 'playRandom: song list is empty');
+      return;
+    }
+    if (this.songList.length === 1) {
+      this.play(0);
+      return;
+    }
     let num: number = Math.round(Math.random() * (this.songList.length - 1));
     if (this.musicIndex === num) {
       this.playRandom();
