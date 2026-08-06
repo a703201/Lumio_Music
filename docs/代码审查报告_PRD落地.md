@@ -664,6 +664,8 @@ this.playlists = (Array.isArray(rawPlaylists) ? rawPlaylists : [])
 
 > **2026-08-06 更新**：全部 P0×6 / P1×10 修复已合入并通过 `harmonyos-reviewer` 审查（0 ERROR / 0 WARNING）。`build_hap.sh` 脚本已解决沙箱构建问题，稳定产出签名 HAP（BUILD SUCCESSFUL）。`route_map.json` 现为 **11 条**（新增 `SettingsCategory`）。新增组件 `CoverImageView.ets`（响应式封面）与 `PrivacyPolicy.ets`（隐私政策页）已落地。
 
+> **2026-08-06 NFR 批次更新**：本报告 §8.3 标记为「仍待下迭代」的 P2-6（NAPI 类型声明）、P2-12（NAPI 超长路径动态分配）两项已在本轮落地——新增 `cpp/types/libnative_module/index.d.ts`，`napi_init.cpp` 路径缓冲改为先探长度再动态分配。版本对齐：`AppScope/app.json5` versionName 2.1.0→2.3.0。`bash build_hap.sh` BUILD SUCCESSFUL；harmonyos-reviewer 扫描+审查双脚本 **0 ERROR / 0 WARNING**。完整记录见 `docs/PRD_Lumio_Music.md` §8.5。
+
 ---
 
 ## 7. 第三轮交互打磨审查补充说明

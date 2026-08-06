@@ -3,7 +3,7 @@
 | 项 | 内容 |
 |---|---|
 | 文档名称 | Lumio Music 本地音乐播放器 产品需求文档 |
-| 当前版本 | v2.1.0（对应 `AppScope/app.json5` `versionName`） |
+| 当前版本 | v2.3.0（对应 `AppScope/app.json5` `versionName`） |
 | 文档状态 | 基于工程现状梳理（As-Is + 规划） |
 | 目标平台 | HarmonyOS 6.1.1（API 24），兼容 6.1.0（API 23），设备：phone |
 | 技术栈 | ArkTS + ArkUI（前端）、C++ NAPI（原生扩展）、HDS 设计系统 |
@@ -25,7 +25,7 @@ Lumio Music 是一款运行在 HarmonyOS 平台的**纯本地**音乐播放器�
 - **约束**：纯本地、离线优先、隐私友好（不申请媒体库读取权限，仅经 DocumentViewPicker 选择文件）。
 
 ### 1.3 当前版本状态（As-Is）
-版本 `2.1.0` 已完成 HDS 沉浸重构、一镜到底动画、音乐库/歌曲页合并、我的页滚动、官方图标集成。已通过 `harmonyos-reviewer` 审查（0 ERROR / 0 WARNING），release HAP 可编译产出。
+版本 `2.3.0` 已完成 HDS 沉浸重构、一镜到底动画、音乐库/歌曲页合并、我的页滚动、官方图标集成，以及长按选项栏、半模态面板、年代解析、歌词滑动、迷你播放器真实封面、响应式封面组件、设置子页、隐私政策页等交互打磨（FR-01~FR-34）。已通过 `harmonyos-reviewer` 审查（0 ERROR / 0 WARNING），`bash build_hap.sh` 稳定产出签名 HAP。
 
 **已确认的关键现状（影响后续规划，详见第 6 节）**：
 1. ~~**C++ 原生后端目前是「桩实现」**：`parseAudioMetadata` 仅用文件名当标题、硬编码艺术家/专辑/时长。~~
@@ -235,8 +235,8 @@ graph TD
 - 音频格式兼容性依赖真机验证；C++ 解析器对无法识别的文件一律回退「文件名作标题」，畸形/截断文件边界钳制不崩溃。
 
 ### 7.3 文档与代码一致性提示
-- 本文档基于 2026-08-05 工程快照；若 `CHANGELOG.md`/`module.json5` 后续变更，应同步更新本 PRD 第 1.3、第 7 节。
-- 一致性提示（2026-08-06 更新）：`CHANGELOG.md` 已新增 `v2.3.0`（2026-08-06，交互打磨与文档对齐）条目；但 `AppScope/app.json5` 的 `versionName` 仍为 `2.1.0`，未随本轮功能升版。本 PRD 表头「当前版本」亦维持 `2.1.0`（以 `versionName` 为准），与 CHANGELOG 按功能迭代划分里程碑的口径不同，属有意保留。
+- 本文档基于 2026-08-06 工程快照；若 `CHANGELOG.md`/`module.json5` 后续变更，应同步更新本 PRD 第 1.3、第 7 节。
+- 版本口径已统一：`AppScope/app.json5`（`versionName 2.3.0` / `versionCode 2030000`）、`CHANGELOG.md`（v2.3.0 为独立里程碑）、本 PRD 表头——三者均为 `v2.3.0`，不再存在合并口径或版本号不一致的情况。
 
 ---
 
@@ -292,4 +292,33 @@ graph TD
 
 **8.4.3 验证约束说明**
 - 沙箱 `[safe-delete]` 守卫拦截 hvigor 清理，本会话**无法产出 HAP**，故 ArkTS 侧改为静态复核 + 类型推导校验，C++ 侧用 `g++ -std=c++17` 独立 harness 对真实与合成样本验证（结果见 `docs/C++解析器真实音频验证.md`）。真机 release 构建与格式矩阵复验仍待 DevEco 执行（M5）。
+
+### 8.5 第四轮：NFR 品质工程与版本对齐（2026-08-06）
+
+> 审查角色：harmonyos-reviewer（扫描器 + 审查器双脚本）｜ 范围：napi_init.cpp 超长路径动态分配、新增 NAPI .d.ts 类型声明、AppScope/app.json5 版本升版（2.1.0→2.3.0）、CHANGELOG 拆分、本 PRD 版本小节回写
+> 构建验证：`bash build_hap.sh` → **BUILD SUCCESSFUL**（1m15s），签名 HAP 正常产出
+
+**8.5.1 审查结论：✅ 放行（0 ERROR / 0 WARNING / 2 INFO）**
+
+- 2 条 INFO 均为既有 `componentSnapshot.get` 上下文静态噪音（`BreakpointSystem.ets:62` / `ColorConversion.ets:122`），与历次审查一致，非本轮引入。
+- 本轮改动（C++ 动态路径分配、类型声明文件、版本号变更、文档重构）**零新增 ArkTS / C++ 红线问题**。
+
+**8.5.2 本轮回顾——C++ 健壮性 P2-1~P2-5 状态确认**
+
+审查过程重新通读 `audio_metadata.cpp`，确认第二轮审查报告的 P2-1（UB 守卫）、P2-2（largesize==0 延伸至文件尾）、P2-3（spf Layer I 显式化）、P2-4（CBR 尾部 ID3v1/APE 标签扣除）、P2-5（帧同步二次校验）以及 `static_assert(sizeof(size_t)>=8)` **均已在此前整改轮次中落地位于当前源码**，本轮无增量修改。这意味着 PRD §4「原生解析」NFR 实际上早已全部覆盖。
+
+**8.5.3 本轮实际落地项**
+
+| 项 | 文件 | 改动 | 对应报告 |
+|---|---|---|---|
+| P2-7 | `napi_init.cpp` | `char[1024]` → `napi_get_value_string_utf8(nullptr,0)` 探长 + `std::vector<char>` 动态分配 | 代码审查报告_PRD落地 §8.3 |
+| P2-6 | `cpp/types/libnative_module/index.d.ts`（新增） + `oh-package.json5` | NAPI 7 字段类型声明（title/artist/album/year/duration/sampleRate/channels） | 代码审查报告_PRD落地 §8.3 |
+| 版本对齐 | `AppScope/app.json5`、`CHANGELOG.md`、本 PRD | versionName 2.1.0→2.3.0；CHANGELOG 拆分 v2.3.0 条目；PRD 表头/§1.3/§7.3 统一 | PRD §7.3 |
+
+**8.5.4 仍排入后续迭代（本轮明确不做）**
+
+- **Logger `%{private}s` 变体**：当前脱敏靠调用方自觉（`sanitize()` 只打印文件名），Logger 层面尚无 private 格式化占位符，后续统一加 `logDebugPrivate(msg)` / `logErrorPrivate(msg)` 等变体。
+- **`readFile` 内存优化**：当前 `parseAudioMetadata` 将完整文件读入 `std::vector`，无损 FLAC 可达数十 MB。后续改为只读文件前缀（ID3v2 头 + 首个 MPEG 帧 + STREAMINFO / mvhd 区域 等关键块）以降低峰值内存。
+- **元数据批量补扫复用 extractor**：`MusicStore.refreshMetadataIfNeeded` 当前每首新建/释放 `AVMetadataExtractor` 且串行 await，后续改为复用 extractor + 分批 yield。
+- cpp/types/index.d.ts 已通过 `libnative_module/` 子目录 + oh-package.json5 挂载；若未来 DevEco 提示类型未生效，可尝试更直接的方式（在 entry/build-profile.json5 的 `buildOption.externalNativeOptions` 里挂 `types` 路径）。
 

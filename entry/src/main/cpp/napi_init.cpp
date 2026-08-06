@@ -17,6 +17,7 @@
 #include <napi/native_api.h>
 #include <hilog/log.h>
 #include <string>
+#include <vector>
 #include "audio_metadata.h"
 
 #undef LOG_TAG
@@ -59,13 +60,19 @@ static napi_value NativeParseAudioMetadata(napi_env env, napi_callback_info info
         return undefinedVal;
     }
 
-    char filePath[1024] = { 0 };
-    size_t filePathLen = 0; // P0-6：显式初始化，杜绝栈上垃圾值作长度
-    if (napi_get_value_string_utf8(env, args[0], filePath, sizeof(filePath), &filePathLen) != napi_ok) {
+    // P2-12：先探长度再动态分配，替代固定 1024 栈缓冲，避免 >1023 字节路径静默截断。
+    size_t filePathLen = 0;
+    napi_status status = napi_get_value_string_utf8(env, args[0], nullptr, 0, &filePathLen);
+    if (status != napi_ok) {
+        return undefinedVal;
+    }
+    std::vector<char> filePath(static_cast<size_t>(filePathLen) + 1);
+    status = napi_get_value_string_utf8(env, args[0], filePath.data(), filePath.size(), &filePathLen);
+    if (status != napi_ok) {
         return undefinedVal;
     }
 
-    AudioMetadata metadata = parseAudioMetadata(std::string(filePath, filePathLen));
+    AudioMetadata metadata = parseAudioMetadata(std::string(filePath.data(), filePathLen));
 
     napi_value result;
     napi_create_object(env, &result);

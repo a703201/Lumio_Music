@@ -1,0 +1,6 @@
+{
+  "name": "libnative_module",
+  "version": "1.0.0",
+  "description": "NAPI native module type declarations for Lumio Music audio metadata parser",
+  "types": "./index.d.ts"
+}

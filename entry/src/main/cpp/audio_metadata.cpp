@@ -24,6 +24,76 @@
 
 namespace {
 
+// P2-6（static_assert）：MP4 largesize 依赖 64 位 size_t，固化前提防止 32 位 ABI 截断
+// （当前目标 phone/arm64 为 64 位不受影响，此处为防御性固化）。
+static_assert(sizeof(size_t) >= 8, "64-bit size_t required for MP4 largesize");
+
+// ===== MPEG 音频帧头常量表（P2-5 二次校验 / P2-3 spf 共用） =====
+// 码率表 [版本][层][码率索引]（kbps）；层序：0=Layer I / 1=Layer II / 2=Layer III
+static const int kBrTable[3][3][16] = {
+    { {0,32,64,96,128,160,192,224,256,288,320,352,384,416,448,0},   // MPEG1 Layer I
+      {0,32,48,56,64,80,96,112,128,160,192,224,256,320,384,0},       // MPEG1 Layer II
+      {0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0} },      // MPEG1 Layer III
+    { {0,32,48,56,64,80,96,112,128,144,160,176,192,224,256,0},
+      {0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0},
+      {0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0} },
+    { {0,32,48,56,64,80,96,112,128,144,160,176,192,224,256,0},
+      {0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0},
+      {0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0} }
+};
+static const int kSrTable[3][3] = { {44100,48000,32000}, {22050,24000,16000}, {11025,12000,8000} };
+
+// 解析单个 MPEG 帧头；返回 false 表示 i 处不是合法帧头（P2-5 帧同步二次校验用）。
+// 合法时输出版本/层/码率索引/采样率索引/声道模式/帧长（字节）。
+bool parseMpegFrameHeader(const std::vector<unsigned char>& buf, size_t i, int& ver, int& layer,
+                          int& brIdx, int& srIdx, int& chanMode, int& frameLen) {
+    if (i + 4 > buf.size()) {
+        return false;
+    }
+    const unsigned char v1 = buf[i + 1];
+    const int verBits = (v1 >> 3) & 0x03;   // 3=MPEG1, 2=MPEG2, 0=MPEG2.5, 1=保留
+    const int layerBits = (v1 >> 1) & 0x03; // 3=LayerI, 2=LayerII, 1=LayerIII, 0=保留
+    // 高 11 位同步（0xFFE0）+ 排除保留版本/保留层（P1-4 允许合法 MPEG 2.5）
+    if (buf[i] != 0xFF || (v1 & 0xE0) != 0xE0 || verBits == 1 || layerBits == 0) {
+        return false;
+    }
+    ver = verBits;
+    layer = layerBits;
+    brIdx = (buf[i + 2] >> 4) & 0x0F;
+    srIdx = (buf[i + 2] >> 2) & 0x03;
+    chanMode = (buf[i + 3] >> 6) & 0x03;
+    if (brIdx < 1 || brIdx > 14 || srIdx > 2) { // 15=自由格式（码率表为 0）、srIdx==3 为保留
+        return false;
+    }
+    const int verIdx = (ver == 3) ? 0 : (ver == 2 ? 1 : 2);
+    const int layerIdx = 3 - layer; // P1-3：3(I)→0, 2(II)→1, 1(III)→2
+    const int bitrate = kBrTable[verIdx][layerIdx][brIdx];
+    const int sr = kSrTable[verIdx][srIdx];
+    if (bitrate <= 0 || sr <= 0) {
+        return false;
+    }
+    const int padding = (buf[i + 2] >> 1) & 0x01;
+    if (layer == 3) { // Layer I：帧长 = (12*bitrate/sr + padding) * 4
+        frameLen = (12 * bitrate * 1000 / sr + padding) * 4;
+    } else if (layer == 1 && ver != 3) { // Layer III @ MPEG2/2.5：72 系数
+        frameLen = 72 * bitrate * 1000 / sr + padding;
+    } else { // Layer II（任意版本）/ Layer III @ MPEG1：144 系数
+        frameLen = 144 * bitrate * 1000 / sr + padding;
+    }
+    return true;
+}
+
+// P2-3：每帧采样数显式区分 Layer（防御性显式化；Xing 探测已收窄到 Layer III，实际风险已低）
+int spfForFrame(int ver, int layer) {
+    if (layer == 3) {
+        return 384;      // Layer I
+    }
+    if (layer == 2) {
+        return 1152;     // Layer II
+    }
+    return (ver == 3) ? 1152 : 576; // Layer III：MPEG1=1152，MPEG2/2.5=576
+}
+
 bool readFile(const std::string& path, std::vector<unsigned char>& out) {
     std::ifstream f(path, std::ios::binary);
     if (!f) {
@@ -265,7 +335,10 @@ AudioMetadata parseMp3(const std::vector<unsigned char>& buf) {
                 const size_t frameEnd = (static_cast<size_t>(txtOff) + static_cast<size_t>(txtLen) < bufSize)
                     ? (static_cast<size_t>(txtOff) + static_cast<size_t>(txtLen)) : bufSize;
                 const size_t take = (frameEnd > sClamped) ? (frameEnd - sClamped) : 0;
-                text.assign(reinterpret_cast<const char*>(&buf[sClamped]), take);
+                // P2-1：take==0 且 sClamped==bufSize 时，&buf[sClamped] 是过尾索引（vector::operator[] UB）
+                if (take > 0) {
+                    text.assign(reinterpret_cast<const char*>(&buf[sClamped]), take);
+                }
             }
             std::string key(reinterpret_cast<const char*>(&buf[p]), 4);
             if (key == "TIT2" && m.title.empty()) {
@@ -283,80 +356,91 @@ AudioMetadata parseMp3(const std::vector<unsigned char>& buf) {
     }
 
     // 扫描首个 MPEG 帧头，取码率/采样率估算时长
+    // P2-5：帧同步二次校验 —— 命中首个 0xFF Ex 后按计算出的 frameLen 跳到下一帧头，
+    // 校验第二帧同为合法帧头且版本/层/采样率索引一致；连续 2 帧一致才采信首帧参数，
+    // 避免 ID3 后随机字节伪同步。外层循环 i 单调递增、天然有上界，无死循环风险。
     size_t i = pos;
+    int ver = 0, layer = 0, brIdx = 0, srIdx = 0, chanMode = 0, frameLen = 0;
     for (; i + 4 < buf.size(); i++) {
-        // P1-4：允许合法 MPEG 2.5（verBits==0），排除保留值（verBits==1）
-        unsigned char v1 = buf[i + 1];
-        int verBits = (v1 >> 3) & 0x03;
-        int layerBits = (v1 >> 1) & 0x03;
-        if (buf[i] == 0xFF && (v1 & 0xE0) == 0xE0 && verBits != 1 && layerBits != 0) {
-            break;
+        if (!parseMpegFrameHeader(buf, i, ver, layer, brIdx, srIdx, chanMode, frameLen)) {
+            continue;
+        }
+        const size_t next = i + static_cast<size_t>(frameLen);
+        if (next + 4 <= buf.size()) {
+            int ver2 = 0, layer2 = 0, brIdx2 = 0, srIdx2 = 0, chanMode2 = 0, frameLen2 = 0;
+            if (parseMpegFrameHeader(buf, next, ver2, layer2, brIdx2, srIdx2, chanMode2, frameLen2) &&
+                ver2 == ver && layer2 == layer && srIdx2 == srIdx) {
+                break; // 连续 2 帧一致：采信首帧参数
+            }
         }
     }
     if (i + 4 < buf.size()) {
-        unsigned char v1 = buf[i + 1];
-        int ver = (v1 >> 3) & 0x03; // 3=MPEG1, 2=MPEG2, 0=MPEG2.5
-        int layer = (v1 >> 1) & 0x03; // 3=LayerI, 2=LayerII, 1=LayerIII
-        int brIdx = (buf[i + 2] >> 4) & 0x0F;
-        int srIdx = (buf[i + 2] >> 2) & 0x03;
-        int chanMode = (buf[i + 3] >> 6) & 0x03;
-        if (layer >= 1 && brIdx >= 1 && srIdx <= 2) {
-            // P2-7：提升为 static const，避免每次调用栈上重新初始化
-            static const int brTable[3][3][16] = {
-                { {0,32,64,96,128,160,192,224,256,288,320,352,384,416,448,0},   // Layer I
-                  {0,32,48,56,64,80,96,112,128,160,192,224,256,320,384,0},       // Layer II
-                  {0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0} },      // Layer III
-                { {0,32,48,56,64,80,96,112,128,144,160,176,192,224,256,0},
-                  {0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0},
-                  {0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0} },
-                { {0,32,48,56,64,80,96,112,128,144,160,176,192,224,256,0},
-                  {0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0},
-                  {0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0} }
-            };
-            static const int srTable[3][3] = { {44100,48000,32000}, {22050,24000,16000}, {11025,12000,8000} };
-            int verIdx = (ver == 3) ? 0 : (ver == 2 ? 1 : 2);
-            int sr = srTable[verIdx][srIdx];
-            int layerIdx = 3 - layer; // P1-3：layer 3(I)→0, 2(II)→1, 1(III)→2，纠正原 layer-1 行序颠倒
-            int bitrate = brTable[verIdx][layerIdx][brIdx];
+        const int verIdx = (ver == 3) ? 0 : (ver == 2 ? 1 : 2);
+        const int sr = kSrTable[verIdx][srIdx];
+        const int layerIdx = 3 - layer; // P1-3：layer 3(I)→0, 2(II)→1, 1(III)→2
+        const int bitrate = kBrTable[verIdx][layerIdx][brIdx];
 
-            // P2-10：VBR 文件带 Xing/Info 头，给出总帧数，可精确估算时长（优于 CBR 近似）。
-            // Xing/Info 头只在 Layer III 中定义，且其偏移取决于 side information 长度；
-            // layerBits 语义为 3=Layer I / 2=Layer II / 1=Layer III，因此只在 layer==1 时探测。
-            if (layer == 1) {
-                // MPEG1：单声道 17 字节、其余 32 字节；MPEG2/2.5：单声道 9 字节、其余 17 字节
-                int sideInfo = (ver == 3) ? ((chanMode == 3) ? 17 : 32) : ((chanMode == 3) ? 9 : 17);
-                size_t xingOff = i + 4 + static_cast<size_t>(sideInfo);
-                if (xingOff + 12 <= buf.size() &&
-                    (tagEq(&buf[xingOff], "Xing") || tagEq(&buf[xingOff], "Info"))) {
-                    uint32_t flags = (static_cast<uint32_t>(buf[xingOff + 4]) << 24) |
-                                     (static_cast<uint32_t>(buf[xingOff + 5]) << 16) |
-                                     (static_cast<uint32_t>(buf[xingOff + 6]) << 8) |
-                                     static_cast<uint32_t>(buf[xingOff + 7]);
-                    if (flags & 0x00000001u) { // frames 字段存在
-                        uint32_t frames = (static_cast<uint32_t>(buf[xingOff + 8]) << 24) |
-                                          (static_cast<uint32_t>(buf[xingOff + 9]) << 16) |
-                                          (static_cast<uint32_t>(buf[xingOff + 10]) << 8) |
-                                          static_cast<uint32_t>(buf[xingOff + 11]);
-                        int spf = (ver == 3) ? 1152 : 576; // MPEG1 每帧 1152 采样，MPEG2/2.5 为 576
-                        if (frames > 0 && sr > 0) {
-                            m.durationMs = static_cast<int>(
-                                static_cast<uint64_t>(frames) * static_cast<uint64_t>(spf) * 1000ull /
-                                static_cast<uint64_t>(sr));
-                        }
+        // P2-10：VBR 文件带 Xing/Info 头，给出总帧数，可精确估算时长（优于 CBR 近似）。
+        // Xing/Info 头只在 Layer III 中定义，且其偏移取决于 side information 长度；
+        // layerBits 语义为 3=Layer I / 2=Layer II / 1=Layer III，因此只在 layer==1 时探测。
+        if (layer == 1) {
+            // MPEG1：单声道 17 字节、其余 32 字节；MPEG2/2.5：单声道 9 字节、其余 17 字节
+            int sideInfo = (ver == 3) ? ((chanMode == 3) ? 17 : 32) : ((chanMode == 3) ? 9 : 17);
+            size_t xingOff = i + 4 + static_cast<size_t>(sideInfo);
+            if (xingOff + 12 <= buf.size() &&
+                (tagEq(&buf[xingOff], "Xing") || tagEq(&buf[xingOff], "Info"))) {
+                uint32_t flags = (static_cast<uint32_t>(buf[xingOff + 4]) << 24) |
+                                 (static_cast<uint32_t>(buf[xingOff + 5]) << 16) |
+                                 (static_cast<uint32_t>(buf[xingOff + 6]) << 8) |
+                                 static_cast<uint32_t>(buf[xingOff + 7]);
+                if (flags & 0x00000001u) { // frames 字段存在
+                    uint32_t frames = (static_cast<uint32_t>(buf[xingOff + 8]) << 24) |
+                                      (static_cast<uint32_t>(buf[xingOff + 9]) << 16) |
+                                      (static_cast<uint32_t>(buf[xingOff + 10]) << 8) |
+                                      static_cast<uint32_t>(buf[xingOff + 11]);
+                    int spf = spfForFrame(ver, layer); // P2-3：显式 Layer 区分（此处恒为 Layer III）
+                    if (frames > 0 && sr > 0) {
+                        m.durationMs = static_cast<int>(
+                            static_cast<uint64_t>(frames) * static_cast<uint64_t>(spf) * 1000ull /
+                            static_cast<uint64_t>(sr));
                     }
                 }
             }
+        }
 
-            // CBR 兜底：VBR 头缺失时用音频字节数估算
-            if (m.durationMs <= 0 && bitrate > 0) {
-                long long audioBytes = static_cast<long long>(buf.size()) - static_cast<long long>(pos);
-                if (audioBytes > 0) {
-                    m.durationMs = static_cast<int>(audioBytes * 8.0 / (bitrate * 1000.0) * 1000.0);
+        // CBR 兜底：VBR 头缺失时用音频字节数估算
+        // P2-4：先扣除文件尾部 ID3v1（128B，以 "TAG" 开头）或 APE（footer 以 "APETAGEX" 开头）标签，
+        // 避免把标签字节计入音频时长导致时长偏大。
+        if (m.durationMs <= 0 && bitrate > 0) {
+            long long audioBytes = static_cast<long long>(buf.size()) - static_cast<long long>(pos);
+            if (audioBytes > 0) {
+                const size_t fileSize = buf.size();
+                if (fileSize >= 128 && buf[fileSize - 128] == 'T' && buf[fileSize - 127] == 'A' &&
+                    buf[fileSize - 126] == 'G') {
+                    audioBytes -= 128; // ID3v1 固定 128 字节
+                } else if (fileSize >= 32 && buf[fileSize - 32] == 'A' && buf[fileSize - 31] == 'P' &&
+                           buf[fileSize - 30] == 'E' && buf[fileSize - 29] == 'T' &&
+                           buf[fileSize - 28] == 'A' && buf[fileSize - 27] == 'G' &&
+                           buf[fileSize - 26] == 'E' && buf[fileSize - 25] == 'X') {
+                    // APE footer 在文件最后 32 字节，其 size 字段（LE，offset 8）为 header+items
+                    // 大小（不含 footer 本身），故整个 tag 大小为 apeSize + 32
+                    const uint32_t apeSize =
+                        static_cast<uint32_t>(buf[fileSize - 32 + 8]) |
+                        (static_cast<uint32_t>(buf[fileSize - 32 + 9]) << 8) |
+                        (static_cast<uint32_t>(buf[fileSize - 32 + 10]) << 16) |
+                        (static_cast<uint32_t>(buf[fileSize - 32 + 11]) << 24);
+                    const uint64_t totalTag = static_cast<uint64_t>(apeSize) + 32u;
+                    if (totalTag <= static_cast<uint64_t>(audioBytes)) {
+                        audioBytes -= static_cast<long long>(totalTag);
+                    }
                 }
             }
-            m.sampleRate = sr;
-            m.channels = (chanMode == 3) ? 1 : 2;
+            if (audioBytes > 0) {
+                m.durationMs = static_cast<int>(audioBytes * 8.0 / (bitrate * 1000.0) * 1000.0);
+            }
         }
+        m.sampleRate = sr;
+        m.channels = (chanMode == 3) ? 1 : 2;
     }
     return m;
 }
@@ -389,6 +473,12 @@ void walkAtoms(const std::vector<unsigned char>& buf, size_t start, size_t end,
                      (static_cast<uint64_t>(buf[pos + 14]) << 8) |
                      static_cast<uint64_t>(buf[pos + 15]);
             headerLen = 16;
+        }
+        if (size64 == 0) {
+            // P2-2：ISO/IEC 14496-12 规定 size==0 表示「延伸至文件尾」。
+            // 若不处理，size=0 的 moov/mdat 之后的所有 metadata（mvhd/ilst）会被跳过。
+            // 循环入口已保证 pos + 8 <= buf.size()，此处减法不会下溢。
+            size64 = static_cast<uint64_t>(buf.size() - pos);
         }
         if (size64 < static_cast<uint64_t>(headerLen)) {
             break;
@@ -467,7 +557,11 @@ void walkAtoms(const std::vector<unsigned char>& buf, size_t start, size_t end,
                         if (vp + vlen > buf.size()) {
                             break;
                         }
-                        std::string val(reinterpret_cast<const char*>(&buf[vp]), vlen);
+                        std::string val;
+                        // P2-1：vlen==0 且 vp==buf.size() 时，&buf[vp] 是过尾索引（vector::operator[] UB）
+                        if (vlen > 0) {
+                            val.assign(reinterpret_cast<const char*>(&buf[vp]), vlen);
+                        }
                         val = trimCopy(val);
                         // P1-2：用真实 4 字节版权符原子名（0xA9 + 字母），原 UTF-8 双字节写法永不匹配
                         if (tagEq(ct, kNam) && m.title.empty()) {
