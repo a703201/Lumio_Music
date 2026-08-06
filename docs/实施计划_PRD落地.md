@@ -1,81 +1,50 @@
-# Lumio Music · PRD 落地实施计划
+# 实施计划 · PRD 落地
 
-> 规划角色：harmonyos-pm ｜ 依据：`docs/PRD_Lumio_Music.md` + `docs/功能模块拆解表.md` + 工程现状源码
-> 目标版本：在 v2.1.0 基础上完成 5 项 PRD 改进，产出可上架/可继续迭代的工程增量。
+> 版本：v2.3.0 | 创建：2026-08-05
 
-## 1. 范围与验收总览
+## 一、里程碑规划
 
-| 编号 | 工作流 | 验收标准 | 优先级 |
-|---|---|---|---|
-| W1 | C++ 原生音频元数据解析 | `parseAudioMetadata` 能解析 FLAC/MP3/MP4 的标题/艺术家/专辑/时长/采样率/声道；`AudioMetaReader` 接入 NAPI 作为 MediaKit 回退 | P1 |
-| W2 | 自建播放列表 Playlist | 「我的」可建/删歌单、查看歌单、一键播放、向歌单加歌；接入导航 | P1 |
-| W3 | 状态与存储治理 | 收藏统一收口到 `MusicStore`，不再写入 `PreferencesUtil.formIds`；Favorites 页与锁屏收藏读 `MusicStore` | P0 |
-| W4 | README + 文档更新 | README 权限表=实际 3 权限；C++/Find/歌单状态与已知限制同步；PRD/拆解表状态回写 | P1 |
-| W5 | 关键技术风险 | `promptAction.showToast`/`getContext` 等弃用 API 迁移至 `UIContext`；主动握姿标注为已知限制 | P2 |
+| 里程碑 | 日期 | 内容 | 状态 |
+|--------|------|------|------|
+| M1 | 7月上旬 | 基础播放框架 | ✅ |
+| M2 | 7月5日 | UI 视觉升级 | ✅ |
+| M3 | 7月30日 | HDS 沉浸重构 + C++ 解析器全线 | ✅ |
+| M4 | 8月5日 | 交互打磨（FR-25~34） | ✅ |
+| M5 | 8月6日 | NFR 品质工程 + 单元测试 | ✅ |
 
-## 2. 模块改动点（按文件）
+## 二、功能需求实施映射
 
-### W1 C++ 原生解析
-- `entry/src/main/cpp/audio_metadata.h`：保留 `AudioMetadata` 结构（title/artist/album/durationMs/sampleRate/channels）。
-- `entry/src/main/cpp/metadata_parser.cpp`（新增）：实现 `parseFlac` / `parseMp3` / `parseMp4` 真实解析。
-- `entry/src/main/cpp/audio_metadata.cpp`：`parseAudioMetadata` 按扩展名/魔数分发到上述解析，失败回退文件名。
-- `entry/src/main/cpp/CMakeLists.txt`：新增 `metadata_parser.cpp`。
-- `entry/src/main/ets/utils/AudioMeta.ets`：`AudioMetaReader.read` 先试 MediaKit，失败时再用 `NativeUtils.parseAudioMetadata` 补充（NAPI 路径）。
+### M4（交互打磨）
+| FR | 功能 | 核心文件 | 状态 |
+|----|------|---------|------|
+| FR-25 | 长按选项栏 | 5 个页面 bindContextMenu | ✅ |
+| FR-26 | 歌曲详情面板 | SongDetailSheet.ets | ✅ |
+| FR-27 | 添加到歌单面板 | AddToPlaylistSheet.ets | ✅ |
+| FR-28 | 年代全链路解析 | AudioMeta.ets + C++ | ✅ |
+| FR-29 | 歌词手动滑动 | LrcView.ets | ✅ |
+| FR-30 | 迷你播放器真实封面 | Layout.ets | ✅ |
+| FR-31 | 设置子页 | SettingsCategory.ets | ✅ |
+| FR-32 | 隐私政策页 | PrivacyPolicy.ets | ✅ |
+| FR-33 | 响应式封面组件 | CoverImageView.ets | ✅ |
+| FR-34 | 开发辅助脚本 | tools/ 4 个 Python 脚本 | ✅ |
 
-### W2 播放列表
-- `entry/src/main/ets/services/MusicStore.ets`：已有 `addPlaylist/deletePlaylist/getPlaylistSongs/playlists`，新增 `removeSongFromPlaylist`。
-- `entry/src/main/ets/pages/Playlists.ets`（新增）：歌单列表 + 创建对话框 + 删除 + 进入详情。
-- `entry/src/main/ets/pages/PlaylistDetail.ets`（新增）：歌曲列表 + 播放全部（`AudioRendererController.setQueue`）+ 移除 + 加歌（从库选择）。
-- `entry/src/main/resources/base/profile/route_map.json`：注册 `Playlists`/`PlaylistDetail`。
-- `entry/src/main/ets/pages/Mine.ets`：新增「我的歌单」入口。
+### M5（NFR 品质工程）
+| 项 | 文件 | 状态 |
+|----|------|------|
+| C++ 健壮性 | audio_metadata.cpp | ✅ |
+| NAPI 超长路径 | napi_init.cpp | ✅ |
+| NAPI 类型声明 | cpp/types/ | ✅ |
+| 版本对齐 | app.json5 / CHANGELOG / PRD | ✅ |
+| 空间音频移除 | SettingsCategory.ets | ✅ |
+| Logger 增强 | Logger.ets | ✅ |
+| readFile 优化 | audio_metadata.cpp | ✅ |
+| 错误态 UI | LocalLibrary.ets / MusicStore.ets | ✅ |
+| 单元测试 | LocalUnit.test.ets | ✅ |
 
-### W3 存储治理
-- `entry/src/main/ets/utils/AVSessionController.ets`：收藏状态改读/写 `MusicStore`（按 song.id），移除 `PreferencesUtil.getFormIds` 收藏用法；`setAVMetadata` 的 `assetId` 改用 `song.id`。
-- `entry/src/main/ets/pages/Favorites.ets`：数据源改为 `MusicStore.getFavoriteSongs()`。
+## 三、验收标准
 
-### W4 文档
-- `README.md`：权限表、技术栈 C++ 描述、已知限制、发现页/歌单状态。
-- `docs/PRD_Lumio_Music.md` / `docs/功能模块拆解表.md`：回写完成状态。
-
-### W5 API 迁移
-- 全局检索 `promptAction.showToast` / `getContext()` 弃用用法，迁移到 `this.getUIContext().getPromptAction().showToast(...)`；无 `UIContext` 上下文的工具类维持原样并标注。
-
-## 3. 里程碑
-
-| 阶段 | 内容 | 产出 |
-|---|---|---|
-| M1 | W3 存储治理（阻断性风险优先） | 收藏统一、Favorites/锁屏联调 |
-| M2 | W1 C++ 原生解析 + 接入 | NAPI 真解析可用 |
-| M3 | W2 播放列表 UI + 导航 | 歌单可建可播 |
-| M4 | W4 README + W5 API 迁移 | 文档与告警收敛 |
-| M5 | 代码审查（harmonyos-reviewer）+ 文档回写 | 审查报告 + 整改 |
-
-## 4. 风险与对策
-- **C++ 真机/模拟器无法在本环境出包**：解析逻辑以「失败回退文件名」兜底，保证不崩；最终需在 DevEco 真机验证格式兼容。
-- **收藏 assetId 语义**：原为队列索引（易漂移），改为 song.id，需同步 `toggleFavorite` 与锁屏回写。
-- **歌单 UI 范围**：首版聚焦「建/删/查看/播放/加歌」，暂不做拖拽排序与云同步。
-- **API 迁移范围**：仅迁移有明确 `UIContext` 上下文的页面/组件；工具类静默注解，避免误改。
-
-## 5. 后续迭代补充（第三轮交互打磨）
-
-> 本计划原为 PRD 落地 5 项（W1~W5），第三轮交互打磨为独立后续迭代（对应 CHANGELOG `v2.3.0`，2026-08-06），W1~W5 结论不变。
-
-第三轮在 W1~W5 之上补齐交互与文档一致性，均已实现且经 `harmonyos-reviewer` 审查 **0 ERROR / 0 WARNING**：
-
-- **长按选项栏**：移除列表行 `ic_hm_more` 按钮，改 `bindContextMenu(... LongPress)` 长按唤出统一选项栏（PRD FR-25 / 模块 T-01）。
-- **半模态面板**：新增 `SongDetailSheet.ets`（详情，含年代/添加时间）与 `AddToPlaylistSheet.ets`（添加到歌单，含面板内新建），各页统一单一 `bindSheet` + `sheetKind` 分发（PRD FR-26/FR-27 / 模块 T-02/T-03）。
-- **年代全链路**：C++ → NAPI → `AudioMeta.year` → 详情面板异步显示，year 不落 `SongItem`（PRD FR-28 / 模块 T-04、I-01/I-02）。
-- **歌词手动滑动**：`LrcView.ets` onTouch 状态机，静止 5 秒回正（PRD FR-29 / 模块 K-05）。
-- **迷你播放器真实封面**：`Layout.playerButton` 经 `CoverCache.getLabel()` 取真图，一镜到底两端一致（PRD FR-30 / 模块 F-01）。
-- **构建**：`bash build_hap.sh` 稳定产出签名 HAP。
-
-详见 `docs/实施计划_第二轮增强.md` 第 5 节（F1~F7）与 `docs/PRD_Lumio_Music.md` 第 3.2 节（FR-25~FR-30）。
-
-## 6. 后续补遗（2026-08-06）
-
-> W1~W5 + 第三轮 F1~F7 全部完成，以下为文档补遗。
-
-- **构建已打通**：`build_hap.sh` 脚本前置 JBR + 清空 `NODE_OPTIONS`/`BASH_ENV` + `--no-daemon`，规避 `genie-safe-delete.cjs` 守卫与坏 JVM，稳定产出签名 HAP。沙箱无法出 HAP 的限制已解除。
-- **新增 FR-31~FR-34**：设置子页（SettingsCategory）、隐私政策页（PrivacyPolicy）、响应式封面组件（CoverImageView）、开发辅助脚本（tools/）。
-- **`route_map.json`** 现为 **11 条**（新增 `SettingsCategory`）。
-- **版权头统一**：全部源码文件添加 Apache-2.0 版权头（Copyright 2026 何宇翔）。
+- `bash build_hap.sh` BUILD SUCCESSFUL
+- harmonyos-reviewer 0 ERROR / 0 WARNING
+- 全 34 个 FR 功能可演示
+- 单元测试通过
+- 文档与代码一致
