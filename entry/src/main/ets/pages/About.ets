@@ -21,7 +21,7 @@ import { PrivacyPolicyBody } from '../components/SettingsSubPageBodies';
 import { semanticOf } from '../tokens/LumioColor';
 import { LumioTheme, SpringKind } from '../tokens/LumioTheme';
 import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
-import type uiMaterial from '@ohos.arkui.uiMaterial';
+import uiMaterial from '@ohos.arkui.uiMaterial';
 import { acquireSheetMaterial, SheetScaffold } from '../common/utils/SheetMaterial';
 
 @Builder
@@ -123,7 +123,7 @@ export struct About {
             .height(24)
             .fillColor(this.getThemeColors().primaryText)
             .onClick(() => this.goBackFromSubPage())
-          Text('隐私政策')
+          Text($r('app.string.privacy_policy'))
             .fontSize(TYPE_SM.title2.size)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getThemeColors().primaryText)
@@ -180,7 +180,7 @@ export struct About {
             .transition(TransitionEffect.translate({ y: 10 }))
             .animation({ duration: 400, curve: LumioTheme.curve(SpringKind.Crisp) })
 
-          Text('本地音乐播放器')
+          Text($r('app.string.app_desc'))
             .fontSize(TYPE_SM.body.size)
             .fontColor(this.getThemeColors().secondaryText)
             .opacity(this.subtitleOpacity)
@@ -192,7 +192,7 @@ export struct About {
         .backgroundColor(this.getThemeColors().secondaryBg)
 
         // Features section
-        Text('功能特色')
+        Text($r('app.string.features'))
           .fontSize(TYPE_SM.footnote.size)
           .fontColor(this.getThemeColors().secondaryText)
           .width('100%')
@@ -205,7 +205,7 @@ export struct About {
               .height(30)
               .margin({ bottom: SPACE_SM.compact })
               .fillColor(this.getThemeColors().primaryText)
-            Text('本地播放')
+            Text($r('app.string.feat_local'))
               .fontSize(TYPE_SM.footnote.size)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.getThemeColors().primaryText)
@@ -221,7 +221,7 @@ export struct About {
               .height(30)
               .margin({ bottom: SPACE_SM.compact })
               .fillColor(this.getThemeColors().primaryText)
-            Text('文件扫描')
+            Text($r('app.string.feat_scan'))
               .fontSize(TYPE_SM.footnote.size)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.getThemeColors().primaryText)
@@ -237,7 +237,7 @@ export struct About {
               .height(30)
               .margin({ bottom: SPACE_SM.compact })
               .fillColor(this.getThemeColors().primaryText)
-            Text('歌词显示')
+            Text($r('app.string.feat_lyrics'))
               .fontSize(TYPE_SM.footnote.size)
               .fontWeight(FontWeight.Medium)
               .fontColor(this.getThemeColors().primaryText)
@@ -252,21 +252,21 @@ export struct About {
         .justifyContent(FlexAlign.SpaceAround)
 
         // Info section
-        Text('应用信息')
+        Text($r('app.string.app_info'))
           .fontSize(TYPE_SM.footnote.size)
           .fontColor(this.getThemeColors().secondaryText)
           .width('100%')
           .padding({ left: SPACE_SM.roomy, bottom: SPACE_SM.cozy })
 
         Column() {
-          this.buildAboutItem('应用版本', this.appVersion, 0)
-          this.buildAboutItem('开发者', '何宇翔', 1)
-          this.buildAboutItem('技术支持', 'HarmonyOS SDK', 2)
-          this.buildAboutItem('架构', 'ArkTS + C++ Native', 3)
+          this.buildAboutItem($r('app.string.app_version'), this.appVersion, 0)
+          this.buildAboutItem($r('app.string.developer'), '何宇翔', 1)
+          this.buildAboutItem($r('app.string.tech_support'), 'HarmonyOS SDK', 2)
+          this.buildAboutItem($r('app.string.architecture'), 'ArkTS + C++ Native', 3)
 
           // 重新查看新手引导：关闭本 Sheet 并触发 Layout 的引导半蒙面展示
           Row() {
-            Text('新手引导')
+            Text($r('app.string.onboarding'))
               .fontSize(TYPE_SM.body.size)
               .fontColor(this.getThemeColors().primaryText)
               .layoutWeight(1)
@@ -291,7 +291,7 @@ export struct About {
 
           // 隐私政策：以 sheet 内嵌子页形式呈现，不再走主导航栈
           Row() {
-            Text('隐私政策')
+            Text($r('app.string.privacy_policy'))
               .fontSize(TYPE_SM.body.size)
               .fontColor(this.getThemeColors().primaryText)
               .layoutWeight(1)
@@ -316,7 +316,7 @@ export struct About {
         .width('100%')
         .padding({ left: SPACE_SM.base, right: SPACE_SM.base })
 
-        Text('一款简洁的本地音乐播放器，支持导入本地音频、播放控制、歌词显示等功能。')
+        Text($r('app.string.app_brief'))
           .fontSize(TYPE_SM.subhead.size)
           .fontColor(this.getThemeColors().secondaryText)
           .textAlign(TextAlign.Center)
@@ -334,7 +334,7 @@ export struct About {
     }
 
   @Builder
-  buildAboutItem(label: string, value: string, index: number) {
+  buildAboutItem(label: ResourceStr, value: string, index: number) {
     Row() {
       Text(label)
         .fontSize(TYPE_SM.body.size)

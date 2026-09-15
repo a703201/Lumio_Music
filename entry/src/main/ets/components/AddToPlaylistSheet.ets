@@ -15,7 +15,7 @@
  */
 
 /*
- * 长按菜单 -> "添加到歌单" 的歌单选择半模态面板（Medium 高度）。
+ * 长按菜单 -> $r('app.string.add_to_playlist') 的歌单选择半模态面板（Medium 高度）。
  * 列出当前所有自建歌单，点击即把指定歌曲加入；底部「新建歌单」可在面板内直接建并加入。
  */
 
@@ -26,7 +26,7 @@ import { semanticOf } from '../tokens/LumioColor';
 import { Logger } from '../utils/Logger';
 import { CoverImageView } from './CoverImageView';
 import { TYPE_SM, SPACE_SM, LUMIO_RADIUS } from '../tokens/LumioScale';
-import type uiMaterial from '@ohos.arkui.uiMaterial';
+import uiMaterial from '@ohos.arkui.uiMaterial';
 import { acquireSheetMaterial, SheetScaffold } from '../common/utils/SheetMaterial';
 import { GroupedSheetContainer } from '../common/components/GroupedSheet';
 
@@ -64,7 +64,7 @@ export struct AddToPlaylistSheet {
     this.playlists = [...this.store.playlists];
   }
 
-  private toast(message: string): void {
+  private toast(message: ResourceStr): void {
     try {
       this.getUIContext().getPromptAction().showToast({ message });
     } catch (e) {
@@ -80,7 +80,7 @@ export struct AddToPlaylistSheet {
     if (added > 0) {
       this.toast(`已添加到「${playlist.name}」`);
     } else {
-      this.toast('歌曲已在歌单中');
+      this.toast($r('app.string.song_already_in_playlist'));
     }
     this.onClose();
   }
@@ -88,11 +88,11 @@ export struct AddToPlaylistSheet {
   private onNewConfirm(name: string): void {
     const trimmed: string = name.trim();
     if (trimmed.length === 0) {
-      this.toast('歌单名称不能为空');
+      this.toast($r('app.string.playlist_name_empty'));
       return;
     }
     if (this.store.hasPlaylistName(trimmed)) {
-      this.toast('已存在同名歌单');
+      this.toast($r('app.string.playlist_exists'));
       return;
     }
     this.store.addPlaylist(trimmed, this.songId > 0 ? [this.songId] : []);
@@ -109,7 +109,7 @@ export struct AddToPlaylistSheet {
   @Builder
   nameDialogBuilder() {
     Column() {
-      Text('新建歌单')
+      Text($r('app.string.new_playlist'))
         .fontSize(TYPE_SM.title3.size)
         .fontWeight(FontWeight.Bold)
         .lineHeight(TYPE_SM.title3.lineHeight)
@@ -117,7 +117,7 @@ export struct AddToPlaylistSheet {
         .fontColor(this.getThemeColors().primaryText)
         .margin({ top: SPACE_SM.roomy, bottom: SPACE_SM.base })
 
-      TextInput({ text: this.newName, placeholder: '请输入歌单名称' })
+      TextInput({ text: this.newName, placeholder: $r('app.string.enter_playlist_name') })
         .width('86%')
         .height(44)
         .maxLength(30)
@@ -129,7 +129,7 @@ export struct AddToPlaylistSheet {
         })
 
       Row() {
-        Button('取消')
+        Button($r('app.string.cancel'))
           .layoutWeight(1)
           .height(40)
           .fontSize(TYPE_SM.body.size)
@@ -140,7 +140,7 @@ export struct AddToPlaylistSheet {
             this.nameDialogController.close();
           }).clickEffect({ level: ClickEffectLevel.LIGHT, scale: 0.96 })
 
-        Button('确定')
+        Button($r('app.string.confirm'))
           .layoutWeight(1)
           .height(40)
           .fontSize(TYPE_SM.body.size)
@@ -163,7 +163,7 @@ export struct AddToPlaylistSheet {
   build() {
     SheetScaffold({ material: this.material, fallbackColor: this.getThemeColors().surfaceOverlay }) {
       Column() {
-        Text('添加到歌单')
+        Text($r('app.string.add_to_playlist'))
         .fontSize(TYPE_SM.title3.size)
         .fontWeight(FontWeight.Bold)
         .lineHeight(TYPE_SM.title3.lineHeight)
@@ -174,7 +174,7 @@ export struct AddToPlaylistSheet {
         .textAlign(TextAlign.Center)
 
       if (this.playlists.length === 0) {
-        Text('还没有歌单，点击下方新建')
+        Text($r('app.string.no_playlist_hint'))
           .fontSize(TYPE_SM.footnote.size)
           .fontColor(this.getThemeColors().secondaryText)
           .margin({ top: SPACE_SM.roomy, bottom: SPACE_SM.roomy })
@@ -227,7 +227,7 @@ export struct AddToPlaylistSheet {
           .width(20)
           .height(20)
           .fillColor(this.getThemeColors().accent)
-        Text('新建歌单')
+        Text($r('app.string.new_playlist'))
           .fontSize(TYPE_SM.body.size)
           .fontColor(this.getThemeColors().accent)
           .margin({ left: SPACE_SM.compact })

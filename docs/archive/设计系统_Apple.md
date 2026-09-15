@@ -3,7 +3,7 @@
 
 > **文档版本**：v1.0（Phase 0 · M0 交付）
 > **作者**：蓝绘心（鸿蒙 UI/UX 设计师）
-> **项目**：Lumio Music v2.4.0 · HarmonyOS NEXT · ArkTS / ArkUI
+> **项目**：Lumio Music v3.0.0 · HarmonyOS NEXT · ArkTS / ArkUI
 > **编译 SDK**：API 26 ｜ **最低兼容**：API 24（`ApiCompat.API_24`）｜ 单模块 `entry` + C++ NAPI
 > **本阶段**：**仅产出文档，不改动任何 `.ets` 文件**
 

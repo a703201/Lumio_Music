@@ -15,6 +15,7 @@
  */
 
 import { SongItem } from '../models/music';
+import { SongDataSource } from '../datasource/SongDataSource';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { MusicStore } from '../services/MusicStore';
 import { AudioRendererController } from '../utils/AudioRendererController';
@@ -48,7 +49,12 @@ struct Favorites {
   }
 
   @State itemScales: number[] = [];
-  @State favoriteSongs: SongItem[] = [];
+  @State @Watch('onFavoriteSongsChanged') favoriteSongs: SongItem[] = [];
+  private favoriteSongsDataSource: SongDataSource = new SongDataSource([]);
+
+  onFavoriteSongsChanged(): void {
+    this.favoriteSongsDataSource.setData(this.favoriteSongs);
+  }
   @State favScales: number[] = [];
   @State backScale: number = 1.0;
   @State emptyIconScale: number = 1.0;
@@ -93,7 +99,7 @@ struct Favorites {
   toggleFavoriteSong(song: SongItem): void {
     this.store.toggleFavorite(song.id);
     try {
-      this.getUIContext().getPromptAction().showToast({ message: '已取消收藏' });
+      this.getUIContext().getPromptAction().showToast({ message: $r('app.string.unfavorited') });
     } catch (e) {
       Logger.error('Favorites', 'showToast failed');
     }
@@ -113,10 +119,10 @@ struct Favorites {
 
     private buildMenuItems(song: SongItem): SongMenuEntry[] {
     return [
-      { text: '播放', icon: $r('app.media.ic_lib_play'), action: () => { this.playSong(song); } },
-      { text: '取消收藏', icon: $r('app.media.ic_public_collect'), action: () => { this.toggleFavoriteSong(song); } },
-      { text: '添加到歌单', icon: $r('app.media.ic_public_add'), action: () => { this.openAddToPlaylist(song); } },
-      { text: '详细', icon: $r('app.media.ic_public_detail'), action: () => { this.openSongDetail(song); } }
+      { text: $r('app.string.play'), icon: $r('app.media.ic_lib_play'), action: () => { this.playSong(song); } },
+      { text: $r('app.string.unfavorite'), icon: $r('app.media.ic_public_collect'), action: () => { this.toggleFavoriteSong(song); } },
+      { text: $r('app.string.add_to_playlist'), icon: $r('app.media.ic_public_add'), action: () => { this.openAddToPlaylist(song); } },
+      { text: $r('app.string.details'), icon: $r('app.media.ic_public_detail'), action: () => { this.openSongDetail(song); } }
     ];
   }
 
@@ -145,7 +151,7 @@ struct Favorites {
               }
             })
 
-          Text('我的收藏')
+          Text($r('app.string.my_favorites'))
             .fontSize(TYPE_SM.title2.size)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getThemeColors().primaryText)
@@ -173,12 +179,12 @@ struct Favorites {
               .scale({ x: this.emptyIconScale, y: this.emptyIconScale })
               .animation({ duration: LumioTheme.duration(700), curve: LumioTheme.curve(SpringKind.Crisp) })
 
-            Text('暂无收藏歌曲')
+            Text($r('app.string.no_fav_songs'))
               .fontSize(TYPE_SM.headline.size)
               .fontColor(this.getThemeColors().secondaryText)
               .fontWeight(FontWeight.Medium)
 
-            Text('在播放页面点击收藏按钮添加')
+            Text($r('app.string.fav_hint'))
               .fontSize(TYPE_SM.footnote.size)
               .fontColor(semanticOf(this.isDark).labelSecondary)
               .margin({ top: SPACE_SM.compact })
@@ -187,7 +193,7 @@ struct Favorites {
           .justifyContent(FlexAlign.Center)
         } else {
           List() {
-            ForEach(this.favoriteSongs, (song: SongItem, index: number) => {
+            LazyForEach(this.favoriteSongsDataSource, (song: SongItem, index: number) => {
               ListItem() {
                 SongRow({
               song: song,
@@ -217,7 +223,7 @@ struct Favorites {
       }
             })
               }
-            })
+            }, (song: SongItem): string => song.id.toString())
           }
           .width('100%')
           .layoutWeight(1)
@@ -246,7 +252,7 @@ struct Favorites {
   @Builder
   sheetContent() {
     if (this.sheetKind === 'detail') {
-      SongDetailSheet({ songId: this.selectedSong?.id ?? 0 })
+      SongDetailSheet({ songId: this.selectedSong?.id ?? 0, pathStack: this.pathStack })
     } else if (this.sheetKind === 'add') {
       AddToPlaylistSheet({
         songId: this.selectedSong?.id ?? 0,

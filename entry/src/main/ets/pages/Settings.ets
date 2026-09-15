@@ -26,7 +26,7 @@ import {
   PrivacyPolicyBody
 } from '../components/SettingsSubPageBodies';
 import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
-import type uiMaterial from '@ohos.arkui.uiMaterial';
+import uiMaterial from '@ohos.arkui.uiMaterial';
 import { acquireSheetMaterial, SheetScaffold } from '../common/utils/SheetMaterial';
 
 interface SettingsCategoryParam {
@@ -35,8 +35,8 @@ interface SettingsCategoryParam {
 
 interface CategoryItem {
   id: string;
-  title: string;
-  subtitle: string;
+  title: ResourceStr;
+  subtitle: ResourceStr;
   icon: ResourceStr;
   iconColor: string;
 }
@@ -80,33 +80,34 @@ export struct Settings {
    */
   private categories(): Array<CategoryItem> {
     return [
-      { id: 'playback', title: '播放', subtitle: '自动下一首 · 播放模式', icon: $r('app.media.ic_public_list_cycle'), iconColor: this.getThemeColors().secondaryText },
-      { id: 'appearance', title: '用户界面', subtitle: '深色模式 · 主题', icon: $r('app.media.ic_public_themes'), iconColor: this.getThemeColors().secondaryText },
-      { id: 'accessibility', title: '无障碍', subtitle: '降低动态效果', icon: $r('app.media.ic_public_face'), iconColor: this.getThemeColors().secondaryText },
-      { id: 'storage', title: '存储', subtitle: '缓存 · 播放历史 · 本地管理', icon: $r('app.media.ic_public_delete'), iconColor: this.getThemeColors().secondaryText },
-      { id: 'notification', title: '通知', subtitle: '锁屏/状态栏控制', icon: $r('app.media.ic_public_donotdisturb'), iconColor: this.getThemeColors().secondaryText },
-      { id: 'privacy', title: '隐私', subtitle: '听歌统计', icon: $r('app.media.ic_public_favor_filled'), iconColor: this.getThemeColors().secondaryText }
+      { id: 'playback', title: $r('app.string.play'), subtitle: $r('app.string.auto_next_mode'), icon: $r('app.media.ic_public_list_cycle'), iconColor: this.getThemeColors().secondaryText },
+      { id: 'audio', title: $r('app.string.sound_effects'), subtitle: $r('app.string.crossfade'), icon: $r('app.media.ic_public_sound'), iconColor: this.getThemeColors().secondaryText },
+      { id: 'appearance', title: $r('app.string.ui'), subtitle: $r('app.string.dark_mode_theme'), icon: $r('app.media.ic_public_themes'), iconColor: this.getThemeColors().secondaryText },
+      { id: 'accessibility', title: $r('app.string.accessibility'), subtitle: $r('app.string.reduce_motion'), icon: $r('app.media.ic_public_face'), iconColor: this.getThemeColors().secondaryText },
+      { id: 'storage', title: $r('app.string.storage'), subtitle: $r('app.string.cache_history_mgmt'), icon: $r('app.media.ic_public_delete'), iconColor: this.getThemeColors().secondaryText },
+      { id: 'notification', title: $r('app.string.notifications'), subtitle: $r('app.string.lockscreen_control'), icon: $r('app.media.ic_public_donotdisturb'), iconColor: this.getThemeColors().secondaryText },
+      { id: 'privacy', title: $r('app.string.privacy'), subtitle: $r('app.string.listen_stats'), icon: $r('app.media.ic_public_favor_filled'), iconColor: this.getThemeColors().secondaryText }
     ];
   }
 
-  private currentTitle(): string {
+  private currentTitle(): ResourceStr {
     if (this.subPage !== '') {
       return this.subPageTitle(this.subPage);
     }
     if (this.selectedCategory === '') {
-      return '设置';
+      return $r('app.string.settings');
     }
     const found = this.categories().find((c: CategoryItem) => c.id === this.selectedCategory);
-    return found ? found.title : '设置';
+    return found ? found.title : $r('app.string.settings');
   }
 
-  private subPageTitle(kind: string): string {
+  private subPageTitle(kind: string): ResourceStr {
     switch (kind) {
-      case 'manage': return '本地歌曲管理';
-      case 'duplicate': return '重复歌曲清理';
-      case 'wrapped': return '我的听歌报告';
-      case 'privacy': return '隐私政策';
-      default: return '设置';
+      case 'manage': return $r('app.string.local_songs_mgmt');
+      case 'duplicate': return $r('app.string.dup_cleanup');
+      case 'wrapped': return $r('app.string.listen_report');
+      case 'privacy': return $r('app.string.privacy_policy');
+      default: return $r('app.string.settings');
     }
   }
 

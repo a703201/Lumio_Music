@@ -14,40 +14,32 @@
  * limitations under the License.
  */
 
-import { ApiCompat } from './ApiCompat';
 import { SPACE_SM } from '../../tokens/LumioScale';
-// 仅类型导入（编译期擦除）：API 24 真机不存在 @ohos.arkui.uiMaterial 模块，
-// 此处仅用于注解 material 类型，运行期通过 acquireSheetMaterial() 内的动态 import() 加载，
-// 绝不在此做值导入（否则 API 24 运行期会崩溃）。
-import type uiMaterial from '@ohos.arkui.uiMaterial';
+import { Logger } from '../../utils/Logger';
+// 3.0.0 起最低平台为 API 26，@ohos.arkui.uiMaterial（API 26 整模块新增）在本应用支持的
+// 全部设备上均存在，故直接静态导入 + 直接构造，不再保留低版本动态加载的双路径。
+import uiMaterial from '@ohos.arkui.uiMaterial';
+
+const TAG = 'SheetMaterial';
 
 /**
- * 获取系统材质（API 26 沉浸毛玻璃）。
+ * 获取系统材质（沉浸毛玻璃）。
  *
- * - API 26：动态 import('@ohos.arkui.uiMaterial') → 构造 ImmersiveMaterial({ style: REGULAR })；
- * - API 24：直接 resolve(undefined)，不加载该模块；
- * - 任何 import / 构造异常：catch 兜底 resolve(undefined)。
- *
+ * 静态构造 `ImmersiveMaterial({ style: REGULAR })`；仅在构造抛异常时兜底 resolve(undefined)，
  * 调用方据此在 SheetScaffold 中二选一：有值走 systemMaterial，否则走纯色 surfaceOverlay 兜底。
+ *
+ * 保留 Promise 形态是为了不打断既有 9 处 `acquireSheetMaterial().then(...)` 调用点的
+ * @State material 赋值时序（值就绪后触发一次重渲染）。
  */
 export function acquireSheetMaterial(): Promise<uiMaterial.Material | undefined> {
   return new Promise<uiMaterial.Material | undefined>(
     (resolve: (value: uiMaterial.Material | undefined) => void): void => {
-      if (!ApiCompat.isAtLeast(ApiCompat.API_26)) {
+      try {
+        resolve(new uiMaterial.ImmersiveMaterial({ style: uiMaterial.ImmersiveStyle.REGULAR }));
+      } catch (e) {
+        Logger.error(TAG, 'construct ImmersiveMaterial failed, fall back to solid color');
         resolve(undefined);
-        return;
       }
-      import('@ohos.arkui.uiMaterial')
-        .then((mod: ESObject): void => {
-          const def: ESObject = mod.default;
-          const materialObj: ESObject = new (def.ImmersiveMaterial as ESObject)({
-            style: (def.ImmersiveStyle as ESObject).REGULAR
-          });
-          resolve(materialObj as uiMaterial.Material);
-        })
-        .catch((): void => {
-          resolve(undefined);
-        });
     }
   );
 }
@@ -55,8 +47,8 @@ export function acquireSheetMaterial(): Promise<uiMaterial.Material | undefined>
 /**
  * 半模态根容器脚手架（@Component + @BuilderParam 内容槽，ArkTS 内容槽标准机制）。
  *
- * - API 26 且材质就绪：根 Column 启用 systemMaterial 系统级毛玻璃（自适应深浅色与算力档位）；
- * - 其余情况（API 24 / 材质未就绪 / 加载失败）：根 Column 用纯色 fallbackColor 兜底。
+ * - 材质就绪：根 Column 启用 systemMaterial 系统级毛玻璃（自适应深浅色与算力档位）；
+ * - 材质未就绪（构造失败）：根 Column 用纯色 fallbackColor 兜底。
  *
  * ⚠️ 硬规则（设计文档 §2.5.5）：两分支互斥，绝不同时在同一 Column 上设 systemMaterial + backgroundColor。
  * 两个 if/else 分支各自只设置其一。
@@ -65,15 +57,15 @@ export function acquireSheetMaterial(): Promise<uiMaterial.Material | undefined>
  */
 @Component
 export struct SheetScaffold {
-  /** 系统材质实例：API 26 经动态 import 注入；API 24 / 未就绪为 undefined（走纯色兜底）。 */
+  /** 系统材质实例：由 acquireSheetMaterial() 注入；构造失败为 undefined（走纯色兜底）。 */
   @Prop material: uiMaterial.Material | undefined = undefined;
-  /** API 24 降级纯色兜底（通常传 surfaceOverlay）。 */
+  /** 材质未就绪时的纯色兜底（通常传 surfaceOverlay）。 */
   @Prop fallbackColor: ResourceColor = '#FFFFFF';
   /** 内容槽：由宿主组件以尾随 builder 传入，捕获宿主 this 上下文（方法/状态）。 */
   @BuilderParam content: () => void;
 
   build() {
-    if (ApiCompat.isAtLeast(ApiCompat.API_26) && this.material !== undefined) {
+    if (this.material !== undefined) {
       Column() {
         this.content();
       }

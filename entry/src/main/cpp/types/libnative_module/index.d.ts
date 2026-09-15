@@ -17,7 +17,7 @@
 /**
  * libnative_module.so — C++ NAPI 原生模块类型声明
  *
- * 向上层 ArkTS 暴露三个异步函数，覆盖基础的数值运算、音频元数据解析与环境信息查询。
+ * 向上层 ArkTS 暴露音频元数据解析函数。
  * 配合 `NativeModule.ets` 的单例封装使用，提供 IDE 类型提示与编译期契约校验。
  *
  * @module libnative_module
@@ -45,18 +45,5 @@ interface AudioMetadata {
   codec: string;
 }
 
-interface DeviceInfo {
-  /** 设备品牌 */
-  brand: string;
-  /** 操作系统类型 */
-  osType: string;
-}
-
-/** 两数相加（用于 NAPI 调试） */
-export const add: (a: number, b: number) => number;
-
 /** 解析本地音频文件的元数据（标题/艺术家/专辑/年份/时长/采样率/声道） */
 export const parseAudioMetadata: (filePath: string) => AudioMetadata;
-
-/** 获取当前设备基本信息 */
-export const getDeviceInfo: () => DeviceInfo;

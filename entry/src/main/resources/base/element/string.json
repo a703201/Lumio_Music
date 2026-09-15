@@ -119,6 +119,1018 @@
     {
       "name": "distributed_reason",
       "value": "用于跨设备流转（把正在播放的歌曲接力到平板、智慧屏等同一华为账号设备）"
+    },
+    {
+      "name": "play_all",
+      "value": "播放全部"
+    },
+    {
+      "name": "songs_count",
+      "value": "%d 首歌曲"
+    },
+    {
+      "name": "edit_tags",
+      "value": "编辑标签"
+    },
+    {
+      "name": "tag_title",
+      "value": "标题"
+    },
+    {
+      "name": "tag_artist",
+      "value": "艺术家"
+    },
+    {
+      "name": "tag_album",
+      "value": "专辑"
+    },
+    {
+      "name": "tag_year",
+      "value": "年份"
+    },
+    {
+      "name": "tag_save",
+      "value": "保存"
+    },
+    {
+      "name": "tag_saved",
+      "value": "标签已保存"
+    },
+    {
+      "name": "tag_unsupported",
+      "value": "该音频格式暂不支持编辑标签"
+    },
+    {
+      "name": "tag_backup_failed",
+      "value": "无法创建备份，已取消写入"
+    },
+    {
+      "name": "tag_write_failed",
+      "value": "标签写入失败，已恢复原文件"
+    },
+    {
+      "name": "tag_container_unsupported",
+      "value": "该文件的标签结构无法安全写入，已放弃以避免损坏"
+    },
+    {
+      "name": "share",
+      "value": "分享"
+    },
+    {
+      "name": "share_song",
+      "value": "分享歌曲"
+    },
+    {
+      "name": "export_playlist",
+      "value": "导出歌单"
+    },
+    {
+      "name": "playlist_exported",
+      "value": "歌单已导出"
+    },
+    {
+      "name": "share_wrapped",
+      "value": "分享年度记录"
+    },
+    {
+      "name": "no_lyric_file",
+      "value": "未找到同名字幕歌词文件"
+    },
+    {
+      "name": "match_lyric",
+      "value": "匹配歌词"
+    },
+    {
+      "name": "lyric_matched",
+      "value": "已匹配到同名歌词文件"
+    },
+    {
+      "name": "export_canceled",
+      "value": "导出已取消"
+    },
+    {
+      "name": "language",
+      "value": "语言"
+    },
+    {
+      "name": "lang_zh",
+      "value": "简体中文"
+    },
+    {
+      "name": "lang_en",
+      "value": "English"
+    },
+    {
+      "name": "lang_fr",
+      "value": "Français"
+    },
+    {
+      "name": "play",
+      "value": "播放"
+    },
+    {
+      "name": "cancel",
+      "value": "取消"
+    },
+    {
+      "name": "favorite",
+      "value": "收藏"
+    },
+    {
+      "name": "unfavorite",
+      "value": "取消收藏"
+    },
+    {
+      "name": "favorited",
+      "value": "已收藏"
+    },
+    {
+      "name": "unfavorited",
+      "value": "已取消收藏"
+    },
+    {
+      "name": "add_to_playlist",
+      "value": "添加到歌单"
+    },
+    {
+      "name": "details",
+      "value": "详细"
+    },
+    {
+      "name": "unknown",
+      "value": "未知"
+    },
+    {
+      "name": "unknown_artist",
+      "value": "未知艺术家"
+    },
+    {
+      "name": "new_playlist",
+      "value": "新建歌单"
+    },
+    {
+      "name": "delete",
+      "value": "删除"
+    },
+    {
+      "name": "album",
+      "value": "专辑"
+    },
+    {
+      "name": "my_playlists",
+      "value": "我的歌单"
+    },
+    {
+      "name": "playlist_empty",
+      "value": "歌单还没有歌曲"
+    },
+    {
+      "name": "playlist_name_empty",
+      "value": "歌单名称不能为空"
+    },
+    {
+      "name": "playlist_exists",
+      "value": "已存在同名歌单"
+    },
+    {
+      "name": "enter_playlist_name",
+      "value": "请输入歌单名称"
+    },
+    {
+      "name": "confirm",
+      "value": "确定"
+    },
+    {
+      "name": "remove",
+      "value": "移除"
+    },
+    {
+      "name": "title",
+      "value": "标题"
+    },
+    {
+      "name": "album_empty",
+      "value": "该专辑还没有歌曲"
+    },
+    {
+      "name": "artist_empty",
+      "value": "该艺术家还没有歌曲"
+    },
+    {
+      "name": "artist",
+      "value": "艺术家"
+    },
+    {
+      "name": "my_favorites",
+      "value": "我的收藏"
+    },
+    {
+      "name": "music_library",
+      "value": "音乐库"
+    },
+    {
+      "name": "play_history",
+      "value": "播放历史"
+    },
+    {
+      "name": "add_songs",
+      "value": "添加歌曲"
+    },
+    {
+      "name": "playlist",
+      "value": "歌单"
+    },
+    {
+      "name": "delete_playlist",
+      "value": "删除歌单"
+    },
+    {
+      "name": "smart_playlist",
+      "value": "智能歌单"
+    },
+    {
+      "name": "privacy_policy",
+      "value": "隐私政策"
+    },
+    {
+      "name": "mine",
+      "value": "我的"
+    },
+    {
+      "name": "auto_next_mode",
+      "value": "自动下一首 · 播放模式"
+    },
+    {
+      "name": "sound_effects",
+      "value": "音效"
+    },
+    {
+      "name": "crossfade",
+      "value": "淡入淡出"
+    },
+    {
+      "name": "dark_mode_theme",
+      "value": "深色模式 · 主题"
+    },
+    {
+      "name": "ui",
+      "value": "用户界面"
+    },
+    {
+      "name": "reduce_motion",
+      "value": "降低动态效果"
+    },
+    {
+      "name": "storage",
+      "value": "存储"
+    },
+    {
+      "name": "notifications",
+      "value": "通知"
+    },
+    {
+      "name": "lockscreen_control",
+      "value": "锁屏/状态栏控制"
+    },
+    {
+      "name": "privacy",
+      "value": "隐私"
+    },
+    {
+      "name": "cache_history_mgmt",
+      "value": "缓存 · 播放历史 · 本地管理"
+    },
+    {
+      "name": "listen_stats",
+      "value": "听歌统计"
+    },
+    {
+      "name": "settings",
+      "value": "设置"
+    },
+    {
+      "name": "local_songs_mgmt",
+      "value": "本地歌曲管理"
+    },
+    {
+      "name": "listen_report",
+      "value": "我的听歌报告"
+    },
+    {
+      "name": "dup_cleanup",
+      "value": "重复歌曲清理"
+    },
+    {
+      "name": "accessibility",
+      "value": "无障碍"
+    },
+    {
+      "name": "repeat_list",
+      "value": "列表循环"
+    },
+    {
+      "name": "repeat_one",
+      "value": "单曲循环"
+    },
+    {
+      "name": "shuffle",
+      "value": "随机播放"
+    },
+    {
+      "name": "theme_system",
+      "value": "跟随系统"
+    },
+    {
+      "name": "theme_light",
+      "value": "浅色"
+    },
+    {
+      "name": "theme_dark",
+      "value": "深色"
+    },
+    {
+      "name": "off",
+      "value": "关闭"
+    },
+    {
+      "name": "short",
+      "value": "短"
+    },
+    {
+      "name": "medium",
+      "value": "中"
+    },
+    {
+      "name": "auto_next",
+      "value": "自动下一首"
+    },
+    {
+      "name": "play_mode",
+      "value": "播放模式"
+    },
+    {
+      "name": "gapless",
+      "value": "无缝播放 (Gapless)"
+    },
+    {
+      "name": "gapless_desc",
+      "value": "减少曲间停顿"
+    },
+    {
+      "name": "fade_desc",
+      "value": "播放/暂停/切歌时做短音量渐变，减少突兀的爆音与硬切。"
+    },
+    {
+      "name": "dark_mode",
+      "value": "深色模式"
+    },
+    {
+      "name": "reduce_motion_desc",
+      "value": "减少歌词流光等动画"
+    },
+    {
+      "name": "clear_history",
+      "value": "清空播放历史"
+    },
+    {
+      "name": "history_cleared",
+      "value": "已清空播放历史"
+    },
+    {
+      "name": "enable_stats",
+      "value": "启用听歌统计"
+    },
+    {
+      "name": "select_category",
+      "value": "请选择设置分类"
+    },
+    {
+      "name": "cache_size",
+      "value": "约 0.0 MB"
+    },
+    {
+      "name": "cannot_open_web",
+      "value": "无法打开网页"
+    },
+    {
+      "name": "clear_cache",
+      "value": "清除缓存"
+    },
+    {
+      "name": "cache_cleared",
+      "value": "已清除缓存"
+    },
+    {
+      "name": "clear_stats",
+      "value": "清除统计数据"
+    },
+    {
+      "name": "clear",
+      "value": "清除"
+    },
+    {
+      "name": "clear_stats_confirm",
+      "value": "将清空播放历史等统计数据，且不可恢复。是否继续？"
+    },
+    {
+      "name": "more",
+      "value": "更多"
+    },
+    {
+      "name": "about",
+      "value": "关于"
+    },
+    {
+      "name": "folder_browse",
+      "value": "文件夹浏览"
+    },
+    {
+      "name": "by_source",
+      "value": "按来源目录整理"
+    },
+    {
+      "name": "app_desc",
+      "value": "本地音乐播放器"
+    },
+    {
+      "name": "features",
+      "value": "功能特色"
+    },
+    {
+      "name": "feat_local",
+      "value": "本地播放"
+    },
+    {
+      "name": "feat_scan",
+      "value": "文件扫描"
+    },
+    {
+      "name": "feat_lyrics",
+      "value": "歌词显示"
+    },
+    {
+      "name": "app_info",
+      "value": "应用信息"
+    },
+    {
+      "name": "app_version",
+      "value": "应用版本"
+    },
+    {
+      "name": "developer",
+      "value": "开发者"
+    },
+    {
+      "name": "tech_support",
+      "value": "技术支持"
+    },
+    {
+      "name": "architecture",
+      "value": "架构"
+    },
+    {
+      "name": "onboarding",
+      "value": "新手引导"
+    },
+    {
+      "name": "app_brief",
+      "value": "一款简洁的本地音乐播放器，支持导入本地音频、播放控制、歌词显示等功能。"
+    },
+    {
+      "name": "onboard_local",
+      "value": "本地音乐库"
+    },
+    {
+      "name": "onboard_local_desc",
+      "value": "导入本地音频，纯离线播放，隐私优先"
+    },
+    {
+      "name": "onboard_lossless",
+      "value": "无损 · Hi-Res"
+    },
+    {
+      "name": "onboard_lossless_desc",
+      "value": "自动识别无损与高解析音质，徽标呈现"
+    },
+    {
+      "name": "onboard_smart_desc",
+      "value": "按收藏、常听、年代、艺术家自动聚合"
+    },
+    {
+      "name": "onboard_system",
+      "value": "系统深度融合"
+    },
+    {
+      "name": "onboard_system_desc",
+      "value": "锁屏播控、桌面卡片与倍速睡眠"
+    },
+    {
+      "name": "welcome",
+      "value": "欢迎使用 Lumio Music"
+    },
+    {
+      "name": "welcome_sub",
+      "value": "本地音乐，纯粹聆听"
+    },
+    {
+      "name": "get_started",
+      "value": "开始体验"
+    },
+    {
+      "name": "song_already_in_playlist",
+      "value": "歌曲已在歌单中"
+    },
+    {
+      "name": "no_playlist_hint",
+      "value": "还没有歌单，点击下方新建"
+    },
+    {
+      "name": "speed_normal",
+      "value": "1x（正常）"
+    },
+    {
+      "name": "play_speed",
+      "value": "播放速度"
+    },
+    {
+      "name": "sleep_timer",
+      "value": "睡眠定时"
+    },
+    {
+      "name": "minutes_unit",
+      "value": " 分钟"
+    },
+    {
+      "name": "will_pause_prefix",
+      "value": "将在 "
+    },
+    {
+      "name": "minutes_then_pause",
+      "value": " 分钟后暂停播放"
+    },
+    {
+      "name": "stop_after_current",
+      "value": "播完当前曲后停止"
+    },
+    {
+      "name": "will_pause_after",
+      "value": "将在播完当前歌曲后暂停"
+    },
+    {
+      "name": "turn_off_timer",
+      "value": "关闭定时"
+    },
+    {
+      "name": "sleep_timer_off",
+      "value": "已关闭睡眠定时"
+    },
+    {
+      "name": "no_lyrics",
+      "value": "暂无歌词"
+    },
+    {
+      "name": "lossless",
+      "value": "无损"
+    },
+    {
+      "name": "remove_song",
+      "value": "移除歌曲"
+    },
+    {
+      "name": "song_removed",
+      "value": "已移除歌曲"
+    },
+    {
+      "name": "no_local_songs",
+      "value": "暂无本地歌曲"
+    },
+    {
+      "name": "local_songs_hint",
+      "value": "在「音乐库」导入本地音频后会显示在这里"
+    },
+    {
+      "name": "dup_cleaned",
+      "value": "已清理重复歌曲"
+    },
+    {
+      "name": "keep",
+      "value": "保留"
+    },
+    {
+      "name": "duplicate_songs",
+      "value": "重复歌曲"
+    },
+    {
+      "name": "clean_all",
+      "value": "清理全部"
+    },
+    {
+      "name": "no_dupes",
+      "value": "没有发现重复歌曲"
+    },
+    {
+      "name": "dup_explain",
+      "value": "基于标题与歌手相似度比对，跨歌手同名不会被误判"
+    },
+    {
+      "name": "unknown_year",
+      "value": "未知年份"
+    },
+    {
+      "name": "under_1_min",
+      "value": "不到 1 分钟"
+    },
+    {
+      "name": "report_title",
+      "value": "听歌报告"
+    },
+    {
+      "name": "plays_count",
+      "value": "次播放"
+    },
+    {
+      "name": "total_listen",
+      "value": "总收听时长"
+    },
+    {
+      "name": "total_songs",
+      "value": "歌曲总数"
+    },
+    {
+      "name": "most_played",
+      "value": "最常播放"
+    },
+    {
+      "name": "by_release_year",
+      "value": "按发行年份"
+    },
+    {
+      "name": "not_enough_data",
+      "value": "还没有足够的数据"
+    },
+    {
+      "name": "more_data_hint",
+      "value": "多听几首歌，这里会生成你的听歌报告"
+    },
+    {
+      "name": "local_only_stats",
+      "value": "数据仅在本地统计，不上传任何服务器"
+    },
+    {
+      "name": "overview",
+      "value": "概述"
+    },
+    {
+      "name": "privacy_overview",
+      "value": "Lumio Music 是一款纯离线本地音乐播放器。你的歌曲、收藏、歌单与设置全部保存在设备本地，不提供云端服务、不要求注册账号、不集成任何第三方 SDK。除你主动触发的局域网投播与第三方网页跳转外，应用不会向任何外部服务器传输你的数据。"
+    },
+    {
+      "name": "info_collected",
+      "value": "我们收集的信息"
+    },
+    {
+      "name": "info_collected_desc",
+      "value": "我们不收集任何个人身份信息。你看到的「曲库」仅由你主动导入的本地音频文件解析而来，应用仅读取并展示其元数据：曲名、歌手、专辑、时长。收藏、歌单、播放与主题设置等均由你的本地操作产生，仅保存在本机，我们不会采集你的位置、设备标识符、账号或浏览行为等任何个人信息。"
+    },
+    {
+      "name": "storage_location",
+      "value": "信息存储位置"
+    },
+    {
+      "name": "storage_location_desc",
+      "value": "上述所有数据均存储在设备本地的应用沙箱目录（Preferences 与文件目录）中，与其他应用隔离，仅本应用可访问，不会上传到任何服务器，也不会离开你的设备。卸载应用后，本地沙箱数据会随之删除。"
+    },
+    {
+      "name": "permissions_title",
+      "value": "权限说明"
+    },
+    {
+      "name": "perm_intro",
+      "value": "本应用仅申请以下权限：\n"
+    },
+    {
+      "name": "perm_bg",
+      "value": "• 后台运行（KEEP_BACKGROUND_RUNNING）：用于锁屏或离开应用后继续播放音乐。\n"
+    },
+    {
+      "name": "perm_internet",
+      "value": "• 网络访问（INTERNET）：仅用于（1）将本地音频经局域网投送到你主动选择的设备；（2）点击「开发者主页」等入口时调用系统浏览器打开第三方网页 a703201sworld.top。我们不会用它上传你的音乐或个人数据。"
+    },
+    {
+      "name": "cast_title",
+      "value": "投播（局域网）传输"
+    },
+    {
+      "name": "cast_desc",
+      "value": "投播通过系统 AVSessionKit 的 AVCastController，将你设备上正在播放的本地音频经局域网（Wi-Fi）传输到你主动选择的设备（如智能音箱 / 电视）。传输仅发生在你的局域网内，不经过云端，且仅在你主动点击投送并选定设备时才会发起。"
+    },
+    {
+      "name": "third_party_title",
+      "value": "第三方外链"
+    },
+    {
+      "name": "third_party_desc",
+      "value": "在「设置 - 关于开发者」等入口，本应用提供跳转链接 https://www.a703201sworld.top/resume/（开发者主页）。点击时仅由系统浏览器打开该网页，应用不嵌入也不向其传输你的数据。该网页由第三方运营，其隐私实践由该网站自行负责。"
+    },
+    {
+      "name": "logs_title",
+      "value": "日志与脱敏"
+    },
+    {
+      "name": "logs_desc",
+      "value": "我们已对日志进行整改：原先可能写入系统日志的媒体文件路径、歌名等敏感信息，已改用 Logger 的 *Private 接口脱敏，确保日志中不会出现可定位到你文件的路径或可识别的歌名，也不记录任何个人信息。"
+    },
+    {
+      "name": "commitment_title",
+      "value": "我们的承诺"
+    },
+    {
+      "name": "commitment_desc",
+      "value": "我们不做以下事情：无云端同步 / 存储；不向任何第三方共享、出售或传输你的数据；不集成任何会收集信息的第三方 SDK；不展示广告；不进行埋点、数据统计或行为分析；不要求注册账号，不收集个人身份信息。"
+    },
+    {
+      "name": "rights_title",
+      "value": "你的权利与联系方式"
+    },
+    {
+      "name": "rights_desc",
+      "value": "你完全掌控自己的本地数据：可在「设置」中清除缓存、清除听歌统计、关闭相关功能；卸载应用即可删除全部本地数据。\n"
+    },
+    {
+      "name": "contact_hint",
+      "value": "如有疑问或需行使相关权利，请联系：\n"
+    },
+    {
+      "name": "contact_entity",
+      "value": "主体 / 开发者名称：何宇翔\n"
+    },
+    {
+      "name": "contact_email",
+      "value": "联系邮箱：Lumio_a7032@qq.com"
+    },
+    {
+      "name": "song_info",
+      "value": "歌曲信息"
+    },
+    {
+      "name": "no_song_selected",
+      "value": "未选择歌曲"
+    },
+    {
+      "name": "file_name",
+      "value": "文件名"
+    },
+    {
+      "name": "singer",
+      "value": "歌手"
+    },
+    {
+      "name": "composer",
+      "value": "作曲家"
+    },
+    {
+      "name": "collection",
+      "value": "合集"
+    },
+    {
+      "name": "era",
+      "value": "年代"
+    },
+    {
+      "name": "added_time",
+      "value": "添加时间"
+    },
+    {
+      "name": "no_local_songs_hint",
+      "value": "No local songs yet, import from 音乐库"
+    },
+    {
+      "name": "no_fav_songs",
+      "value": "暂无收藏歌曲"
+    },
+    {
+      "name": "fav_hint",
+      "value": "在播放页面点击收藏按钮添加"
+    },
+    {
+      "name": "import_music",
+      "value": "导入音乐"
+    },
+    {
+      "name": "folder",
+      "value": "文件夹"
+    },
+    {
+      "name": "no_folders",
+      "value": "还没有可浏览的文件夹"
+    },
+    {
+      "name": "load_failed",
+      "value": "数据加载失败，请重试"
+    },
+    {
+      "name": "retry_failed",
+      "value": "重试失败，请检查存储权限"
+    },
+    {
+      "name": "no_new_files",
+      "value": "没有新的音乐文件"
+    },
+    {
+      "name": "import_failed",
+      "value": "导入失败："
+    },
+    {
+      "name": "unknown_error",
+      "value": "未知错误"
+    },
+    {
+      "name": "detail",
+      "value": "详情"
+    },
+    {
+      "name": "select_song_hint",
+      "value": "选择一首歌曲查看详情"
+    },
+    {
+      "name": "import",
+      "value": "导入"
+    },
+    {
+      "name": "search_hint",
+      "value": "搜索歌曲、艺术家"
+    },
+    {
+      "name": "importing",
+      "value": "正在导入..."
+    },
+    {
+      "name": "retry",
+      "value": "重试"
+    },
+    {
+      "name": "library_empty",
+      "value": "音乐库还是空的"
+    },
+    {
+      "name": "empty_import_hint",
+      "value": "点击右上角\"导入\"添加本地音频"
+    },
+    {
+      "name": "no_play_history",
+      "value": "暂无播放记录"
+    },
+    {
+      "name": "history_hint",
+      "value": "播放歌曲后将在这里显示"
+    },
+    {
+      "name": "move_out_playlist",
+      "value": "移出歌单"
+    },
+    {
+      "name": "move_out",
+      "value": "移出"
+    },
+    {
+      "name": "moved_out",
+      "value": "已移出歌单"
+    },
+    {
+      "name": "all_in_playlist",
+      "value": "本地库的歌曲都已在歌单中"
+    },
+    {
+      "name": "select_first",
+      "value": "请先选择歌曲"
+    },
+    {
+      "name": "add",
+      "value": "添加"
+    },
+    {
+      "name": "export",
+      "value": "导出"
+    },
+    {
+      "name": "long_press_hint",
+      "value": "长按歌曲可拖动排序"
+    },
+    {
+      "name": "add_from_lib_hint",
+      "value": "点击「添加歌曲」从本地库挑选"
+    },
+    {
+      "name": "renamed",
+      "value": "已重命名"
+    },
+    {
+      "name": "playlist_deleted",
+      "value": "已删除歌单"
+    },
+    {
+      "name": "rename",
+      "value": "重命名"
+    },
+    {
+      "name": "rename_playlist",
+      "value": "重命名歌单"
+    },
+    {
+      "name": "no_songs_yet",
+      "value": " 暂无歌曲"
+    },
+    {
+      "name": "no_my_playlists",
+      "value": "还没有自建歌单"
+    },
+    {
+      "name": "create_first_hint",
+      "value": "点击右上角「+」创建第一个歌单"
+    },
+    {
+      "name": "stats_cleared",
+      "value": "已清除统计数据"
+    },
+    {
+      "name": "song_not_exist",
+      "value": "歌曲不存在"
+    },
+    {
+      "name": "year_label",
+      "value": "年份"
+    },
+    {
+      "name": "wrapped_title",
+      "value": "我的 Lumio Music 年度听歌记录"
+    },
+    {
+      "name": "most_played_label",
+      "value": "最常播放："
+    },
+    {
+      "name": "year_record",
+      "value": "年度听歌记录"
+    },
+    {
+      "name": "unnamed_playlist",
+      "value": "未命名歌单"
+    },
+    {
+      "name": "my_hearts",
+      "value": "我的红心"
+    },
+    {
+      "name": "recent_often",
+      "value": "最近常听"
+    },
+    {
+      "name": "unknown_era",
+      "value": "未知年代"
+    },
+    {
+      "name": "era_memory",
+      "value": "年代回忆"
+    },
+    {
+      "name": "discover_surprise",
+      "value": "发现惊喜"
+    },
+    {
+      "name": "lossless_enjoy",
+      "value": "无损臻享"
+    },
+    {
+      "name": "classic_lossy",
+      "value": "经典有损"
+    },
+    {
+      "name": "recent_played",
+      "value": "最近播放"
+    },
+    {
+      "name": "current_next",
+      "value": "当前歌曲的下一首"
+    },
+    {
+      "name": "play_next",
+      "value": "下一首播放"
+    },
+    {
+      "name": "next",
+      "value": "下一首"
+    },
+    {
+      "name": "previous",
+      "value": "上一首"
+    },
+    {
+      "name": "pause",
+      "value": "暂停"
+    },
+    {
+      "name": "instrumental_note",
+      "value": "此歌曲为纯音乐，请您欣赏"
     }
   ]
 }

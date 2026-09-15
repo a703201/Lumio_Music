@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+// A2 (3.0.0)：数据层由 Preferences(JSON 大 blob) 升级为 relationalStore(RDB)。
+// 设计：内存数组(this.songs / this.favorites / ...) 仍是读路径的权威源（保证页面零改），
+// 持久化层改为结构化 RDB，写路径增量 UPSERT（播放统计 / 单曲标签写回 / 删歌）或整表刷新
+// （整库导入 import），并保留一次性 Preferences→RDB 迁移。
+// ⚠️ 本文件在未安装 DevEco SDK 的沙箱中编写，最终需用户在 DevEco 真机 assembleHap 复核 0 ERROR。
 import { Logger } from '../utils/Logger';
 import { CoverCache } from '../utils/CoverCache';
 import { EmbeddedLyricReader } from '../utils/EmbeddedLyricReader';
@@ -21,6 +26,7 @@ import { AudioMetaReader } from '../utils/AudioMeta';
 import { SongItem } from '../models/music';
 import { RepeatMode, Playlist } from '../models/music';
 import dataPreferences from '@ohos.data.preferences';
+import relationalStore from '@ohos.data.relationalStore';
 
 interface SongData {
   id: number;
@@ -48,6 +54,38 @@ const KEY_CURRENT_INDEX = 'current_index';
 const KEY_PLAY_COUNTS = 'play_counts';
 const KEY_PLAY_MS = 'play_ms';
 
+// ===== RDB 常量 =====
+const DB_NAME = 'lumio_music.db';
+const DB_VERSION = 1;
+const TABLE_SONGS = 'songs';
+const TABLE_FAVORITES = 'favorites';
+const TABLE_RECENT = 'recently_played';
+const TABLE_PLAYLISTS = 'playlists';
+const TABLE_PLAY_COUNTS = 'play_counts';
+const TABLE_PLAY_MS = 'play_ms';
+const TABLE_KV = 'kv';
+
+const COL_ID = 'id';
+const COL_TITLE = 'title';
+const COL_SINGER = 'singer';
+const COL_SRC = 'src';
+const COL_INDEX = 'idx';
+const COL_ALBUM = 'album';
+const COL_AUTHOR = 'author';
+const COL_YEAR = 'year';
+const COL_LYRIC = 'lyric';
+const COL_SAMPLE_RATE = 'sample_rate';
+const COL_BIT_DEPTH = 'bit_depth';
+const COL_CODEC = 'codec';
+const COL_FOLDER = 'folder';
+const COL_POS = 'pos';
+const COL_VAL = 'val';
+
+const KV_META_SCANNED = 'meta_scanned_v1';
+const KV_MIGRATED = 'migrated_v1';
+const KV_REPEAT_MODE = 'repeat_mode';
+const KV_CURRENT_INDEX = 'current_index';
+
 export interface PlayStatsSummary {
   totalMs: number;
   totalPlays: number;
@@ -57,7 +95,7 @@ export interface PlayStatsSummary {
 
 export class MusicStore {
   private static instance: MusicStore | null = null;
-  private preferences: dataPreferences.Preferences | null = null;
+  private rdbStore: relationalStore.RdbStore | null = null;
 
   public songs: SongItem[] = [];
   public playList: SongItem[] = [];
@@ -86,13 +124,194 @@ export class MusicStore {
 
   async init(context: Context): Promise<void> {
     try {
-      this.preferences = await dataPreferences.getPreferences(context, PREF_NAME);
+      this.rdbStore = await relationalStore.getRdbStore(context, {
+        name: DB_NAME,
+        securityLevel: relationalStore.SecurityLevel.S1
+      });
+      await this.createTables();
+      await this.migrateFromPreferences(context);
       await this.loadState();
       this.loadError = false;
     } catch (err) {
       this.loadError = true;
-      Logger.error('Failed to init preferences');
+      Logger.error('Failed to init RDB store');
     }
+  }
+
+  // ===== Schema =====
+  private async createTables(): Promise<void> {
+    if (!this.rdbStore) {
+      return;
+    }
+    const songCols: string =
+      `${COL_ID} INTEGER PRIMARY KEY,` +
+      `${COL_TITLE} TEXT,${COL_SINGER} TEXT,${COL_SRC} TEXT,${COL_INDEX} INTEGER,` +
+      `${COL_ALBUM} TEXT,${COL_AUTHOR} TEXT,${COL_YEAR} TEXT,${COL_LYRIC} TEXT,` +
+      `${COL_SAMPLE_RATE} INTEGER,${COL_BIT_DEPTH} INTEGER,${COL_CODEC} TEXT,${COL_FOLDER} TEXT`;
+    const recentCols: string =
+      `${COL_ID} INTEGER PRIMARY KEY,` +
+      `${COL_TITLE} TEXT,${COL_SINGER} TEXT,${COL_SRC} TEXT,${COL_INDEX} INTEGER,` +
+      `${COL_ALBUM} TEXT,${COL_AUTHOR} TEXT,${COL_YEAR} TEXT,${COL_LYRIC} TEXT,` +
+      `${COL_SAMPLE_RATE} INTEGER,${COL_BIT_DEPTH} INTEGER,${COL_CODEC} TEXT,${COL_FOLDER} TEXT,${COL_POS} INTEGER`;
+    try {
+      await this.rdbStore.executeSql(`CREATE TABLE IF NOT EXISTS ${TABLE_SONGS} (${songCols})`);
+      await this.rdbStore.executeSql(`CREATE TABLE IF NOT EXISTS ${TABLE_FAVORITES} (${COL_ID} INTEGER PRIMARY KEY)`);
+      await this.rdbStore.executeSql(`CREATE TABLE IF NOT EXISTS ${TABLE_RECENT} (${recentCols})`);
+      await this.rdbStore.executeSql(`CREATE TABLE IF NOT EXISTS ${TABLE_PLAYLISTS} (id TEXT PRIMARY KEY,name TEXT,song_ids TEXT)`);
+      await this.rdbStore.executeSql(`CREATE TABLE IF NOT EXISTS ${TABLE_PLAY_COUNTS} (${COL_ID} INTEGER PRIMARY KEY,${COL_VAL} INTEGER)`);
+      await this.rdbStore.executeSql(`CREATE TABLE IF NOT EXISTS ${TABLE_PLAY_MS} (${COL_ID} INTEGER PRIMARY KEY,${COL_VAL} INTEGER)`);
+      await this.rdbStore.executeSql(`CREATE TABLE IF NOT EXISTS ${TABLE_KV} (k TEXT PRIMARY KEY,v TEXT)`);
+    } catch (err) {
+      Logger.error('Failed to create RDB tables');
+    }
+  }
+
+  // ===== 一次性迁移：旧 Preferences(JSON blob) -> RDB =====
+  private async migrateFromPreferences(context: Context): Promise<void> {
+    if (!this.rdbStore) {
+      return;
+    }
+    const migrated: string = await this.getKv(KV_MIGRATED, 'false');
+    if (migrated === 'true') {
+      return;
+    }
+    try {
+      const prefs: dataPreferences.Preferences = await dataPreferences.getPreferences(context, PREF_NAME);
+      const songsStr: string = await prefs.get(KEY_SONGS, '[]') as string;
+      if (songsStr && songsStr !== '[]') {
+        const songsData: SongData[] = JSON.parse(songsStr) as SongData[];
+        this.songs = songsData.map((d: SongData) => this.mapSongData(d));
+        this.playList = [...this.songs];
+        await this.saveSongs();
+
+        const favArr: number[] = JSON.parse(await prefs.get(KEY_FAVORITES, '[]') as string) as number[];
+        this.favorites = new Set<number>(favArr);
+        await this.saveFavorites();
+
+        const recentData: SongData[] = JSON.parse(await prefs.get(KEY_RECENTLY_PLAYED, '[]') as string) as SongData[];
+        this.recentlyPlayed = recentData.map((d: SongData) => this.mapSongData(d));
+        await this.saveRecentlyPlayed();
+
+        const rawPlaylists: Playlist[] = JSON.parse(await prefs.get(KEY_PLAYLISTS, '[]') as string) as Playlist[];
+        this.playlists = (Array.isArray(rawPlaylists) ? rawPlaylists : [])
+          .filter((p: Playlist) => p !== null && p !== undefined && typeof p.id === 'string')
+          .map((p: Playlist): Playlist => {
+            return {
+              id: p.id,
+              name: p.name ?? '',
+              songIds: Array.isArray(p.songIds)
+                ? p.songIds.filter((n: number) => typeof n === 'number')
+                : []
+            };
+          });
+        await this.savePlaylists();
+
+        const repeatMode: string = await prefs.get(KEY_REPEAT_MODE, 'list') as string;
+        this.repeatMode = repeatMode as RepeatMode;
+        await this.putKv(KV_REPEAT_MODE, this.repeatMode);
+
+        const currentIndex: number = await prefs.get(KEY_CURRENT_INDEX, 0) as number;
+        this.currentIndex = currentIndex;
+        await this.putKv(KV_CURRENT_INDEX, currentIndex.toString());
+
+        this.playCounts = await this.loadNumberMapFromPrefs(prefs, KEY_PLAY_COUNTS);
+        this.playMs = await this.loadNumberMapFromPrefs(prefs, KEY_PLAY_MS);
+        await this.saveNumberMap(TABLE_PLAY_COUNTS, this.playCounts);
+        await this.saveNumberMap(TABLE_PLAY_MS, this.playMs);
+
+        const scanned: boolean = await prefs.get('meta_scanned_v1', false) as boolean;
+        await this.putKv(KV_META_SCANNED, scanned ? 'true' : 'false');
+      }
+      await this.putKv(KV_MIGRATED, 'true');
+    } catch (err) {
+      Logger.error('RDB migration failed, starting fresh');
+      await this.putKv(KV_MIGRATED, 'true');
+    }
+  }
+
+  private async getKv(k: string, def: string): Promise<string> {
+    if (!this.rdbStore) {
+      return def;
+    }
+    const predicates: relationalStore.RdbPredicates = new relationalStore.RdbPredicates(TABLE_KV);
+    predicates.equalTo('k', k);
+    try {
+      const rs: relationalStore.ResultSet = await this.rdbStore.query(predicates, ['v']);
+      let out: string = def;
+      if (rs.goToNextRow()) {
+        out = rs.getString(rs.getColumnIndex('v'));
+      }
+      rs.close();
+      return out;
+    } catch (err) {
+      return def;
+    }
+  }
+
+  private async putKv(k: string, v: string): Promise<void> {
+    if (!this.rdbStore) {
+      return;
+    }
+    const values: relationalStore.ValuesBucket = { k: k, v: v };
+    try {
+      await this.rdbStore.insert(TABLE_KV, values, relationalStore.ConflictResolution.ON_CONFLICT_REPLACE);
+    } catch (err) {
+      Logger.error('Failed to put kv: ' + k);
+    }
+  }
+
+  private mapSongData(d: SongData): SongItem {
+    const song: SongItem = new SongItem();
+    song.id = d.id;
+    song.title = d.title;
+    song.singer = d.singer;
+    song.src = d.src;
+    song.index = d.index;
+    song.album = d.album ?? '';
+    song.author = d.author ?? '';
+    song.year = d.year ?? '';
+    song.lyric = d.lyric ?? '';
+    song.sampleRate = d.sampleRate ?? 0;
+    song.bitDepth = d.bitDepth ?? 0;
+    song.codec = d.codec ?? '';
+    song.folder = d.folder ?? '';
+    return song;
+  }
+
+  private songToValues(s: SongItem): relationalStore.ValuesBucket {
+    const v: relationalStore.ValuesBucket = {};
+    v[COL_ID] = s.id;
+    v[COL_TITLE] = s.title;
+    v[COL_SINGER] = s.singer;
+    v[COL_SRC] = s.src;
+    v[COL_INDEX] = s.index;
+    v[COL_ALBUM] = s.album ?? '';
+    v[COL_AUTHOR] = s.author ?? '';
+    v[COL_YEAR] = s.year ?? '';
+    v[COL_LYRIC] = s.lyric ?? '';
+    v[COL_SAMPLE_RATE] = s.sampleRate ?? 0;
+    v[COL_BIT_DEPTH] = s.bitDepth ?? 0;
+    v[COL_CODEC] = s.codec ?? '';
+    v[COL_FOLDER] = s.folder ?? '';
+    return v;
+  }
+
+  private resultRowToSong(rs: relationalStore.ResultSet): SongItem {
+    const s: SongItem = new SongItem();
+    s.id = rs.getLong(rs.getColumnIndex(COL_ID));
+    s.title = rs.getString(rs.getColumnIndex(COL_TITLE));
+    s.singer = rs.getString(rs.getColumnIndex(COL_SINGER));
+    s.src = rs.getString(rs.getColumnIndex(COL_SRC));
+    s.index = rs.getLong(rs.getColumnIndex(COL_INDEX));
+    s.album = rs.getString(rs.getColumnIndex(COL_ALBUM));
+    s.author = rs.getString(rs.getColumnIndex(COL_AUTHOR));
+    s.year = rs.getString(rs.getColumnIndex(COL_YEAR));
+    s.lyric = rs.getString(rs.getColumnIndex(COL_LYRIC));
+    s.sampleRate = rs.getLong(rs.getColumnIndex(COL_SAMPLE_RATE));
+    s.bitDepth = rs.getLong(rs.getColumnIndex(COL_BIT_DEPTH));
+    s.codec = rs.getString(rs.getColumnIndex(COL_CODEC));
+    s.folder = rs.getString(rs.getColumnIndex(COL_FOLDER));
+    return s;
   }
 
   setSongs(songs: SongItem[]) {
@@ -295,7 +514,7 @@ export class MusicStore {
     }
     const c: number = this.playCounts.get(songId) ?? 0;
     this.playCounts.set(songId, c + 1);
-    this.saveNumberMap(KEY_PLAY_COUNTS, this.playCounts);
+    this.saveNumberMap(TABLE_PLAY_COUNTS, this.playCounts);
   }
 
   recordPlayDuration(songId: number, ms: number): void {
@@ -304,7 +523,7 @@ export class MusicStore {
     }
     const t: number = this.playMs.get(songId) ?? 0;
     this.playMs.set(songId, t + ms);
-    this.saveNumberMap(KEY_PLAY_MS, this.playMs);
+    this.saveNumberMap(TABLE_PLAY_MS, this.playMs);
   }
 
   getPlayCount(songId: number): number {
@@ -357,6 +576,49 @@ export class MusicStore {
     return this.songs.filter(s => this.favorites.has(s.id));
   }
 
+  /** 按艺术家聚合歌曲（用于艺术家详情页）。 */
+  getSongsByArtist(artist: string): SongItem[] {
+    if (!artist || artist.length === 0) {
+      return [];
+    }
+    return this.songs.filter((s: SongItem) => s.singer === artist);
+  }
+
+  /** 按专辑聚合歌曲（用于专辑详情页）。 */
+  getSongsByAlbum(album: string): SongItem[] {
+    if (!album || album.length === 0) {
+      return [];
+    }
+    return this.songs.filter((s: SongItem) => s.album === album);
+  }
+
+  /** 全部不重复艺术家名（升序），用于浏览入口。 */
+  getAllArtists(): string[] {
+    const set: Set<string> = new Set<string>();
+    this.songs.forEach((s: SongItem) => {
+      if (s.singer && s.singer.length > 0) {
+        set.add(s.singer);
+      }
+    });
+    return Array.from(set).sort();
+  }
+
+  /** 全部不重复专辑名（升序），用于浏览入口。 */
+  getAllAlbums(): string[] {
+    const set: Set<string> = new Set<string>();
+    this.songs.forEach((s: SongItem) => {
+      if (s.album && s.album.length > 0) {
+        set.add(s.album);
+      }
+    });
+    return Array.from(set).sort();
+  }
+
+  /** 持久化当前 songs（标签编辑等写回后调用，对外暴露的安全封装）。 */
+  persistSongs(): void {
+    this.saveSongs();
+  }
+
   clearRecentlyPlayed() {
     this.recentlyPlayed = [];
     this.saveRecentlyPlayed();
@@ -396,16 +658,8 @@ export class MusicStore {
    * 首次启动时补扫一次，之后通过偏好标记跳过，避免每次启动都做 I/O。
    */
   async refreshMetadataIfNeeded(): Promise<void> {
-    if (!this.preferences) {
-      return;
-    }
-    let scanned: boolean = false;
-    try {
-      scanned = await this.preferences.get('meta_scanned_v1', false) as boolean;
-    } catch (e) {
-      scanned = false;
-    }
-    if (scanned) {
+    const scanned: string = await this.getKv(KV_META_SCANNED, 'false');
+    if (scanned === 'true') {
       return;
     }
     let changed: boolean = false;
@@ -452,175 +706,215 @@ export class MusicStore {
       this.saveSongs();
     }
     try {
-      await this.preferences.put('meta_scanned_v1', true);
-      await this.preferences.flush();
+      await this.putKv(KV_META_SCANNED, 'true');
     } catch (e) {
       Logger.error('Failed to mark metadata scanned');
     }
   }
 
   private async loadState(): Promise<void> {
-    if (!this.preferences) return;
+    if (!this.rdbStore) {
+      return;
+    }
     this.loadError = false;
     try {
-      const songsStr = await this.preferences.get(KEY_SONGS, '[]') as string;
-      const songsData = JSON.parse(songsStr) as SongData[];
-      this.songs = songsData.map((data) => {
-        const song = new SongItem();
-        song.id = data.id;
-        song.title = data.title;
-        song.singer = data.singer;
-        song.src = data.src;
-        song.index = data.index;
-        song.album = data.album ?? '';
-        song.author = data.author ?? '';
-        song.year = data.year ?? '';
-        song.lyric = data.lyric ?? '';
-        song.sampleRate = data.sampleRate ?? 0;
-        song.bitDepth = data.bitDepth ?? 0;
-        song.codec = data.codec ?? '';
-        song.folder = data.folder ?? '';
-        return song;
-      });
+      const songCols: string[] = [
+        COL_ID, COL_TITLE, COL_SINGER, COL_SRC, COL_INDEX, COL_ALBUM, COL_AUTHOR,
+        COL_YEAR, COL_LYRIC, COL_SAMPLE_RATE, COL_BIT_DEPTH, COL_CODEC, COL_FOLDER
+      ];
+      const songRs: relationalStore.ResultSet = await this.rdbStore.query(new relationalStore.RdbPredicates(TABLE_SONGS), songCols);
+      this.songs = [];
+      while (songRs.goToNextRow()) {
+        this.songs.push(this.resultRowToSong(songRs));
+      }
+      songRs.close();
       this.playList = [...this.songs];
 
-      const favStr = await this.preferences.get(KEY_FAVORITES, '[]') as string;
-      const favArr = JSON.parse(favStr) as number[];
-      this.favorites = new Set(favArr);
+      const favRs: relationalStore.ResultSet = await this.rdbStore.query(new relationalStore.RdbPredicates(TABLE_FAVORITES), [COL_ID]);
+      this.favorites = new Set<number>();
+      while (favRs.goToNextRow()) {
+        this.favorites.add(favRs.getLong(favRs.getColumnIndex(COL_ID)));
+      }
+      favRs.close();
 
-      const recentStr = await this.preferences.get(KEY_RECENTLY_PLAYED, '[]') as string;
-      const recentData = JSON.parse(recentStr) as SongData[];
-      this.recentlyPlayed = recentData.map((data) => {
-        const song = new SongItem();
-        song.id = data.id;
-        song.title = data.title;
-        song.singer = data.singer;
-        song.src = data.src;
-        song.index = data.index;
-        song.album = data.album ?? '';
-        song.author = data.author ?? '';
-        song.year = data.year ?? '';
-        song.lyric = data.lyric ?? '';
-        song.sampleRate = data.sampleRate ?? 0;
-        song.bitDepth = data.bitDepth ?? 0;
-        song.codec = data.codec ?? '';
-        song.folder = data.folder ?? '';
-        return song;
-      });
+      const recentPred: relationalStore.RdbPredicates = new relationalStore.RdbPredicates(TABLE_RECENT);
+      recentPred.orderByAsc(COL_POS);
+      const recentRs: relationalStore.ResultSet = await this.rdbStore.query(recentPred, songCols);
+      this.recentlyPlayed = [];
+      while (recentRs.goToNextRow()) {
+        this.recentlyPlayed.push(this.resultRowToSong(recentRs));
+      }
+      recentRs.close();
 
-      const playlistStr = await this.preferences.get(KEY_PLAYLISTS, '[]') as string;
-      // P1-10：反序列化做字段校验，脏数据（缺 id / songIds）不进内存，避免 build() 内取 .length 崩
-      const rawPlaylists = JSON.parse(playlistStr) as Playlist[];
-      this.playlists = (Array.isArray(rawPlaylists) ? rawPlaylists : [])
-        .filter((p: Playlist) => p !== null && p !== undefined && typeof p.id === 'string')
-        .map((p: Playlist) => {
-          const item: Playlist = {
-            id: p.id,
-            name: p.name ?? '未命名歌单',
-            songIds: Array.isArray(p.songIds)
-              ? p.songIds.filter((n: number) => typeof n === 'number')
-              : []
-          };
-          return item;
+      const plRs: relationalStore.ResultSet = await this.rdbStore.query(new relationalStore.RdbPredicates(TABLE_PLAYLISTS), ['id', 'name', 'song_ids']);
+      this.playlists = [];
+      while (plRs.goToNextRow()) {
+        const id: string = plRs.getString(plRs.getColumnIndex('id'));
+        const name: string = plRs.getString(plRs.getColumnIndex('name'));
+        const songIdsStr: string = plRs.getString(plRs.getColumnIndex('song_ids'));
+        let songIds: number[] = [];
+        try {
+          songIds = JSON.parse(songIdsStr) as number[];
+        } catch (e) {
+          songIds = [];
+        }
+        this.playlists.push({
+          id: id,
+          name: name,
+          songIds: Array.isArray(songIds) ? songIds : []
         });
+      }
+      plRs.close();
 
-      const repeatMode = await this.preferences.get(KEY_REPEAT_MODE, 'list') as string;
+      const repeatMode: string = await this.getKv(KV_REPEAT_MODE, 'list');
       this.repeatMode = repeatMode as RepeatMode;
+      const currentIndex: string = await this.getKv(KV_CURRENT_INDEX, '0');
+      this.currentIndex = parseInt(currentIndex, 10);
+      if (isNaN(this.currentIndex)) {
+        this.currentIndex = 0;
+      }
 
-      const currentIndex = await this.preferences.get(KEY_CURRENT_INDEX, 0) as number;
-      this.currentIndex = currentIndex;
-
-      this.playCounts = await this.loadNumberMap(KEY_PLAY_COUNTS);
-      this.playMs = await this.loadNumberMap(KEY_PLAY_MS);
+      this.playCounts = await this.loadNumberMap(TABLE_PLAY_COUNTS);
+      this.playMs = await this.loadNumberMap(TABLE_PLAY_MS);
     } catch (err) {
       this.loadError = true;
-      Logger.error('Failed to load state');
+      Logger.error('Failed to load state from RDB');
     }
   }
 
   private async saveSongs(): Promise<void> {
-    if (!this.preferences) return;
+    if (!this.rdbStore) {
+      return;
+    }
     try {
-      await this.preferences.put(KEY_SONGS, JSON.stringify(this.songs));
-      await this.preferences.flush();
+      await this.rdbStore.executeSql(`DELETE FROM ${TABLE_SONGS}`);
+      if (this.songs.length > 0) {
+        const bucket: relationalStore.ValuesBucket[] = this.songs.map((s: SongItem) => this.songToValues(s));
+        await this.rdbStore.batchInsert(TABLE_SONGS, bucket);
+      }
     } catch (err) {
       Logger.error('Failed to save songs');
     }
   }
 
   private async saveFavorites(): Promise<void> {
-    if (!this.preferences) return;
+    if (!this.rdbStore) {
+      return;
+    }
     try {
-      await this.preferences.put(KEY_FAVORITES, JSON.stringify(Array.from(this.favorites)));
-      await this.preferences.flush();
+      await this.rdbStore.executeSql(`DELETE FROM ${TABLE_FAVORITES}`);
+      const bucket: relationalStore.ValuesBucket[] = [];
+      this.favorites.forEach((id: number) => {
+        const favRow: relationalStore.ValuesBucket = {};
+          favRow[COL_ID] = id;
+          bucket.push(favRow);
+      });
+      if (bucket.length > 0) {
+        await this.rdbStore.batchInsert(TABLE_FAVORITES, bucket);
+      }
     } catch (err) {
       Logger.error('Failed to save favorites');
     }
   }
 
   private async saveRecentlyPlayed(): Promise<void> {
-    if (!this.preferences) return;
+    if (!this.rdbStore) {
+      return;
+    }
     try {
-      await this.preferences.put(KEY_RECENTLY_PLAYED, JSON.stringify(this.recentlyPlayed));
-      await this.preferences.flush();
+      await this.rdbStore.executeSql(`DELETE FROM ${TABLE_RECENT}`);
+      if (this.recentlyPlayed.length > 0) {
+        const bucket: relationalStore.ValuesBucket[] = this.recentlyPlayed.map((s: SongItem, i: number) => {
+          const v: relationalStore.ValuesBucket = this.songToValues(s);
+          v[COL_POS] = i;
+          return v;
+        });
+        await this.rdbStore.batchInsert(TABLE_RECENT, bucket);
+      }
     } catch (err) {
       Logger.error('Failed to save recently played');
     }
   }
 
   private async savePlaylists(): Promise<void> {
-    if (!this.preferences) return;
+    if (!this.rdbStore) {
+      return;
+    }
     try {
-      await this.preferences.put(KEY_PLAYLISTS, JSON.stringify(this.playlists));
-      await this.preferences.flush();
+      await this.rdbStore.executeSql(`DELETE FROM ${TABLE_PLAYLISTS}`);
+      const bucket: relationalStore.ValuesBucket[] = this.playlists.map((p: Playlist) => {
+        const v: relationalStore.ValuesBucket = {};
+        v['id'] = p.id;
+        v['name'] = p.name;
+        v['song_ids'] = JSON.stringify(p.songIds);
+        return v;
+      });
+      if (bucket.length > 0) {
+        await this.rdbStore.batchInsert(TABLE_PLAYLISTS, bucket);
+      }
     } catch (err) {
       Logger.error('Failed to save playlists');
     }
   }
 
   private async saveRepeatMode(): Promise<void> {
-    if (!this.preferences) return;
-    try {
-      await this.preferences.put(KEY_REPEAT_MODE, this.repeatMode);
-      await this.preferences.flush();
-    } catch (err) {
-      Logger.error('Failed to save repeat mode');
-    }
+    await this.putKv(KV_REPEAT_MODE, this.repeatMode);
   }
 
-  private async loadNumberMap(key: string): Promise<Map<number, number>> {
-    if (!this.preferences) {
-      return new Map<number, number>();
+  private async loadNumberMap(table: string): Promise<Map<number, number>> {
+    const m: Map<number, number> = new Map<number, number>();
+    if (!this.rdbStore) {
+      return m;
     }
     try {
-      const str: string = await this.preferences.get(key, '{}') as string;
+      const rs: relationalStore.ResultSet = await this.rdbStore.query(new relationalStore.RdbPredicates(table), [COL_ID, COL_VAL]);
+      while (rs.goToNextRow()) {
+        const id: number = rs.getLong(rs.getColumnIndex(COL_ID));
+        const val: number = rs.getLong(rs.getColumnIndex(COL_VAL));
+        m.set(id, val);
+      }
+      rs.close();
+    } catch (e) {
+      // 空表或损坏时返回空 Map
+    }
+    return m;
+  }
+
+  private async loadNumberMapFromPrefs(prefs: dataPreferences.Preferences, key: string): Promise<Map<number, number>> {
+    const m: Map<number, number> = new Map<number, number>();
+    try {
+      const str: string = await prefs.get(key, '{}') as string;
       const obj: Record<string, number> = JSON.parse(str) as Record<string, number>;
-      const m: Map<number, number> = new Map<number, number>();
       Object.keys(obj).forEach((k: string) => {
         const id: number = Number(k);
         if (!isNaN(id)) {
           m.set(id, obj[k]);
         }
       });
-      return m;
     } catch (e) {
-      return new Map<number, number>();
+      // 解析失败返回空 Map
     }
+    return m;
   }
 
-  private async saveNumberMap(key: string, m: Map<number, number>): Promise<void> {
-    if (!this.preferences) {
+  private async saveNumberMap(table: string, m: Map<number, number>): Promise<void> {
+    if (!this.rdbStore) {
       return;
     }
     try {
-      const obj: Record<string, number> = {};
+      await this.rdbStore.executeSql(`DELETE FROM ${table}`);
+      const bucket: relationalStore.ValuesBucket[] = [];
       m.forEach((v: number, k: number) => {
-        obj[k.toString()] = v;
+        const numRow: relationalStore.ValuesBucket = {};
+          numRow[COL_ID] = k;
+          numRow[COL_VAL] = v;
+          bucket.push(numRow);
       });
-      await this.preferences.put(key, JSON.stringify(obj));
-      await this.preferences.flush();
+      if (bucket.length > 0) {
+        await this.rdbStore.batchInsert(table, bucket);
+      }
     } catch (err) {
-      Logger.error('Failed to save number map: ' + key);
+      Logger.error('Failed to save number map: ' + table);
     }
   }
 }

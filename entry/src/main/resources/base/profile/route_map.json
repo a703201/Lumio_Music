@@ -111,6 +111,30 @@
       "data": {
         "description": "this is FolderBrowse"
       }
+    },
+    {
+      "name": "ArtistDetail",
+      "pageSourceFile": "src/main/ets/pages/ArtistDetail.ets",
+      "buildFunction": "ArtistDetailBuilder",
+      "data": {
+        "description": "this is ArtistDetail"
+      }
+    },
+    {
+      "name": "AlbumDetail",
+      "pageSourceFile": "src/main/ets/pages/AlbumDetail.ets",
+      "buildFunction": "AlbumDetailBuilder",
+      "data": {
+        "description": "this is AlbumDetail"
+      }
+    },
+    {
+      "name": "TagEdit",
+      "pageSourceFile": "src/main/ets/pages/TagEdit.ets",
+      "buildFunction": "TagEditBuilder",
+      "data": {
+        "description": "this is TagEdit"
+      }
     }
   ]
 }

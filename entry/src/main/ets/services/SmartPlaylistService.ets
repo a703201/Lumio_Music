@@ -16,6 +16,7 @@
 
 import { SongItem } from '../models/music';
 import { MusicStore } from './MusicStore';
+import { common } from '@kit.AbilityKit';
 
 /**
  * 端侧智能歌单：完全基于本地元数据（收藏、播放次数、年份、专辑、歌手）规则聚类，
@@ -35,21 +36,29 @@ export class SmartPlaylistService {
   static readonly LOSSLESS_MIX: string = 'smart_lossless';
   static readonly LOSSY_MIX: string = 'smart_lossy';
 
+  private static resolve(res: Resource): string {
+    const ctx: common.UIAbilityContext = AppStorage.get<common.UIAbilityContext>('context') as common.UIAbilityContext;
+    if (!ctx) {
+      return '';
+    }
+    return ctx.resourceManager.getStringSync(res.id);
+  }
+
   static getFavoritesMix(): SmartPlaylist {
     const store: MusicStore = MusicStore.getInstance();
-    return { id: SmartPlaylistService.FAVORITES_MIX, name: '我的红心', songs: store.getFavoriteSongs() };
+    return { id: SmartPlaylistService.FAVORITES_MIX, name: SmartPlaylistService.resolve($r('app.string.my_hearts')), songs: store.getFavoriteSongs() };
   }
 
   static getRecentHeavy(limit: number = 30): SmartPlaylist {
     const store: MusicStore = MusicStore.getInstance();
-    return { id: SmartPlaylistService.RECENT_HEAVY, name: '最近常听', songs: store.getMostPlayed(limit) };
+    return { id: SmartPlaylistService.RECENT_HEAVY, name: SmartPlaylistService.resolve($r('app.string.recent_often')), songs: store.getMostPlayed(limit) };
   }
 
   static getEraMix(): SmartPlaylist {
     const store: MusicStore = MusicStore.getInstance();
     const byYear: Map<string, SongItem[]> = new Map<string, SongItem[]>();
     store.songs.forEach((s: SongItem) => {
-      const y: string = (s.year && s.year.length > 0) ? s.year : '未知年代';
+      const y: string = (s.year && s.year.length > 0) ? s.year : SmartPlaylistService.resolve($r('app.string.unknown_era'));
       const arr: SongItem[] = byYear.get(y) ?? [];
       arr.push(s);
       byYear.set(y, arr);
@@ -58,7 +67,7 @@ export class SmartPlaylistService {
     byYear.forEach((arr: SongItem[]) => {
       picks.push(arr[0]);
     });
-    return { id: SmartPlaylistService.ERA_MIX, name: '年代回忆', songs: picks };
+    return { id: SmartPlaylistService.ERA_MIX, name: SmartPlaylistService.resolve($r('app.string.era_memory')), songs: picks };
   }
 
   static getDiscovery(limit: number = 30): SmartPlaylist {
@@ -71,7 +80,7 @@ export class SmartPlaylistService {
       candidates[i] = candidates[j];
       candidates[j] = tmp;
     }
-    return { id: SmartPlaylistService.DISCOVERY, name: '发现惊喜', songs: candidates.slice(0, limit) };
+    return { id: SmartPlaylistService.DISCOVERY, name: SmartPlaylistService.resolve($r('app.string.discover_surprise')), songs: candidates.slice(0, limit) };
   }
 
   static getLosslessMix(): SmartPlaylist {
@@ -80,13 +89,13 @@ export class SmartPlaylistService {
       const q = s.getQuality();
       return q === 'lossless' || q === 'hires';
     });
-    return { id: SmartPlaylistService.LOSSLESS_MIX, name: '无损臻享', songs };
+    return { id: SmartPlaylistService.LOSSLESS_MIX, name: SmartPlaylistService.resolve($r('app.string.lossless_enjoy')), songs };
   }
 
   static getLossyMix(): SmartPlaylist {
     const store: MusicStore = MusicStore.getInstance();
     const songs: SongItem[] = store.songs.filter((s: SongItem) => s.getQuality() === 'lossy');
-    return { id: SmartPlaylistService.LOSSY_MIX, name: '经典有损', songs };
+    return { id: SmartPlaylistService.LOSSY_MIX, name: SmartPlaylistService.resolve($r('app.string.classic_lossy')), songs };
   }
 
   /**
@@ -97,8 +106,8 @@ export class SmartPlaylistService {
     const store: MusicStore = MusicStore.getInstance();
     const byArtist: Map<string, SongItem[]> = new Map<string, SongItem[]>();
     store.songs.forEach((s: SongItem) => {
-      const a: string = (s.singer && s.singer.trim().length > 0 && s.singer !== '未知艺术家')
-        ? s.singer : '未知艺术家';
+      const a: string = (s.singer && s.singer.trim().length > 0 && s.singer !== (SmartPlaylistService.resolve($r('app.string.unknown_artist'))))
+        ? s.singer : (SmartPlaylistService.resolve($r('app.string.unknown_artist')));
       const arr: SongItem[] = byArtist.get(a) ?? [];
       arr.push(s);
       byArtist.set(a, arr);

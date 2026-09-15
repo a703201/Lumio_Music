@@ -56,7 +56,7 @@ const STAR_ANGLE_NUMBER: number = 5;
 const EMPTY_LYRIC: LrcEntry = {
   lineStartTime: 0,
   lineDuration: 0,
-  lineWords: '此歌曲为纯音乐，请您欣赏',
+  lineWords: '',
   words: []
 };
 

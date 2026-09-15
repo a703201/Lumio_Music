@@ -27,7 +27,7 @@ import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
  * action 为闭包，由各自页面在构造数组时捕获 song，统一组件只负责渲染与触发。
  */
 export interface SongMenuEntry {
-  text: string;
+  text: ResourceStr;
   icon?: Resource;
   action: () => void;
 }
@@ -238,7 +238,10 @@ export struct SongRow {
           .onClick(() => {
             item.action();
           })
-      }, (item: SongMenuEntry, i: number): string => `${item.text}_${i}`)
+      }, (item: SongMenuEntry, i: number): string => {
+        const key: string = (typeof item.text === 'string') ? item.text : `r${item.text.id}`;
+        return `${key}_${i}`;
+      })
     }
   }
 }

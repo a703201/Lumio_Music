@@ -62,7 +62,10 @@ export default class FormAbility extends FormExtensionAbility {
 
   onAddForm(want: Want): formBindingData.FormBindingData {
     let formId: string = (want.parameters?.['ohos.extra.param.key.form_identity'] ?? '') as string;
-    Logger.info(TAG, `onAddForm formId: ${formId}`);
+    // 卡片尺寸（FormDimension 数值：2=2*2 / 3=2*4 / 4=4*4）。卡片进程无法自行测量尺寸，
+    // 只能由创建时下发的该参数决定布局档位；主应用后续推送亦会带上（双保险，见 AVSessionController）。
+    let dimension: number = (want.parameters?.['ohos.extra.param.key.form_dimension'] ?? 2) as number;
+    Logger.info(TAG, `onAddForm formId: ${formId}, dimension: ${dimension}`);
     // onAddForm 是同步签名，不能 await：主题必须同步读盘得到，不能等主应用推送，
     // 否则主应用未运行时卡片首帧就是浅色。
     // 判定统一走 resolveIsDark()，与主应用 ThemeManager.isDark() 同源，避免两边值漂移。
@@ -81,7 +84,11 @@ export default class FormAbility extends FormExtensionAbility {
       album: '',
       duration: 0,
       isPlaying: false,
-      isDark: resolveIsDark(mode, systemIsDark)
+      isDark: resolveIsDark(mode, systemIsDark),
+      // 布局档位（尺寸）与封面标识：首帧即按正确档位渲染；封面待主应用推送后再显示，
+      // 无封面时 coverKey 为空串，卡片回落内置默认图。
+      dimension: dimension,
+      coverKey: ''
     });
   }
 

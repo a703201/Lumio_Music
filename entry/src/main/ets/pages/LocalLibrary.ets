@@ -25,6 +25,7 @@ import { AudioMetaReader } from '../utils/AudioMeta';
 import { CoverImageView } from '../components/CoverImageView';
 import { QualityBadge } from '../components/QualityBadge';
 import { SongRow, SongMenuEntry } from '../components/SongRow';
+import { SongDataSource } from '../datasource/SongDataSource';
 import { SongDetailSheet } from '../components/SongDetailSheet';
 import { AddToPlaylistSheet } from '../components/AddToPlaylistSheet';
 import { picker } from '@kit.CoreFileKit';
@@ -35,6 +36,7 @@ import { sortSongs } from '../common/utils/SortUtil';
 import { semanticOf } from '../tokens/LumioColor';
 import { LumioTheme, SpringKind } from '../tokens/LumioTheme';
 import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
+import { EmbeddedLyricReader } from '../utils/EmbeddedLyricReader';
 
 const PLAYER_COVER_ID: string = 'player_cover';
 
@@ -59,7 +61,8 @@ export struct LocalLibrary {
   }
 
   @State searchText: string = '';
-  @State filteredSongs: SongItem[] = [];
+  @State @Watch('onFilteredSongsChanged') filteredSongs: SongItem[] = [];
+  private songDataSource: SongDataSource = new SongDataSource([]);
   @State sortMode: number = 0;
   @State isLoading: boolean = false;
   @State itemScales: number[] = [];
@@ -73,11 +76,16 @@ export struct LocalLibrary {
   @State errorMessage: string = '';
   private playingPulse: number = -1;
 
+  /** filteredSongs 变化（过滤/排序/导入）时同步给 LazyForEach 数据源并触发重渲染。 */
+  onFilteredSongsChanged(): void {
+    this.songDataSource.setData(this.filteredSongs);
+  }
+
   aboutToAppear(): void {
     this.filteredSongs = sortSongs([...this.store.songs], this.sortMode, this.store.recentlyPlayed);
     this.itemScales = this.filteredSongs.map(() => 1.0);
     if (this.store.loadError) {
-      this.errorMessage = '数据加载失败，请重试';
+      this.errorMessage = this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.load_failed').id) ?? '';
     }
     this.startEmptyPulse();
     this.startPlayingPulse();
@@ -101,7 +109,7 @@ export struct LocalLibrary {
       this.itemScales = this.filteredSongs.map(() => 1.0);
       AudioRendererController.getInstance().reconcileWithLibrary(this.store.songs);
     } catch (e) {
-      this.errorMessage = '重试失败，请检查存储权限';
+      this.errorMessage = this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.retry_failed').id) ?? '';
     } finally {
       this.isLoading = false;
     }
@@ -184,7 +192,7 @@ export struct LocalLibrary {
             const meta = await AudioMetaReader.read(srcPath);
             if (meta) {
               song.title = (meta.title && meta.title.trim().length > 0) ? meta.title : fallbackTitle;
-              song.singer = (meta.artist && meta.artist.trim().length > 0) ? meta.artist : '未知艺术家';
+              song.singer = (meta.artist && meta.artist.trim().length > 0) ? meta.artist : (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.unknown_artist').id) ?? '');
               song.album = meta.album ?? '';
               song.author = meta.author ?? '';
               song.year = meta.year ?? '';
@@ -193,7 +201,7 @@ export struct LocalLibrary {
               song.codec = meta.codec ?? '';
             } else {
               song.title = fallbackTitle;
-              song.singer = '未知艺术家';
+              song.singer = this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.unknown_artist').id) ?? '';
             }
             newSongs.push(song);
           }
@@ -213,12 +221,12 @@ export struct LocalLibrary {
           });
           this.getUIContext().getPromptAction().showToast({ message: `已导入 ${newSongs.length} 首音乐` });
         } else {
-          this.getUIContext().getPromptAction().showToast({ message: '没有新的音乐文件' });
+          this.getUIContext().getPromptAction().showToast({ message: $r('app.string.no_new_files') });
         }
         this.isLoading = false;
       }
     } catch (err) {
-      this.errorMessage = '导入失败：' + ((err as Error).message ?? '未知错误');
+      this.errorMessage = (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.import_failed').id) ?? '') + ((err as Error).message ?? (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.unknown_error').id) ?? ''));
       Logger.error('Pick music failed');
       this.isLoading = false;
     }
@@ -279,7 +287,7 @@ export struct LocalLibrary {
     this.store.toggleFavorite(song.id);
     try {
       this.getUIContext().getPromptAction().showToast({
-        message: isFav ? '已取消收藏' : '已收藏'
+        message: isFav ? $r('app.string.unfavorited') : $r('app.string.favorited')
       });
     } catch (e) {
       Logger.error('LocalLibrary', 'showToast failed');
@@ -296,6 +304,30 @@ export struct LocalLibrary {
     this.selectedSong = song;
     this.sheetKind = 'detail';
     this.sheetOpen = true;
+  }
+
+  /** 平板主从布局：点击左侧列表项仅选中（更新右侧详情面板），不弹出半模态。 */
+  selectSongForDetail(song: SongItem): void {
+    this.selectedSong = song;
+  }
+
+  private toast(message: string | Resource): void {
+    try {
+      this.getUIContext().getPromptAction().showToast({ message: message });
+    } catch (e) {
+      Logger.error('LocalLibrary', 'toast failed');
+    }
+  }
+
+  private onMatchLyric(song: SongItem): void {
+    EmbeddedLyricReader.evict(song.src);
+    EmbeddedLyricReader.read(song.src)
+      .then((text: string | undefined) => {
+        this.toast(text && text.trim().length > 0 ? $r('app.string.lyric_matched') : $r('app.string.no_lyric_file'));
+      })
+      .catch(() => {
+        this.toast($r('app.string.no_lyric_file'));
+      });
   }
 
   onCoverRefreshed() {
@@ -369,11 +401,11 @@ export struct LocalLibrary {
 
     private buildMenuItems(song: SongItem): SongMenuEntry[] {
     return [
-      { text: '播放', icon: $r('app.media.ic_lib_play'), action: () => { this.playSong(song); } },
-      { text: this.store.isFavorite(song.id) ? '取消收藏' : '收藏', icon: $r('app.media.ic_public_collect'), action: () => { this.toggleFavoriteSong(song); } },
-      { text: '添加到歌单', icon: $r('app.media.ic_public_add'), action: () => { this.openAddToPlaylist(song); } },
-      { text: '详细', icon: $r('app.media.ic_public_detail'), action: () => { this.openSongDetail(song); } },
-      { text: '删除', icon: $r('app.media.ic_public_delete'), action: () => { this.deleteSong(song); } }
+      { text: this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.play').id) ?? '', icon: $r('app.media.ic_lib_play'), action: () => { this.playSong(song); } },
+      { text: this.store.isFavorite(song.id) ? (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.unfavorite').id) ?? '') : (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.favorite').id) ?? ''), icon: $r('app.media.ic_public_collect'), action: () => { this.toggleFavoriteSong(song); } },
+      { text: this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.add_to_playlist').id) ?? '', icon: $r('app.media.ic_public_add'), action: () => { this.openAddToPlaylist(song); } },
+      { text: this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.details').id) ?? '', icon: $r('app.media.ic_public_detail'), action: () => { this.openSongDetail(song); } },
+      { text: this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.delete').id) ?? '', icon: $r('app.media.ic_public_delete'), action: () => { this.deleteSong(song); } }
     ];
   }
 
@@ -381,7 +413,7 @@ export struct LocalLibrary {
   @Builder
   sheetContent() {
     if (this.sheetKind === 'detail') {
-      SongDetailSheet({ songId: this.selectedSong?.id ?? 0 })
+      SongDetailSheet({ songId: this.selectedSong?.id ?? 0, pathStack: this.pathStack })
     } else if (this.sheetKind === 'add') {
       AddToPlaylistSheet({
         songId: this.selectedSong?.id ?? 0,
@@ -392,11 +424,177 @@ export struct LocalLibrary {
     }
   }
 
+  /**
+   * 平板主从布局的右侧常驻详情面板。
+   * 展示选中歌曲的封面、标题/艺术家/合集、主操作（播放）与次级操作
+   * （收藏 / 添加到歌单 / 详情 / 删除 / 匹配歌词）。未选中时展示空态提示。
+   */
+  @Builder
+  masterDetailPanel() {
+    Column() {
+      if (this.selectedSong) {
+        Scroll() {
+          Column() {
+            CoverImageView({ src: this.selectedSong.src, coverSize: 176, coverRadius: 18 })
+              .alignSelf(ItemAlign.Center)
+              .margin({ top: SPACE_SM.section, bottom: SPACE_SM.base })
+
+            Text(this.selectedSong.title)
+              .fontSize(TYPE_SM.title3.size)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(this.getThemeColors().primaryText)
+              .maxLines(2)
+              .textAlign(TextAlign.Center)
+              .width('100%')
+
+            Text(this.selectedSong.singer)
+              .fontSize(TYPE_SM.subhead.size)
+              .fontColor(this.getThemeColors().secondaryText)
+              .margin({ top: SPACE_SM.compact })
+              .width('100%')
+              .textAlign(TextAlign.Center)
+
+            if (this.selectedSong.album.length > 0) {
+              Text(this.selectedSong.album)
+                .fontSize(TYPE_SM.footnote.size)
+                .fontColor(this.getThemeColors().secondaryText)
+                .margin({ top: SPACE_SM.compact })
+                .width('100%')
+                .textAlign(TextAlign.Center)
+            }
+
+            Button($r('app.string.play'))
+              .width('100%')
+              .height(48)
+              .borderRadius(24)
+              .fontSize(TYPE_SM.body.size)
+              .fontWeight(FontWeight.Bold)
+              .fontColor(semanticOf(this.isDark).onAccent)
+              .backgroundColor(this.getThemeColors().accent)
+              .margin({ top: SPACE_SM.base })
+              .onClick(() => {
+                this.playSong(this.selectedSong!);
+              })
+
+            Row({ space: SPACE_SM.compact }) {
+              Column({ space: 4 }) {
+                Image($r('app.media.ic_public_collect'))
+                  .width(22)
+                  .height(22)
+                  .fillColor(this.getThemeColors().accent)
+                Text(this.store.isFavorite(this.selectedSong.id) ? $r('app.string.favorited') : $r('app.string.favorite'))
+                  .fontSize(TYPE_SM.footnote.size)
+                  .fontColor(this.getThemeColors().secondaryText)
+              }
+              .layoutWeight(1)
+              .padding({ top: SPACE_SM.base, bottom: SPACE_SM.base })
+              .backgroundColor(this.getThemeColors().secondaryBg)
+              .borderRadius(16)
+              .onClick(() => {
+                this.toggleFavoriteSong(this.selectedSong!);
+              })
+
+              Column({ space: 4 }) {
+                Image($r('app.media.ic_public_add'))
+                  .width(22)
+                  .height(22)
+                  .fillColor(this.getThemeColors().accent)
+                Text($r('app.string.add_to_playlist'))
+                  .fontSize(TYPE_SM.footnote.size)
+                  .fontColor(this.getThemeColors().secondaryText)
+              }
+              .layoutWeight(1)
+              .padding({ top: SPACE_SM.base, bottom: SPACE_SM.base })
+              .backgroundColor(this.getThemeColors().secondaryBg)
+              .borderRadius(16)
+              .onClick(() => {
+                this.openAddToPlaylist(this.selectedSong!);
+              })
+            }
+            .margin({ top: SPACE_SM.cozy })
+            .width('100%')
+
+            Row({ space: SPACE_SM.compact }) {
+              Column({ space: 4 }) {
+                Image($r('app.media.ic_public_detail'))
+                  .width(22)
+                  .height(22)
+                  .fillColor(this.getThemeColors().accent)
+                Text($r('app.string.detail'))
+                  .fontSize(TYPE_SM.footnote.size)
+                  .fontColor(this.getThemeColors().secondaryText)
+              }
+              .layoutWeight(1)
+              .padding({ top: SPACE_SM.base, bottom: SPACE_SM.base })
+              .backgroundColor(this.getThemeColors().secondaryBg)
+              .borderRadius(16)
+              .onClick(() => {
+                this.openSongDetail(this.selectedSong!);
+              })
+
+              Column({ space: 4 }) {
+                Image($r('app.media.ic_public_delete'))
+                  .width(22)
+                  .height(22)
+                  .fillColor(this.getThemeColors().accent)
+                Text($r('app.string.delete'))
+                  .fontSize(TYPE_SM.footnote.size)
+                  .fontColor(this.getThemeColors().secondaryText)
+              }
+              .layoutWeight(1)
+              .padding({ top: SPACE_SM.base, bottom: SPACE_SM.base })
+              .backgroundColor(this.getThemeColors().secondaryBg)
+              .borderRadius(16)
+              .onClick(() => {
+                this.deleteSong(this.selectedSong!);
+              })
+            }
+            .margin({ top: SPACE_SM.compact })
+            .width('100%')
+
+            Button($r('app.string.match_lyric'))
+              .width('100%')
+              .height(44)
+              .borderRadius(22)
+              .fontSize(TYPE_SM.body.size)
+              .fontColor(this.getThemeColors().secondaryText)
+              .backgroundColor(this.getThemeColors().secondaryBg)
+              .margin({ top: SPACE_SM.cozy })
+              .onClick(() => {
+                this.onMatchLyric(this.selectedSong!);
+              })
+          }
+          .padding({ left: SPACE_SM.section, right: SPACE_SM.section, bottom: SPACE_SM.loose })
+          .width('100%')
+        }
+        .layoutWeight(1)
+        .scrollBar(BarState.Off)
+      } else {
+        Column() {
+          Image($r('app.media.ic_public_albums'))
+            .width(64)
+            .height(64)
+            .fillColor(this.getThemeColors().secondaryText)
+            .opacity(0.5)
+            .margin({ bottom: SPACE_SM.base })
+          Text($r('app.string.select_song_hint'))
+            .fontSize(TYPE_SM.subhead.size)
+            .fontColor(this.getThemeColors().secondaryText)
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+
   build() {
     Column() {
       // Header + 导入入口（原歌曲页导入功能已迁移至此）
       Row() {
-        Text('音乐库')
+        Text($r('app.string.music_library'))
           .fontSize(24)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.getThemeColors().primaryText)
@@ -408,7 +606,7 @@ export struct LocalLibrary {
             .width(16)
             .height(16)
             .fillColor(this.getThemeColors().accent)
-          Text('导入')
+          Text($r('app.string.import'))
             .fontSize(TYPE_SM.footnote.size)
             .fontColor(this.getThemeColors().accent)
             .fontWeight(FontWeight.Medium)
@@ -439,7 +637,7 @@ export struct LocalLibrary {
           .height(20)
           .fillColor(this.getThemeColors().secondaryText)
 
-        TextInput({ placeholder: '搜索歌曲、艺术家' })
+        TextInput({ placeholder: $r('app.string.search_hint') })
           .placeholderColor(this.getThemeColors().secondaryText)
           .backgroundColor(Color.Transparent)
           .fontColor(this.getThemeColors().primaryText)
@@ -479,7 +677,7 @@ export struct LocalLibrary {
             .height(36)
             .color(this.getThemeColors().accent)
             .margin({ bottom: SPACE_SM.base })
-          Text('正在导入...')
+          Text($r('app.string.importing'))
             .fontSize(TYPE_SM.subhead.size)
             .fontColor(this.getThemeColors().secondaryText)
         }
@@ -503,7 +701,7 @@ export struct LocalLibrary {
             .padding({ left: SPACE_SM.section, right: SPACE_SM.section })
             .margin({ bottom: SPACE_SM.roomy })
 
-          Button('重试')
+          Button($r('app.string.retry'))
             .fontSize(TYPE_SM.subhead.size)
             .fontColor(semanticOf(this.isDark).onAccent)
             .backgroundColor(this.getThemeColors().accent)
@@ -525,12 +723,12 @@ export struct LocalLibrary {
             .scale({ x: this.emptyIconScale, y: this.emptyIconScale })
             .animation({ duration: LumioTheme.duration(700), curve: LumioTheme.curve(SpringKind.Crisp) })
 
-          Text('音乐库还是空的')
+          Text($r('app.string.library_empty'))
             .fontSize(TYPE_SM.headline.size)
             .fontColor(this.getThemeColors().secondaryText)
             .fontWeight(FontWeight.Medium)
 
-          Text('点击右上角"导入"添加本地音频')
+          Text($r('app.string.empty_import_hint'))
             .fontSize(TYPE_SM.footnote.size)
             .fontColor(this.getThemeColors().secondaryText)
             .margin({ top: SPACE_SM.compact })
@@ -539,9 +737,56 @@ export struct LocalLibrary {
         .layoutWeight(1)
         .justifyContent(FlexAlign.Center)
       } else {
-        if (this.breakpoint === 'sm') {
+        if (this.breakpoint === 'lg') {
+          // 平板 / 2-in-1：主从双栏（左主列表 + 右常驻详情面板）
+          Row() {
+            List() {
+              LazyForEach(this.songDataSource, (song: SongItem, index: number) => {
+                ListItem() {
+                  SongRow({
+                    song: song,
+                    index: index,
+                    playing: this.store.currentIndex === index && this.store.isPlaying,
+                    playingColor: this.getThemeColors().accent,
+                    showQuality: true,
+                    circularCoverWhenPlaying: true,
+                    showPlayingIcon: true,
+                    playingBg: semanticOf(this.isDark).fillAccentSubtle,
+                    coverSize: 56,
+                    titleFontSize: 16,
+                    rowHeight: 72,
+                    leftPadding: 16,
+                    animateEntry: true,
+                    entryDelayMs: this.entryDelay(index),
+                    menuItems: this.buildMenuItems(song),
+                    onPlay: () => {
+                      this.playSong(song);
+                    }
+                  })
+                }
+                .onClick(() => {
+                  this.selectSongForDetail(song);
+                })
+                .backgroundColor(this.selectedSong?.id === song.id ? semanticOf(this.isDark).fillAccentSubtle : Color.Transparent)
+              }, (song: SongItem): string => song.id.toString())
+            }
+            .width('38%')
+            .height('100%')
+            .scrollBar(BarState.Off)
+            .borderWidth({ right: 1 })
+            .borderColor(this.getThemeColors().separator)
+
+            Column() {
+              this.masterDetailPanel()
+            }
+            .layoutWeight(1)
+            .height('100%')
+          }
+          .width('100%')
+          .layoutWeight(1)
+        } else if (this.breakpoint === 'sm') {
           List() {
-            ForEach(this.filteredSongs, (song: SongItem, index: number) => {
+            LazyForEach(this.songDataSource, (song: SongItem, index: number) => {
               ListItem() {
                 SongRow({
               song: song,
@@ -564,16 +809,16 @@ export struct LocalLibrary {
               }
             })
               }
-            })
+            }, (song: SongItem): string => song.id.toString())
           }
           .width('100%')
           .height('100%')
           .layoutWeight(1)
           .scrollBar(BarState.Off)
         } else {
-          // 折叠屏 / 平板 / 2-in-1：两列网格，更高效地利用横向空间
+          // 折叠屏：两列网格，更高效地利用横向空间
           Grid() {
-            ForEach(this.filteredSongs, (song: SongItem, index: number) => {
+            LazyForEach(this.songDataSource, (song: SongItem, index: number) => {
               GridItem() {
                 SongRow({
               song: song,

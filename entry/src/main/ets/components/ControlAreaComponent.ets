@@ -33,6 +33,7 @@ import { AVSessionController } from '../utils/AVSessionController';
 import { Logger } from '../utils/Logger';
 import { MusicPlayMode, PlayModeSwitchList } from '../songdatacontroller/PlayerData';
 import { SongItem } from '../songdatacontroller/SongData';
+import { SongDataSource } from '../datasource/SongDataSource';
 import { CoverImageView } from './CoverImageView';
 import { StyleConstants } from '../common/constants/StyleConstants';
 import { BreakpointConstants } from '../common/constants/BreakpointConstants';
@@ -48,7 +49,7 @@ import { Motion, springSnappy } from '../common/utils/DesignSystem';
 import { SleepTimer } from '../utils/SleepTimer';
 import { SettingsStore } from '../utils/SettingsStore';
 import { TYPE_SM, SPACE_SM, LUMIO_RADIUS } from '../tokens/LumioScale';
-import type uiMaterial from '@ohos.arkui.uiMaterial';
+import uiMaterial from '@ohos.arkui.uiMaterial';
 import { acquireSheetMaterial, SheetScaffold } from '../common/utils/SheetMaterial';
 import { GroupedSheetContainer, GroupedSheetHairline } from '../common/components/GroupedSheet';
 
@@ -65,7 +66,12 @@ export struct ControlAreaComponent {
   @State playModeIndex: number = 0;
   @StorageLink('imageColor') imageColor: string = '';
   @StorageLink('pageShowTime') pageShowTime: number = 0;
-  @StorageLink('songList') songList: SongItem[] = [];
+  @StorageLink('songList') @Watch('onSongListChanged') songList: SongItem[] = [];
+  private songListDataSource: SongDataSource = new SongDataSource([]);
+
+  onSongListChanged(): void {
+    this.songListDataSource.setData(this.songList);
+  }
   @State isShowPlayList: boolean = false;
   @State currentIndex: number = 0;
   @State sortMode: number = 0;
@@ -355,15 +361,15 @@ export struct ControlAreaComponent {
     return s + 'x';
   }
 
-  private rateLabel(rate: number): string {
+  private rateLabel(rate: number): ResourceStr {
     if (rate === 1.0) {
-      return '1x（正常）';
+      return $r('app.string.speed_normal');
     }
     const s: string = rate.toFixed(2).replace(/\.00$/, '').replace(/0$/, '');
     return s + 'x';
   }
 
-  private toast(message: string): void {
+  private toast(message: ResourceStr): void {
     try {
       this.getUIContext().getPromptAction().showToast({ message });
     } catch (e) {
@@ -375,7 +381,7 @@ export struct ControlAreaComponent {
   speedSheet() {
     SheetScaffold({ material: this.material, fallbackColor: this.getThemeColors().surfaceOverlay }) {
       Column() {
-        Text('播放速度')
+        Text($r('app.string.play_speed'))
           .fontSize(TYPE_SM.title3.size)
           .fontWeight(FontWeight.Bold)
           .lineHeight(TYPE_SM.title3.lineHeight)
@@ -422,7 +428,7 @@ export struct ControlAreaComponent {
   sleepSheet() {
     SheetScaffold({ material: this.material, fallbackColor: this.getThemeColors().surfaceOverlay }) {
       Column() {
-        Text('睡眠定时')
+        Text($r('app.string.sleep_timer'))
           .fontSize(TYPE_SM.title3.size)
           .fontWeight(FontWeight.Bold)
           .lineHeight(TYPE_SM.title3.lineHeight)
@@ -442,7 +448,7 @@ export struct ControlAreaComponent {
     ForEach([15, 30, 45, 60, 90], (min: number) => {
       Column() {
         Row() {
-          Text(min + ' 分钟')
+          Text(min + (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.minutes_unit').id) ?? ''))
             .fontSize(TYPE_SM.headline.size)
             .lineHeight(TYPE_SM.headline.lineHeight)
             .letterSpacing(TYPE_SM.headline.tracking)
@@ -456,14 +462,14 @@ export struct ControlAreaComponent {
           SleepTimer.getInstance().start(min);
           SettingsStore.getInstance().setSleepTimer(min);
           this.isShowSleep = false;
-          this.toast('将在 ' + min + ' 分钟后暂停播放');
+          this.toast((this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.will_pause_prefix').id) ?? '') + min + (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.minutes_then_pause').id) ?? ''));
         })
         GroupedSheetHairline(this.getThemeColors().separator, SPACE_SM.roomy, SPACE_SM.roomy)
       }
     }, (min: number) => 'sleep_' + min.toString())
     Column() {
       Row() {
-        Text('播完当前曲后停止')
+        Text($r('app.string.stop_after_current'))
           .fontSize(TYPE_SM.headline.size)
           .lineHeight(TYPE_SM.headline.lineHeight)
           .letterSpacing(TYPE_SM.headline.tracking)
@@ -477,13 +483,13 @@ export struct ControlAreaComponent {
         SleepTimer.getInstance().startEndOfSong();
         SettingsStore.getInstance().setSleepTimer(-1);
         this.isShowSleep = false;
-        this.toast('将在播完当前歌曲后暂停');
+        this.toast($r('app.string.will_pause_after'));
       })
       GroupedSheetHairline(this.getThemeColors().separator, SPACE_SM.roomy, SPACE_SM.roomy)
     }
     Column() {
       Row() {
-        Text('关闭定时')
+        Text($r('app.string.turn_off_timer'))
           .fontSize(TYPE_SM.headline.size)
           .lineHeight(TYPE_SM.headline.lineHeight)
           .letterSpacing(TYPE_SM.headline.tracking)
@@ -497,7 +503,7 @@ export struct ControlAreaComponent {
         SleepTimer.getInstance().cancel();
         SettingsStore.getInstance().setSleepTimer(0);
         this.isShowSleep = false;
-        this.toast('已关闭睡眠定时');
+        this.toast($r('app.string.sleep_timer_off'));
       })
     }
   }
@@ -521,7 +527,7 @@ export struct ControlAreaComponent {
           .layoutWeight(1)
       } else {
         List({ scroller: this.scroller }) {
-          ForEach(this.songList, (item: SongItem, index: number) => {
+          LazyForEach(this.songListDataSource, (item: SongItem, index: number) => {
             ListItem() {
               MusicListContainer({
                 item: item,

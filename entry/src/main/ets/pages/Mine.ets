@@ -75,7 +75,7 @@ export struct Mine {
   }
 
   @Builder
-  buildMenuItem(icon: ResourceStr, title: string, subtitle: string = '', showArrow: boolean = true, index: number = 0, iconColor: string = this.getThemeColors().primaryText, onClick: () => void = () => {}) {
+  buildMenuItem(icon: ResourceStr, title: ResourceStr, subtitle: ResourceStr = '', showArrow: boolean = true, index: number = 0, iconColor: string = this.getThemeColors().primaryText, onClick: () => void = () => {}) {
     Row() {
       // 仅图标本身，不要底色背景（苹果风：彩色图标直接呈现，无圆角色块）
       Image(icon)
@@ -142,7 +142,7 @@ export struct Mine {
         // 标题栏（与音乐库页一致：左侧 24/Bold 大标题 + 右侧圆角操作入口）。
         // 右侧放「我的收藏」收藏星快捷入口，跳到收藏页；保留与音乐库「导入」pill 同等的视觉权重。
         Row() {
-          Text('我的')
+          Text($r('app.string.mine'))
             .fontSize(24)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getThemeColors().primaryText)
@@ -155,7 +155,7 @@ export struct Mine {
         Column() {
           this.buildMenuItem(
             $r('app.media.ic_public_collect'),
-            '我的收藏',
+            $r('app.string.my_favorites'),
             `${this.favCount} 首歌曲`,
             true,
             0,
@@ -167,7 +167,7 @@ export struct Mine {
 
           this.buildMenuItem(
             $r('app.media.ic_public_view_list'),
-            '我的歌单',
+            $r('app.string.my_playlists'),
             `${this.playlistCount} 个歌单`,
             true,
             1,
@@ -179,7 +179,7 @@ export struct Mine {
 
           this.buildMenuItem(
             $r('app.media.ic_public_view_list'),
-            '播放历史',
+            $r('app.string.play_history'),
             `${this.histCount} 首歌曲`,
             true,
             2,
@@ -191,8 +191,8 @@ export struct Mine {
 
           this.buildMenuItem(
             $r('app.media.ic_public_folder'),
-            '文件夹浏览',
-            '按来源目录整理',
+            $r('app.string.folder_browse'),
+            $r('app.string.by_source'),
             true,
             3,
             this.getThemeColors().secondaryText,
@@ -205,7 +205,7 @@ export struct Mine {
         .padding({ left: SPACE_SM.base, right: SPACE_SM.base, top: SPACE_SM.compact })
 
         // 分区标题
-        Text('更多')
+        Text($r('app.string.more'))
           .fontSize(TYPE_SM.footnote.size)
           .fontColor(this.getThemeColors().secondaryText)
           .margin({ top: SPACE_SM.base, bottom: SPACE_SM.cozy, left: SPACE_SM.base })
@@ -215,7 +215,7 @@ export struct Mine {
         Column() {
           this.buildMenuItem(
             $r('app.media.ic_public_settings'),
-            '设置',
+            $r('app.string.settings'),
             '',
             true,
             4,
@@ -228,7 +228,7 @@ export struct Mine {
 
           this.buildMenuItem(
             $r('app.media.ic_logo'),
-            '关于',
+            $r('app.string.about'),
             this.appVersionDisplay,
             true,
             5,

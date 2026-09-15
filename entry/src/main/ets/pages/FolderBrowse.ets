@@ -23,6 +23,7 @@ import { Logger } from '../utils/Logger';
 import { common } from '@kit.AbilityKit';
 import { semanticOf } from '../tokens/LumioColor';
 import { SongRow } from '../components/SongRow';
+import { SongDataSource } from '../datasource/SongDataSource';
 import { LumioTheme, SpringKind } from '../tokens/LumioTheme';
 import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
 
@@ -51,9 +52,10 @@ export struct FolderBrowse {
   @StorageProp('isDark') isDark: boolean = false;
   @StorageProp('coverRefreshToken') @Watch('reload') coverRefreshToken: number = 0;
 
-  @State folders: FolderGroup[] = [];
-  @State selectedFolder: string = '';
+  @State @Watch('onFolderSongsChanged') folders: FolderGroup[] = [];
+  @State @Watch('onFolderSongsChanged') selectedFolder: string = '';
   @State backScale: number = 1.0;
+  private folderSongsDataSource: SongDataSource = new SongDataSource([]);
 
   private getThemeColors(): ColorTokens {
     return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
@@ -67,7 +69,7 @@ export struct FolderBrowse {
   reload(): void {
     const map: Map<string, SongItem[]> = new Map<string, SongItem[]>();
     for (const s of this.store.songs) {
-      const key: string = (s.folder && s.folder.trim().length > 0) ? s.folder : '导入音乐';
+      const key: string = (s.folder && s.folder.trim().length > 0) ? s.folder : this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.import_music').id) ?? '';
       const arr: SongItem[] = map.get(key) ?? [];
       arr.push(s);
       map.set(key, arr);
@@ -83,6 +85,10 @@ export struct FolderBrowse {
   private currentFolderSongs(): SongItem[] {
     const f: FolderGroup | undefined = this.folders.find((x: FolderGroup) => x.name === this.selectedFolder);
     return f ? f.songs : [];
+  }
+
+  onFolderSongsChanged(): void {
+    this.folderSongsDataSource.setData(this.currentFolderSongs());
   }
 
   private playFolder(name: string): void {
@@ -186,7 +192,7 @@ export struct FolderBrowse {
               .maxLines(1)
               .textOverflow({ overflow: TextOverflow.Ellipsis })
           } else {
-            Text('文件夹')
+            Text($r('app.string.folder'))
               .fontSize(TYPE_SM.title2.size)
               .fontWeight(FontWeight.Bold)
               .fontColor(this.getThemeColors().primaryText)
@@ -206,7 +212,7 @@ export struct FolderBrowse {
                 .fillColor(this.getThemeColors().secondaryText)
                 .opacity(0.5)
                 .margin({ bottom: SPACE_SM.base })
-              Text('还没有可浏览的文件夹')
+              Text($r('app.string.no_folders'))
                 .fontSize(TYPE_SM.headline.size)
                 .fontColor(this.getThemeColors().secondaryText)
                 .fontWeight(FontWeight.Medium)
@@ -228,7 +234,7 @@ export struct FolderBrowse {
           }
         } else {
           List() {
-            ForEach(this.currentFolderSongs(), (song: SongItem) => {
+            LazyForEach(this.folderSongsDataSource, (song: SongItem) => {
               ListItem() {
                 SongRow({
               song: song,

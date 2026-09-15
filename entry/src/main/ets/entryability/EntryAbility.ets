@@ -41,6 +41,7 @@ import { display, window } from '@kit.ArkUI';
 import { BreakpointConstants } from '../common/constants/BreakpointConstants';
 import { MusicStore } from '../services/MusicStore';
 import { SettingsStore } from '../utils/SettingsStore';
+import { LocaleManager } from '../utils/LocaleManager';
 import { ThemeManager } from '../utils/ThemeManager';
 import { AVSessionController } from '../utils/AVSessionController';
 import { CoverCache } from '../utils/CoverCache';
@@ -135,12 +136,12 @@ export default class EntryAbility extends UIAbility {
       newSong.src = uri;
       newSong.folder = this.extractFolderName(uri);
       newSong.title = fallbackTitle;
-      newSong.singer = '未知艺术家';
+      newSong.singer = getContext(this).resourceManager.getStringSync($r('app.string.unknown_artist').id);
       try {
         const meta = await AudioMetaReader.read(uri);
         if (meta) {
           newSong.title = (meta.title && meta.title.trim().length > 0) ? meta.title : fallbackTitle;
-          newSong.singer = (meta.artist && meta.artist.trim().length > 0) ? meta.artist : '未知艺术家';
+          newSong.singer = (meta.artist && meta.artist.trim().length > 0) ? meta.artist : getContext(this).resourceManager.getStringSync($r('app.string.unknown_artist').id);
           newSong.album = meta.album ?? '';
           newSong.author = meta.author ?? '';
           newSong.year = meta.year ?? '';
@@ -325,6 +326,8 @@ export default class EntryAbility extends UIAbility {
     // 初始化设置项偏好与主题管理器（需在窗口就绪前完成，供页面与系统栏取色）
     await SettingsStore.getInstance().ensureInitialized(this.context);
     ThemeManager.init();
+    // 应用内偏好语言：窗口内容加载前设定，确保首帧即用正确语言
+    LocaleManager.getInstance().init();
 
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
@@ -382,7 +385,7 @@ export default class EntryAbility extends UIAbility {
       // 一次性补扫已导入歌曲的文本元数据（标题/艺术家/专辑/作者），修复历史「未知艺术家」
       await store.refreshMetadataIfNeeded();
       if (store.songs.length === 0) {
-        Logger.info('No local songs yet, import from 音乐库');
+        Logger.info(getContext(this).resourceManager.getStringSync($r('app.string.no_local_songs_hint').id));
       } else {
         Logger.info(`Loaded ${store.songs.length} songs from storage`);
         // 方向 B：先做"高频封面优先预热"。

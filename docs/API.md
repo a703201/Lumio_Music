@@ -1,6 +1,6 @@
 # Lumio Music — 开发者 API 参考文档
 
-> 版本基线：HarmonyOS NEXT 6.1.1（API 24）/ Stage 模型 / ArkTS + C++ NAPI（libnative_module.so）
+> 版本基线：HarmonyOS NEXT 26.0.0（API 26）/ Stage 模型 / ArkTS + C++ NAPI（libnative_module.so）
 > 包名（bundleName）：`com.lumio.music`　许可证：Apache-2.0
 > 本文档所有方法签名与调用约束均直接采信自 `docs/review_architecture.md` §3「公开 API 面盘点」，未做任何推断性扩展。
 > 配套文档：`review_architecture.md`（架构与状态）、`review_security.md`、`review_compliance.md`。
@@ -739,10 +739,10 @@ const meta = await AudioMetaReader.read(src);     // 内部已 taskpool 包裹 N
 
 ## 附录 A：SDK 版本与权限要点
 
-- **最低/目标 SDK**：`compileSdkVersion/targetSdkVersion/compatibleSdkVersion = 6.1.1(24)`（API 24）。
+- **最低/目标 SDK**：`compileSdkVersion/targetSdkVersion/compatibleSdkVersion = 26.0.0`（API 26）。
 - **关键 Kit**：`@kit.ArkUI`、`@kit.MediaKit`、`@kit.AVSessionKit`、`@kit.ArkData`、`@kit.ImageKit`、`@kit.CoreFileKit`、`@kit.AbilityKit`、`@kit.FormKit`、`@kit.LocalizationKit`、`@kit.PerformanceAnalysisKit`、`@kit.BasicServicesKit`、`@kit.ArkTS`。
 - **权限（3 项，运行时最小化）**：`ohos.permission.KEEP_BACKGROUND_RUNNING`（inuse）、`ohos.permission.INTERNET`（always）、`ohos.permission.GET_NETWORK_INFO`（always）。无媒体库读写权限（歌曲走沙箱）。
-- **已知 SDK 限制**：6.1.1 无 `@kit.MultimodalAwarenessKit`；`setSpatializationEnabled`/多频段 EQ 无公开 API（设置页只读展示）；歌单云同步无账号体系（仅本地）。
+- **已知 SDK 限制**：API 26 无 `@kit.MultimodalAwarenessKit`；`setSpatializationEnabled`/多频段 EQ 无公开 API（设置页只读展示）；歌单云同步无账号体系（仅本地）。
 - **原生编译**：`nativeCompiler: BiSheng`，`CMakeLists.txt` 路径 `./src/main/cpp/CMakeLists.txt`。
 
 ## 附录 B：ArkTS 红线核对

@@ -29,7 +29,7 @@ export struct QualityBadge {
 
   build() {
     if (this.quality === 'lossless' || this.quality === 'hires') {
-      Text(this.quality === 'hires' ? 'Hi-Res' : '无损')
+      Text(this.quality === 'hires' ? 'Hi-Res' : $r('app.string.lossless'))
         .fontSize(TYPE_SM.caption2.size)
         .fontWeight(FontWeight.Medium)
         .fontColor(semanticOf(this.isDark).accent)

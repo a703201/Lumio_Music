@@ -110,7 +110,7 @@ export struct LyricsComponent {
    * EmbeddedLyricReader 内部依次尝试
    *   1) 音频内嵌标签（MP3 ID3 USLT/TXXX、FLAC VORBIS LYRICS、MP4 ©lyr / '----'）
    *   2) 同目录同名 .lrc 外挂文件
-   * 两者都没有则显示"暂无歌词"。
+   * 两者都没有则显示$r('app.string.no_lyrics')。
    */
   getLrcEntryList() {
     this.mLrcEntryList = [];

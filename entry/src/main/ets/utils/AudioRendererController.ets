@@ -44,6 +44,7 @@ import { PreferencesUtil } from './PreferencesUtil';
 import { MusicStore } from '../services/MusicStore';
 import { SettingsStore } from './SettingsStore';
 import { SleepTimer } from './SleepTimer';
+import { LumioAudioFade } from '../tokens/LumioMotionSpec';
 
 const TAG = 'AudioRendererController';
 
@@ -81,6 +82,25 @@ export class AudioRendererController {
   private avStateHandler?: (state: string) => void;
   private avTimeHandler?: (time: number) => void;
   private avDurationHandler?: (dur: number) => void;
+
+  // ===== 音量渐变（淡入/淡出）=====
+  // AVPlayer 没有原生音量斜坡（setVolumeWithRamp 属于 audio.AudioRenderer，不适用），
+  // 故用一个定时器按 LumioAudioFade.step 分步调用 setVolume 逼近目标值。
+  private fadeTimer: number = -1;
+  /** 渐变序号：每启动一次自增，旧定时器的迟到回调据此作废，避免快速切歌时互相抢音量。 */
+  private fadeSeq: number = 0;
+  /** 当前渐变的完成回调；被新的渐变取代或取消时置空并立即 resolve，避免调用方永久挂起。 */
+  private fadeResolve: ((value: void) => void) | undefined = undefined;
+  /** 上一次实际写入 AVPlayer 的音量。[0,1]，用于渐变起点与状态判断。 */
+  private curVolume: number = 1;
+  /** 是否处于「已起播」状态（由 updateIsPlay 维护），用于决定切歌前是否需要淡出。 */
+  private playing: boolean = false;
+  /**
+   * 主播放器最近一次 stateChange 状态。仅用于判断「此刻是否真的在出声」——
+   * playing 标记在曲目自然结束（completed）时不会翻转，若只看它会把「已结束」误判为「在播」，
+   * 从而在自动下一首前白白插入一段无效淡出。
+   */
+  private avState: string = '';
 
   constructor() {
     let list: SongItem[] | undefined = AppStorage.get('songList');
@@ -122,6 +142,7 @@ export class AudioRendererController {
     // 仅有这一个 stateChange/timeUpdate/durationUpdate 监听（避免重复挂载导致回调多次触发）。
     if (!this.avStateHandler) {
       this.avStateHandler = (state: string) => {
+        this.avState = state;
         Logger.info(TAG, 'AVPlayer stateChange: ' + state);
         if (state === 'initialized') {
           // fdSrc 已设置，进入 prepared 状态准备播放（官方推荐：在状态回调中驱动状态机）
@@ -209,11 +230,126 @@ export class AudioRendererController {
     if (!this.avPlayer) {
       return;
     }
+    // 静音切换是用户显式操作，必须立即生效：取消进行中的渐变，直接落到目标值。
+    this.cancelFade();
+    this.applyVolume(this.fullVolume());
+  }
+
+  // ===== 音量渐变（淡入/淡出）=====
+
+  /** 「满音量」值：静音模式下恒为 0，否则 1。所有渐变的终点都以它为基准。 */
+  private fullVolume(): number {
+    return this.isSilent ? 0 : 1;
+  }
+
+  /** 当前用户档位对应的渐变时长(ms)，0 = 关闭。每次渐变启动时现读，设置改动即时生效。 */
+  private fadeDurationMs(): number {
     try {
-      this.avPlayer.setVolume(this.isSilent ? 0 : 1);
+      return SettingsStore.audioFadeMs(SettingsStore.getInstance().getAudioFade());
     } catch (e) {
-      Logger.error(TAG, 'applySilentMode setVolume failed');
+      return LumioAudioFade.off;
     }
+  }
+
+  /** 写音量并记录当前值。AVPlayer.setVolume 仅在 prepared/playing/paused/completed 合法，非法状态由 catch 兜住。 */
+  private applyVolume(v: number): void {
+    if (!this.avPlayer) {
+      return;
+    }
+    try {
+      this.avPlayer.setVolume(v);
+      this.curVolume = v;
+    } catch (e) {
+      Logger.error(TAG, 'setVolume failed');
+    }
+  }
+
+  /**
+   * 取消进行中的渐变：清定时器、立即 resolve 挂起的等待者（不悬空调用方），音量停在当前值不做跳变。
+   */
+  private cancelFade(): void {
+    if (this.fadeTimer >= 0) {
+      clearInterval(this.fadeTimer);
+      this.fadeTimer = -1;
+    }
+    this.fadeSeq++;
+    const pending: ((value: void) => void) | undefined = this.fadeResolve;
+    this.fadeResolve = undefined;
+    if (pending) {
+      pending();
+    }
+  }
+
+  /**
+   * 把音量从当前值线性渐变到 targetVolume，durationMs 后完成。
+   *
+   * - durationMs <= 0（用户选了「关闭」）：直接跳变，返回已 resolve 的 Promise；
+   * - 进度按**时间戳**计算而非累加步数，定时器抖动不会造成过渡不均匀；
+   * - 若期间有新的渐变启动，本次会被作废并立即 resolve（seq 守卫），
+   *   因此调用方可以安全地 await 而不会因连续切歌而永久挂起。
+   *
+   * @returns 渐变结束（或被取代/取消）时 resolve；调用方可 await 以「先淡出再切歌」。
+   */
+  private startFade(targetVolume: number, durationMs: number): Promise<void> {
+    if (!this.avPlayer) {
+      return Promise.resolve();
+    }
+    if (durationMs <= 0) {
+      this.cancelFade();
+      this.applyVolume(targetVolume);
+      return Promise.resolve();
+    }
+    // 先清掉旧渐变（会 resolve 掉旧的等待者），再起新的
+    this.cancelFade();
+    const seq: number = this.fadeSeq;
+    const from: number = this.curVolume;
+    const startTs: number = Date.now();
+    return new Promise<void>((resolve: (value: void) => void): void => {
+      this.fadeResolve = resolve;
+      this.fadeTimer = setInterval(() => {
+        if (seq !== this.fadeSeq) {
+          // 已被更新的渐变取代：定时器应已被 cancelFade 清除，这里是双保险
+          return;
+        }
+        const elapsed: number = Date.now() - startTs;
+        let progress: number = elapsed / durationMs;
+        if (progress > 1) {
+          progress = 1;
+        }
+        this.applyVolume(from + (targetVolume - from) * progress);
+        if (progress >= 1) {
+          if (this.fadeTimer >= 0) {
+            clearInterval(this.fadeTimer);
+            this.fadeTimer = -1;
+          }
+          const pending: ((value: void) => void) | undefined = this.fadeResolve;
+          this.fadeResolve = undefined;
+          if (pending) {
+            pending();
+          }
+        }
+      }, LumioAudioFade.step);
+    });
+  }
+
+  /**
+   * 此刻是否「真的在出声」：playing 状态且未静音。
+   * 只有这种情况淡出才有听觉意义；首播（尚未 playing）、已暂停、已自然结束（completed）
+   * 调用淡出只会白白增加切歌延迟，故一律跳过。
+   */
+  private isAudible(): boolean {
+    return this.playing && this.avState === 'playing' && !this.isSilent;
+  }
+
+  /**
+   * 切歌 / 停止前淡出当前曲目。
+   * 用户把档位设为「关闭」时 startFade 会直接跳变，不引入任何延迟。
+   */
+  private async fadeOutIfAudible(): Promise<void> {
+    if (!this.isAudible()) {
+      return;
+    }
+    await this.startFade(0, this.fadeDurationMs());
   }
 
   public async play(musicIndex: number = this.musicIndex): Promise<void> {
@@ -234,7 +370,7 @@ export class AudioRendererController {
     }
     BackgroundUtil.startContinuousTask(this.context);
     this.updateMusicIndex(musicIndex);
-    // 记录播放历史：每次起播（含切歌/点歌）都将当前歌曲写入"最近播放"
+    // 记录播放历史：每次起播（含切歌/点歌）都将当前歌曲写入$r('app.string.recent_played')
     const playedSong: SongItem | undefined = this.songList[this.musicIndex];
     if (playedSong) {
       MusicStore.getInstance().addToRecentlyPlayed(playedSong);
@@ -252,6 +388,8 @@ export class AudioRendererController {
     if (!this.avPlayer) {
       return;
     }
+    // 手动切歌前先淡出旧曲（仅在确实在出声时），随后再 stop/reset/换源，避免硬切。
+    await this.fadeOutIfAudible();
     // 手动切歌会使已预加载的「下一首」失效，先释放，play() 末尾会重新预加载
     this.disposeNextPlayer();
     // 关闭上一首歌曲占用的文件句柄，避免 fd 泄漏
@@ -377,7 +515,7 @@ export class AudioRendererController {
   }
 
   /**
-   * 将指定位置歌曲移动到"当前歌曲的下一首"，实现"下一首播放"。
+   * 将指定位置歌曲移动到$r('app.string.current_next')，实现$r('app.string.play_next')。
    * 不改变当前正在播放的曲目，仅影响后续播放顺序。
    */
   public moveToPlayNext(index: number): void {
@@ -411,7 +549,7 @@ export class AudioRendererController {
   /**
    * 将引擎内部播放队列与真实曲库对齐（差量合并，保留用户在队列弹窗里的手动排序/下一首播放/移除结果）：
    * - 移除队列中已在曲库中被删除的歌曲，并修正当前播放索引，避免 next/prev 跳到已删除文件。
-   * - 把新导入的歌曲追加到队列尾部，使"下一首"能逐步覆盖到新歌。
+   * - 把新导入的歌曲追加到队列尾部，使$r('app.string.next')能逐步覆盖到新歌。
    * 仅在导入/删除歌曲后调用，不在进入播放页时调用，以免覆盖用户在队列弹窗里的手动移除。
    */
   public reconcileWithLibrary(library: SongItem[]): void {
@@ -481,6 +619,7 @@ export class AudioRendererController {
   }
 
   private updateIsPlay(isPlay: boolean): void {
+    this.playing = isPlay;
     AppStorage.setOrCreate<boolean>('isPlay', isPlay);
     if (!this.avSessionController) {
       return;
@@ -744,7 +883,8 @@ export class AudioRendererController {
     // 应用速度与静音并起播（已 prepared）
     this.applySpeed();
     this.applySilentMode();
-    this.start();
+    // fadeIn=false：无缝接管不做淡入，否则会在曲目交界处插入一段静音
+    this.start(false);
     // 预加载再下一首
     this.preloadNext();
     // 善后旧路
@@ -780,12 +920,26 @@ export class AudioRendererController {
     return this.duration;
   }
 
-  public async start(): Promise<void> {
+  /**
+   * 起播。
+   * @param fadeIn 是否做淡入，默认 true。
+   *   - 用户手动起播/恢复播放传 true：**先归零 → 起播 → 再抬升**，避免以满音量出声再拉低造成爆音
+   *     （setVolume 在 prepared/playing 状态均合法，故起播前置零是安全的）。
+   *   - Gapless 硬切接管（handoffToNext）传 false：新曲已 prepared 且与旧曲首尾相接，
+   *     淡入会人为制造一段静音，与「无缝」目标直接冲突，故直接以满音量起播。
+   */
+  public async start(fadeIn: boolean = true): Promise<void> {
     if (this.avPlayer) {
       try {
+        this.cancelFade();
+        this.applyVolume(fadeIn ? 0 : this.fullVolume());
         await this.avPlayer.play();
         this.updateIsPlay(true);
         BackgroundUtil.startContinuousTask(this.context);
+        if (fadeIn) {
+          // 按用户档位淡入到满音量（静音模式下终点为 0，即静默，不额外发声）
+          this.startFade(this.fullVolume(), this.fadeDurationMs());
+        }
         Logger.info(TAG, 'start success');
       } catch (e) {
         Logger.error(TAG, 'start failed');
@@ -796,7 +950,13 @@ export class AudioRendererController {
   public async pause(): Promise<void> {
     if (this.avPlayer) {
       try {
+        // 先淡出再暂停：直接 pause 是硬切，正是本次要修的听感问题。
+        // 档位为「关闭」时立即跳变；已无声（首播前/已结束）时跳过，不引入延迟。
+        await this.fadeOutIfAudible();
         await this.avPlayer.pause();
+        // 复位到满音量：避免停在 0 后被某条不经 start() 的路径复播导致「无声」。
+        // 恢复播放一律走 start()，其会先归零再淡入，故此处复位不会造成爆音。
+        this.applyVolume(this.fullVolume());
         this.updateIsPlay(false);
         this.flushStat();
         Logger.info(TAG, 'pause success');
@@ -938,7 +1098,12 @@ export class AudioRendererController {
     this.disposeNextPlayer();
     if (this.avPlayer) {
       try {
+        // 先淡出再 stop：stop 会立即静音，不淡出就是硬切。
+        // 已无声（未起播/已结束）时跳过，不引入延迟。
+        await this.fadeOutIfAudible();
         await this.avPlayer.stop();
+        // 复位满音量，保证下次停后复播的淡入有正确起点（见 pause() 的同类处理）
+        this.applyVolume(this.fullVolume());
         this.curMs = 0;
         this.flushStat();
         this.updateIsPlay(false);

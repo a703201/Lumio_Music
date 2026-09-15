@@ -52,3 +52,26 @@ export class LumioDurations {
   static readonly page: number = 400;
   static readonly stagger: number = 60;
 }
+
+/**
+ * 音频音量渐变（淡入/淡出）时长档位，单位 ms。
+ *
+ * 与 LumioDurations 分开存放：那边是 UI 动效时长（纯视觉、不受用户设置影响），
+ * 这里是**采样域**的音量渐变，可由用户在「设置 → 音效」按 关/短/中 调节，两者语义与生命周期都不同。
+ * off = 0 表示不做渐变，直接跳变（等同关闭该特性）。
+ *
+ * 实现约束：本项目播放内核基于 media.AVPlayer，它只提供 setVolume(volume)（同步、[0,1]），
+ * **没有**原生音量斜坡——audio.AudioRenderer 的 setVolumeWithRamp(volume, duration) 不适用于 AVPlayer。
+ * 因此渐变必须按 step 分步调用 setVolume 逼近目标值。
+ */
+export class LumioAudioFade {
+  static readonly off: number = 0;
+  static readonly short: number = 200;
+  static readonly medium: number = 400;
+  /**
+   * 分步渐变的步进间隔（ms）。
+   * 25 ≈ 40 步/秒：对 200ms 档即有 8 步、400ms 档 16 步，音量步进差 ≤ 0.125，
+   * 听感上已是连续过渡，而定时器压力可忽略。
+   */
+  static readonly step: number = 25;
+}

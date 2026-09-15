@@ -36,6 +36,7 @@ import { avSession } from '@kit.AVSessionKit';
 import { BusinessError } from '@kit.BasicServicesKit';
 import { resourceManager } from '@kit.LocalizationKit';
 import { fileIo } from '@kit.CoreFileKit';
+import { image } from '@kit.ImageKit';
 import { formProvider, formBindingData } from '@kit.FormKit';
 import { SongItem } from '../songdatacontroller/SongData';
 import { Logger } from './Logger';
@@ -50,6 +51,26 @@ import { MusicStore } from '../services/MusicStore';
 
 const TAG = 'AVSessionController';
 // [EndExclude avsession_controller]
+
+/**
+ * 桌面卡片跨进程数据载荷：createFormBindingData 的入参结构。
+ * formImages 为可选的封面图描述符表（图片标识 -> fd），无真实封面时不下发该字段。
+ */
+interface CardFormData {
+  title: string;
+  artist: string;
+  album: string;
+  duration: number;
+  position: number;
+  lyric: string;
+  isPlaying: boolean;
+  isDark: boolean;
+  // 尺寸档位：仅在成功解析后下发；未知时省略，避免用错误默认值覆盖 onAddForm 的正确档位。
+  dimension?: number;
+  coverKey: string;
+  formImages?: Record<string, number>;
+}
+
 export class AVSessionController {
   private context: common.UIAbilityContext | undefined = undefined;
   private AVSession: avSession.AVSession | undefined = undefined;
@@ -75,6 +96,14 @@ export class AVSessionController {
   private castFile: fileIo.File | undefined = undefined; // 投播独立文件句柄，与本地播放 curFile 解耦
   private castRemotePositionMs: number = 0; // 记录远端播放进度，断连后本地续播对齐
   private progressTimerId: number = -1; // 桌面卡片进度/歌词实时同步定时器（-1 表示未启动）
+  // 桌面卡片封面跨进程传递：把当前曲封面（PixelMap）打包为 JPEG 临时文件，以只读 fd 交给卡片。
+  // 固定文件名 + 单 fd 常驻（仅在切歌/释放时替换），避免每次推送重复打包。
+  private formCoverFile: fileIo.File | undefined = undefined;
+  private formCoverSongSrc: string = ''; // 当前 formCoverFile 对应的歌曲 src（用于复用与失效判断）
+  private readonly formCoverStageName: string = 'form_cover.jpg';
+  private readonly formCoverKey: string = 'cover'; // formImages 图片标识；卡片侧以 memory://cover 引用
+  // 各卡片尺寸缓存（formInfo.FormDimension 数值：2=2*2 / 3=2*4 / 4=4*4）；首次查询后缓存，避免重复 IPC。
+  private readonly formDimensionCache: Map<string, number> = new Map();
   // [EndExclude avsession_controller]
   // [StartExclude avsession_controller]
   constructor() {
@@ -392,14 +421,26 @@ export class AVSessionController {
    */
   private onOutputDeviceChange: (state: avSession.ConnectionState, device: avSession.OutputDeviceInfo) => void =
     (state: avSession.ConnectionState, device: avSession.OutputDeviceInfo) => {
-      let currentDevice: avSession.DeviceInfo | undefined = device?.devices?.[0];
-      if (currentDevice && currentDevice.castCategory === avSession.AVCastCategory.CATEGORY_REMOTE
-        && state === avSession.ConnectionState.STATE_CONNECTED) {
-        Logger.info(TAG, `cast device connected: ${currentDevice.deviceName}`);
-        this.startCast(currentDevice);
-      } else if (this.isCasting) {
-        Logger.info(TAG, 'cast device disconnected or switched to local output, stopping cast');
-        this.stopCast();
+      // 设备切换/断开回调可能携带空值（设备信息缺失、状态未就绪）：全流程兜底，失败仅记日志不崩溃。
+      try {
+        if (!device) {
+          Logger.error(TAG, 'onOutputDeviceChange: device is undefined');
+          if (this.isCasting) {
+            this.stopCast();
+          }
+          return;
+        }
+        let currentDevice: avSession.DeviceInfo | undefined = device?.devices?.[0];
+        if (currentDevice && currentDevice.castCategory === avSession.AVCastCategory.CATEGORY_REMOTE
+          && state === avSession.ConnectionState.STATE_CONNECTED) {
+          Logger.info(TAG, `cast device connected: ${currentDevice.deviceName}`);
+          this.startCast(currentDevice);
+        } else if (this.isCasting) {
+          Logger.info(TAG, 'cast device disconnected or switched to local output, stopping cast');
+          this.stopCast();
+        }
+      } catch (err) {
+        Logger.error(TAG, `onOutputDeviceChange failed: ${(err as BusinessError).message}`);
       }
     };
 
@@ -444,10 +485,10 @@ export class AVSessionController {
     this.isCasting = false;
     try {
       this.castController?.off('playbackStateChange', this.onCastPlaybackStateChange);
-      // AVCastController.off 的类型重载未暴露 playNext/playPrevious，但运行时支持注销；
-      // 经 ESObject 透传以绕过编译期 overload 不匹配报错。
-      (this.castController as ESObject)?.off('playNext', this.onPlayNext);
-      (this.castController as ESObject)?.off('playPrevious', this.onPlayPrevious);
+      // API 26 已为 AVCastController.off 提供 'playNext'/'playPrevious' 无回调重载（off(type) 注销该类型全部监听），
+      // 原先经 ESObject 传 callback 的写法既非必要也不符合签名，现改为类型安全调用（消解类型洞）。
+      this.castController?.off('playNext');
+      this.castController?.off('playPrevious');
     } catch (err) {
       Logger.error(TAG, `cast off listeners failed: ${(err as BusinessError).message}`);
     }
@@ -674,46 +715,191 @@ export class AVSessionController {
     if (!this.context) {
       return;
     }
+    const context: common.UIAbilityContext = this.context;
     let song: SongItem | undefined = this.songList[this.musicIndex ?? -1];
-    let title: string = song?.title ?? '';
-    let artist: string = song?.singer ?? '';
-    let album: string = song?.album ?? '';
-    let isPlaying: boolean = (AppStorage.get('isPlay') as boolean) ?? false;
-    let duration: number = this.getDuration() ?? 0;
-    let position: number = this.audioRendererController?.getCurrentPosition() ?? 0;
-    let lyric: string = (AppStorage.get('cardLyric') as string) ?? '';
-    // 主题深浅：此前从未下发过，卡片侧 isDark 恒为 false，深色模式用户的桌面卡片一直是浅色。
-    // 这里每次推送都带上，主题切换后（ThemeManager 的 setThemeMode / refreshSystemTheme
+    // 主题深浅：每次推送都带上，主题切换后（ThemeManager 的 setThemeMode / refreshSystemTheme
     // 亦会各主动推一次）已存在的卡片即可刷新。
     // TODO(技术债)：可加「仅当本次载荷与上次不同才 updateForm」的差分守卫省掉冗余 IPC。
-    // 本次未做：播放中 position 每秒都在变，守卫实际拦不下任何一次推送（收益≈0），
-    // 却要给全部字段做快照比对，属于对已稳定逻辑的行为改动，风险大于收益。
-    let isDark: boolean = (AppStorage.get('isDark') as boolean) ?? false;
-    PreferencesUtil.getInstance().getFormIds(this.context)
-      .then((formIds: Array<string>) => {
-        formIds.forEach((formId: string) => {
-          // 仅处理真实桌面卡片 ID；跳过空串与误混入的静音标记等非法项，避免误调 updateForm
-          if (!formId || formId === SILENT_ID) {
-            return;
-          }
-          formProvider.updateForm(formId, formBindingData.createFormBindingData({
-            title: title,
-            artist: artist,
-            album: album,
-            duration: duration,
-            position: position,
-            lyric: lyric,
-            isPlaying: isPlaying,
-            isDark: isDark
-          }))
-            .catch((err: BusinessError) => {
-              Logger.error(TAG, `pushFormUpdate updateForm failed: ${err.message}`);
+    // 评估结论（2026-09-13，B3/C4）：不实现——推送来源仅有三处：setAVMetadata（切歌，载荷必变）、
+    // setPlayState（播放状态切换，载荷必变）、播放中的 1s 定时器（position 每秒必变）；
+    // 暂停/稳态时定时器已停止，不存在「载荷不变却反复推送」的真实可拦截场景，守卫收益≈0。
+    // 先确保封面就绪（异步打包，失败则下发空 coverKey），再逐卡片推送。
+    this.ensureFormCover(song)
+      .then((coverKey: string) => {
+        PreferencesUtil.getInstance().getFormIds(context)
+          .then((formIds: Array<string>) => {
+            formIds.forEach((formId: string) => {
+              // 仅处理真实桌面卡片 ID；跳过空串与误混入的静音标记等非法项，避免误调 updateForm
+              if (!formId || formId === SILENT_ID) {
+                return;
+              }
+              this.pushToForm(formId, song, coverKey);
             });
-        });
+          })
+          .catch((err: BusinessError) => {
+            Logger.error(TAG, `pushFormUpdate getFormIds failed: ${err.message}`);
+          });
       })
       .catch((err: BusinessError) => {
-        Logger.error(TAG, `pushFormUpdate getFormIds failed: ${err.message}`);
+        Logger.error(TAG, `pushFormUpdate cover failed: ${err.message}`);
       });
+  }
+
+  /**
+   * 向单个卡片推送状态。dimension 为该卡片尺寸（首次查询后缓存），保证三档布局整卡生命周期稳定。
+   * 封面经 formImages 以 fd 下发；无真实封面则不下发该字段，卡片回落内置默认图。
+   */
+  private pushToForm(formId: string, song: SongItem | undefined, coverKey: string): void {
+    this.resolveFormDimension(formId)
+      .then((dimension: number) => {
+        let title: string = song?.title ?? '';
+        let artist: string = song?.singer ?? '';
+        let album: string = song?.album ?? '';
+        let isPlaying: boolean = (AppStorage.get('isPlay') as boolean) ?? false;
+        let duration: number = this.getDuration() ?? 0;
+        let position: number = this.audioRendererController?.getCurrentPosition() ?? 0;
+        let lyric: string = (AppStorage.get('cardLyric') as string) ?? '';
+        let isDark: boolean = (AppStorage.get('isDark') as boolean) ?? false;
+        let data: CardFormData = {
+          title: title,
+          artist: artist,
+          album: album,
+          duration: duration,
+          position: position,
+          lyric: lyric,
+          isPlaying: isPlaying,
+          isDark: isDark,
+          coverKey: coverKey
+        };
+        // 尺寸仅在解析成功（>0）时下发，未知则省略（保留 onAddForm 写入的正确档位）
+        if (dimension > 0) {
+          data.dimension = dimension;
+        }
+        let file: fileIo.File | undefined = this.formCoverFile;
+        if (coverKey.length > 0 && file) {
+          let images: Record<string, number> = {};
+          images[this.formCoverKey] = file.fd;
+          data.formImages = images;
+        }
+        formProvider.updateForm(formId, formBindingData.createFormBindingData(data))
+          .catch((err: BusinessError) => {
+            Logger.error(TAG, `pushFormUpdate updateForm failed: ${err.message}`);
+          });
+      })
+      .catch((err: BusinessError) => {
+        Logger.error(TAG, `pushToForm dimension failed: ${err.message}`);
+      });
+  }
+
+  /**
+   * 解析并缓存卡片尺寸（formInfo.FormDimension 数值：2=2*2 / 3=2*4 / 4=4*4）。
+   * 卡片进程无法自测尺寸；主应用每次推送携带以自愈（updateForm 若整包替换会冲掉 onAddForm 写入值）。
+   * 查询失败缓存 -1（未知）并停止重试，避免每秒 IPC；未知时不下发 dimension，保留 onAddForm 档位。
+   */
+  private async resolveFormDimension(formId: string): Promise<number> {
+    const cached: number | undefined = this.formDimensionCache.get(formId);
+    if (cached !== undefined) {
+      return cached;
+    }
+    let dim: number = -1;
+    try {
+      const info = await formProvider.getPublishedRunningFormInfoById(formId);
+      if (info && info.dimension > 0) {
+        dim = info.dimension;
+      }
+    } catch (err) {
+      Logger.error(TAG, `resolveFormDimension failed: ${(err as BusinessError).message}`);
+    }
+    this.formDimensionCache.set(formId, dim);
+    return dim;
+  }
+
+  /**
+   * 确保当前曲封面已打包并可供卡片读取，返回卡片侧封面标识（有图 'cover' / 无图 ''）。
+   * 封面以 PixelMap 形式抽自音频内嵌图；打包为 JPEG 后以只读 fd 经 formImages 跨进程下发。
+   */
+  private async ensureFormCover(song: SongItem | undefined): Promise<string> {
+    if (!song) {
+      this.releaseFormCover();
+      this.formCoverSongSrc = '';
+      return '';
+    }
+    const label: Resource | PixelMap = song.getLabel();
+    const isPixelMap: boolean = typeof (label as PixelMap).getImageInfo === 'function';
+    if (!isPixelMap) {
+      // 无真实封面（默认 Resource / 尚未抽取）：释放旧 fd，避免卡片误用上一首封面。
+      if (this.formCoverSongSrc !== '') {
+        this.releaseFormCover();
+        this.formCoverSongSrc = '';
+      }
+      return '';
+    }
+    if (this.formCoverSongSrc === song.src && this.formCoverFile !== undefined) {
+      return this.formCoverKey;
+    }
+    const packed: boolean = await this.packFormCover(label as PixelMap);
+    if (!packed) {
+      return '';
+    }
+    this.formCoverSongSrc = song.src;
+    return this.formCoverKey;
+  }
+
+  /**
+   * 把封面 PixelMap 打包为 JPEG 临时文件，并以只读 fd 常驻供卡片读取。
+   * 卡片读取的是 fd（系统跨进程复制），与文件路径无关；固定文件名仅在切歌时被覆盖重写。
+   */
+  private async packFormCover(pixelMap: PixelMap): Promise<boolean> {
+    if (!this.context) {
+      return false;
+    }
+    const path: string = this.context.cacheDir + '/' + this.formCoverStageName;
+    let packer: image.ImagePacker | undefined = undefined;
+    let writeFile: fileIo.File | undefined = undefined;
+    try {
+      packer = image.createImagePacker();
+      writeFile = fileIo.openSync(path, fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.CREATE | fileIo.OpenMode.TRUNC);
+      let option: image.PackingOption = { format: 'image/jpeg', quality: 80 };
+      await packer.packToFile(pixelMap, writeFile.fd, option);
+    } catch (err) {
+      Logger.error(TAG, `packFormCover failed: ${(err as BusinessError).message}`);
+      return false;
+    } finally {
+      if (writeFile) {
+        try {
+          fileIo.closeSync(writeFile);
+        } catch (e) {
+        }
+      }
+      if (packer) {
+        try {
+          await packer.release();
+        } catch (e) {
+        }
+      }
+    }
+    try {
+      this.releaseFormCover();
+      this.formCoverFile = fileIo.openSync(path, fileIo.OpenMode.READ_ONLY);
+    } catch (err) {
+      Logger.error(TAG, `openFormCover failed: ${(err as BusinessError).message}`);
+      this.formCoverFile = undefined;
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * 释放卡片封面 fd（切歌无图/退出时调用）。
+   */
+  private releaseFormCover(): void {
+    if (this.formCoverFile) {
+      try {
+        fileIo.closeSync(this.formCoverFile);
+      } catch (e) {
+      }
+      this.formCoverFile = undefined;
+    }
   }
 
   /**
@@ -722,22 +908,27 @@ export class AVSessionController {
    */
   public remoteControl(cmd: string): void {
     Logger.info(TAG, `remoteControl: ${cmd}`);
-    switch (cmd) {
-      case 'play':
-        this.onPlay();
-        break;
-      case 'pause':
-        this.onPause();
-        break;
-      case 'next':
-        this.onPlayNext();
-        break;
-      case 'prev':
-        this.onPlayPrevious();
-        break;
-      default:
-        Logger.error(TAG, `remoteControl unknown cmd: ${cmd}`);
-        break;
+    // 卡片跨进程回控：任一命令失败（controller 未就绪/服务异常）只记日志，绝不让主应用崩溃。
+    try {
+      switch (cmd) {
+        case 'play':
+          this.onPlay();
+          break;
+        case 'pause':
+          this.onPause();
+          break;
+        case 'next':
+          this.onPlayNext();
+          break;
+        case 'prev':
+          this.onPlayPrevious();
+          break;
+        default:
+          Logger.error(TAG, `remoteControl unknown cmd: ${cmd}`);
+          break;
+      }
+    } catch (err) {
+      Logger.error(TAG, `remoteControl failed: ${(err as BusinessError).message}`);
     }
   }
   // [EndExclude form_card]
@@ -810,11 +1001,15 @@ export class AVSessionController {
 
   // [End set_favorite_state]
   async unregisterSessionListener() {
+    // 退出/释放会话时清理进度同步定时器，避免后台遗留 setInterval 持续推送
+    this.stopProgressSync();
+    // 无论 AVSession 是否就绪，都释放桌面卡片封面 fd 与尺寸缓存，避免资源泄漏
+    this.releaseFormCover();
+    this.formCoverSongSrc = '';
+    this.formDimensionCache.clear();
     if (!this.AVSession) {
       return;
     }
-    // 退出/释放会话时清理进度同步定时器，避免后台遗留 setInterval 持续推送
-    this.stopProgressSync();
     try {
       this.AVSession.off('play');
       this.AVSession.off('pause');

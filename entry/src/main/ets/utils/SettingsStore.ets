@@ -19,6 +19,7 @@ import { preferences } from '@kit.ArkData';
 import { MusicStore } from '../services/MusicStore';
 import { AVSessionController } from './AVSessionController';
 import { AudioRendererController } from './AudioRendererController';
+import { LumioAudioFade } from '../tokens/LumioMotionSpec';
 
 /**
  * 设置项持久化单例。
@@ -31,6 +32,11 @@ import { AudioRendererController } from './AudioRendererController';
 
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type RepeatModeSetting = 'list' | 'single' | 'random';
+/** 音效-淡入淡出档位。off = 不做音量渐变。 */
+export type AudioFadeLevel = 'off' | 'short' | 'medium';
+/** 应用内偏好语言（映射到资源目录 base/en_US/fr_FR）。zh-Hans 回落 base（中文）。 */
+export type AppLanguage = 'zh-Hans' | 'en-Latn-US' | 'fr-Latn-FR';
+export const DEFAULT_LANGUAGE: AppLanguage = 'zh-Hans';
 
 const PREF_NAME: string = 'app_settings';
 const KEY_AUTO_NEXT: string = 'auto_next';
@@ -41,6 +47,8 @@ const KEY_PRIVACY_STATS: string = 'privacy_stats';
 const KEY_REDUCE_MOTION: string = 'reduce_motion';
 const KEY_SLEEP_TIMER: string = 'sleep_timer';
 const KEY_GAPLESS: string = 'gapless';
+const KEY_AUDIO_FADE: string = 'audio_fade';
+const KEY_LANGUAGE: string = 'language';
 
 export class SettingsStore {
   private static instance: SettingsStore | null = null;
@@ -56,6 +64,8 @@ export class SettingsStore {
   private reduceMotion: boolean = false;
   private sleepTimerMinutes: number = 0;
   private gapless: boolean = true;
+  private audioFade: AudioFadeLevel = 'short';
+  private language: AppLanguage = DEFAULT_LANGUAGE;
 
   private constructor() {
   }
@@ -94,6 +104,13 @@ export class SettingsStore {
       this.reduceMotion = await this.pref.get(KEY_REDUCE_MOTION, false) as boolean;
       this.sleepTimerMinutes = await this.pref.get(KEY_SLEEP_TIMER, 0) as number;
       this.gapless = await this.pref.get(KEY_GAPLESS, true) as boolean;
+
+      const af: string = await this.pref.get(KEY_AUDIO_FADE, 'short') as string;
+      this.audioFade = (af === 'off' || af === 'short' || af === 'medium') ? af as AudioFadeLevel : 'short';
+
+      const lang: string = await this.pref.get(KEY_LANGUAGE, DEFAULT_LANGUAGE) as string;
+      this.language = (lang === 'zh-Hans' || lang === 'en-Latn-US' || lang === 'fr-Latn-FR') ? lang as AppLanguage : DEFAULT_LANGUAGE;
+
       this.initialized = true;
     } catch (err) {
       Logger.error('SettingsStore init failed');
@@ -192,6 +209,41 @@ export class SettingsStore {
     } catch (e) {
       Logger.error('link gapless failed');
     }
+  }
+
+  // ===== 音效：淡入淡出 =====
+  getAudioFade(): AudioFadeLevel {
+    return this.audioFade;
+  }
+
+  /**
+   * 档位 → 淡变时长(ms)，0 表示不做渐变。
+   * 纯映射函数：播放内核在**每次**渐变启动时调用它读取，因此设置页改动无需额外通知即即时生效
+   * （这也是这里没有像 setGapless 那样回调播放内核的原因——没有需要预计算或清理的状态）。
+   */
+  static audioFadeMs(level: AudioFadeLevel): number {
+    if (level === 'off') {
+      return LumioAudioFade.off;
+    }
+    if (level === 'medium') {
+      return LumioAudioFade.medium;
+    }
+    return LumioAudioFade.short;
+  }
+
+  async setAudioFade(value: AudioFadeLevel): Promise<void> {
+    this.audioFade = value;
+    await this.putString(KEY_AUDIO_FADE, value);
+  }
+
+  // ===== 应用内偏好语言（独立于系统语言，运行时切换）=====
+  getLanguage(): AppLanguage {
+    return this.language;
+  }
+
+  async setLanguage(value: AppLanguage): Promise<void> {
+    this.language = value;
+    await this.putString(KEY_LANGUAGE, value);
   }
 
   private async putNumber(key: string, value: number): Promise<void> {

@@ -5,7 +5,7 @@
 <img width="200" height="200" alt="Lumio Music logo" src="./entry/src/main/resources/base/media/logo.svg" />
 
 一款运行在 **HarmonyOS** 平台的本地音乐播放器，基于 **ArkTS + ArkUI + C++ Native** 开发。
-主打简洁流畅的本地听歌体验，并已全面接入 **HDS 设计系统** 与 **沉浸光感**，播放器进出采用 **一镜到底** 共享元素动画。
+主打简洁流畅的本地听歌体验，并已全面接入 **Lumio 设计系统（设计令牌）** 与 **沉浸光感**，播放器进出采用 **一镜到底** 共享元素动画。
 
 > 完整版本演进见 [CHANGELOG.md](./CHANGELOG.md)。
 
@@ -19,7 +19,7 @@
 
 > 💡 如果视频无法在线播放，可 [点击此处下载](./Video/Demo.mp4) 后本地观看（~50MB）。
 
-**本地体验**：具备 HarmonyOS 6.1.1 DevEco Studio 环境的开发者，可直接克隆本仓库并运行 `bash build_hap.sh` 构建签名 HAP。
+**本地体验**：具备 HarmonyOS API 26 (26.0.0) DevEco Studio 环境的开发者，可直接克隆本仓库并运行 `bash build_hap.sh` 构建签名 HAP。
 
 ```bash
 git clone https://github.com/a703201/Lumio_Music.git
@@ -87,7 +87,7 @@ bash build_hap.sh
 - **隐私政策**：查看应用隐私政策。
 
 ### 沉浸与握姿适配
-- **HDS 设计系统**：根导航 `HdsNavigation` + 主布局 `HdsTabs`，底部标签栏采用自定义沉浸式样式。
+- **Lumio 设计系统**：根导航 `HdsNavigation` + 主布局 `HdsTabs`，底部标签栏采用自定义沉浸式样式。
 - **沉浸光感**：底部栏 `barFloatingStyle` 启用 `systemMaterialEffect`（ADAPTIVE 材质），与系统视觉融合。
 - **智感握姿（底栏自适应）**：底部栏 `adaptToHandedness: true`，根据握持姿态自适应布局。
 
@@ -99,11 +99,11 @@ bash build_hap.sh
 |------|------|
 | 前端框架 | ArkTS + ArkUI（声明式） |
 | 原生模块 | C++ (NAPI) 音频元数据解析：FLAC(VORBIS_COMMENT/STREAMINFO)、MP3(ID3v2 + MPEG 帧头)、MP4(mvhd/ilst)，作为 MediaKit 的兜底路径 |
-| 设计系统 | HDS（`@kit.UIDesignKit`） |
+| 设计系统 | Lumio 设计令牌（`tokens/`，设计系统合并版） |
 | 路由 | Navigation + NavPathStack（HdsNavigation / NavDestination） |
 | 开发工具 | DevEco Studio |
-| 目标平台 | HarmonyOS **6.1.1 (API 24)**，兼容 6.1.0(23) |
-| 目标设备 | phone |
+| 目标平台 | HarmonyOS **26.0.0 (API 26)** |
+| 目标设备 | phone + tablet + foldable（手机 + 平板 + 折叠屏） |
 | bundleName | `com.Lumio.music`（见 `AppScope/app.json5`） |
 
 ---
@@ -113,7 +113,7 @@ bash build_hap.sh
 ### 导航模型
 - `Index.ets`：`HdsNavigation` 根容器，承载 `NavPathStack`，首屏 push `Layout`。
 - `Layout.ets`：`HdsTabs` 主布局，内含两个 Tab 子组件 —— **音乐库**（`LocalLibrary`）、**我的**（`Mine`），以及底部的迷你播放器（一镜到底共享元素）。
-- **推送页（NavDestination）**：`PlayerPage`、`Settings`、`SettingsCategory`、`About`、`PrivacyPolicy`、`Favorites`、`PlayHistory`、`ManageSongs`、`Playlists`、`PlaylistDetail`，通过 `route_map.json` 注册并以 `pushPathByName` 入栈（`PlaylistDetail` 以歌单 id 作为路由参数，页面内按 id 实时取数，不缓存对象副本；`SettingsCategory` 以分类 id 作为路由参数，按 id 渲染对应设置子项）。
+- **推送页（NavDestination）**：`PlayerPage`、`Settings`、`SettingsCategory`、`About`、`PrivacyPolicy`、`Favorites`、`PlayHistory`、`ManageSongs`、`Playlists`、`PlaylistDetail`、`DuplicateSongs`、`Wrapped`、`FolderBrowse`、`ArtistDetail`、`AlbumDetail`、`TagEdit`，通过 `route_map.json` 注册并以 `pushPathByName` 入栈（`PlaylistDetail` 以歌单 id 作为路由参数，页面内按 id 实时取数，不缓存对象副本；`SettingsCategory` 以分类 id 作为路由参数，按 id 渲染对应设置子项）。
 - **Tab 子组件**（非独立页面）：`LocalLibrary`、`Mine` 直接作为 `HdsTabs` 的 `TabContent` 内容。
 
 ### 目录结构
@@ -197,7 +197,7 @@ Lumio_Music/
 │   │   ├── napi_init.cpp            # NAPI 模块注册
 │   │   └── CMakeLists.txt           # 编译配置（libnative_module.so）
 │   ├── resources/base/
-│   │   ├── media/                   # 资源（含 ic_hm_* 图标等 87 个 SVG）
+│   │   ├── media/                   # 资源（含 ic_hm_* 图标等 389 个 SVG）
 │   │   └── profile/                  # main_pages / route_map / form_config 等
 │   └── module.json5                 # 权限与 Ability 声明
 ├── tools/                           # 开发辅助脚本（Python）
@@ -214,13 +214,23 @@ Lumio_Music/
 ├── README.md                        # 本文件
 ├── overview.md                      # 交付概览
 └── docs/                            # 项目文档
-    ├── PRD_Lumio_Music.md            # 产品需求文档
-    ├── 功能模块拆解表.md            # 模块→文件映射
-    ├── 代码审查报告_PRD落地.md       # 第一轮审查报告
-    ├── 代码审查报告_第二轮增强.md    # 第二轮审查报告
-    ├── 实施计划_PRD落地.md          # PRD 落地实施计划
-    ├── 实施计划_第二轮增强.md       # 第二轮增强实施计划
-    └── C++解析器真实音频验证.md      # C++ 解析器验证报告
+    ├── README.md                     # 文档索引（本文档描述的结构）
+    ├── PRD.md                        # 产品需求文档（合并版：PRD + PRD_Lumio_Music）
+    ├── 设计系统.md                   # 设计系统（合并版：令牌架构 + Apple 设计语言 + UI 设计系统）
+    ├── 审查报告.md                   # 审查报告（合并版：架构/合规/安全/设计/Sheet/卡片/完成度）
+    ├── 实施计划.md                   # 实施计划（合并版：范围与规划 + 两轮计划）
+    ├── 功能模块拆解表.md            # 模块→文件映射（保留）
+    ├── C++解析器真实音频验证.md      # C++ 解析器验证报告（保留）
+    ├── AI协作复盘报告.md             # AI 协作复盘（保留）
+    ├── API.md                        # API 参考（保留）
+    ├── privacy_policy.md             # 隐私政策（保留）
+    ├── feature_opportunities.md      # 特性机会清单（保留）
+    ├── 课程项目总结报告.md           # 课程总结（保留）
+    ├── 课程最终作业提交清单.md       # 课程提交清单（保留）
+    ├── 2026-08-29-新特性落地小结.md  # API26 新特性小结（保留）
+    ├── 图标库索引.json               # 图标库索引（保留）
+    ├── images/                       # 图片资源（保留）
+    └── archive/                      # 被合并取代的原始文档（历史存档，勿删）
 ```
 
 ---
@@ -228,7 +238,7 @@ Lumio_Music/
 ## 设计亮点
 
 - **一镜到底动画**：迷你封面 `geometryTransition('player_cover', { follow: true })` 与播放器页根节点共享同一 ID，进出场 `push/pop` 均包在 `animateTo(interpolatingSpring(0,1,328,36))` 中，过渡连续无跳变。
-- **HDS 沉浸光感**：`barFloatingStyle({ systemMaterialEffect: { materialType: ADAPTIVE, materialLevel: ADAPTIVE } })`，底部栏随系统材质自适应。
+- **Lumio 沉浸光感**：`barFloatingStyle({ systemMaterialEffect: { materialType: ADAPTIVE, materialLevel: ADAPTIVE } })`，底部栏随系统材质自适应。
 - **智感握姿（底栏自适应）**：`barFloatingStyle({ adaptToHandedness: true })`，底部栏布局跟随握持姿态。
 - **页面合并与减负**：原「歌曲」+「音乐库」合并为单一音乐库页，导入功能下沉至音乐库；**移除不可用的扫描功能**，设置页**移除不可调整的播放模式项**，界面更聚焦。
 - **列表操作收进长按菜单**：去掉列表行右侧的「更多」按钮，操作全部收进 `bindContextMenu` 长按选项栏，列表更清爽，点击区域也不再误触。
@@ -250,7 +260,7 @@ Lumio_Music/
 **为什么没有媒体库权限？**
 歌曲来源全部为「用户主动通过 `DocumentViewPicker` 选择 → 拷贝进应用沙箱 → 记录于 `dataPreferences`」，
 播放时以 `fdSrc` 读取沙箱文件，**全程不访问系统媒体库**，因此不需要 `READ_MEDIA` / `WRITE_MEDIA`。
-同理，智感握姿仅使用 HDS 底栏的 `adaptToHandedness` 自适应布局（无需权限），未做主动手势监听，
+同理，智感握姿仅使用 Lumio 底栏的 `adaptToHandedness` 自适应布局（无需权限），未做主动手势监听，
 因此不声明 `DETECT_GESTURE`。
 
 > 应用无账号体系、无数据上传、无广告 SDK，所有歌曲、收藏、歌单、播放历史均只存于本机。
@@ -285,7 +295,7 @@ entry/build/default/outputs/default/entry-default-signed.hap
 >
 > 脚本会**前置 JBR**、**清空 `NODE_OPTIONS` / `BASH_ENV`**、并以 `--no-daemon` 运行，保证一次跑通。
 
-> 需安装 **HarmonyOS 6.1.x SDK（API 23 / 24）**。当前工程已通过 `bash build_hap.sh` 验证 **BUILD SUCCESSFUL**，可产出签名 HAP；同时经 `harmonyos-reviewer` 审查 **0 ERROR / 0 WARNING**。
+> 需安装 **HarmonyOS 26.0.0 SDK（API 26）**。当前工程已通过 `bash build_hap.sh` 验证 **BUILD SUCCESSFUL**，可产出签名 HAP；同时经 `harmonyos-reviewer` 审查 **0 ERROR / 0 WARNING**。
 
 ### 开发辅助脚本（tools/）
 
@@ -302,7 +312,7 @@ entry/build/default/outputs/default/entry-default-signed.hap
 
 ## 已知问题与限制
 
-- **智感握姿主动感知**：当前 6.1.1 SDK 未内置 `@kit.MultimodalAwarenessKit`，因此仅底栏 `adaptToHandedness` 的**自适应布局**生效；若需「主动监听左右手握持」事件（`motion.on('holdingHandChanged')`），需升级到包含该 Kit 的更高版本 SDK。**这是 SDK 能力缺口，非实现缺陷。**
+- **智感握姿主动感知**：当前 API 26 SDK 未内置 `@kit.MultimodalAwarenessKit`，因此仅底栏 `adaptToHandedness` 的**自适应布局**生效；若需「主动监听左右手握持」事件（`motion.on('holdingHandChanged')`），需升级到包含该 Kit 的更高版本 SDK。**这是 SDK 能力缺口，非实现缺陷。**
 - **API 弃用告警**：已完成迁移 —— `Prompt.showToast` 全部改为 `this.getUIContext().getPromptAction().showToast(...)`，`animateTo` 改为 `this.getUIContext().animateTo(...)`。无 `UIContext` 上下文的工具类（如 `ResourceConversion`）继续通过 `AppStorage` 注入的 `UIAbilityContext` 取资源，属预期用法。
 - **元数据解析分层**：文本元数据优先走 MediaKit `AVMetadataExtractor`；失败或标题缺失时回退 C++ NAPI 解析器。C++ 侧覆盖 FLAC / MP3 / MP4 三类容器，解析失败一律回退「文件名作标题」，保证不崩，但**冷门编码分支建议在真机复验**。
 - **空间音频 / 多频段 EQ**：`setSpatializationEnabled` 需系统权限 `MANAGE_SYSTEM_AUDIO_EFFECTS`，三方应用只能只读查询；多频段 EQ 无公开 API。设置页因此仅展示状态、不提供开关。

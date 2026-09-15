@@ -18,7 +18,8 @@ import { Logger } from '../utils/Logger';
 import { common, Want } from '@kit.AbilityKit';
 import { getAppVersionDisplay } from '../utils/AppInfoUtil';
 import { MusicStore } from '../services/MusicStore';
-import { SettingsStore, ThemeMode, RepeatModeSetting } from '../utils/SettingsStore';
+import { SettingsStore, ThemeMode, RepeatModeSetting, AudioFadeLevel, AppLanguage } from '../utils/SettingsStore';
+import { LocaleManager } from '../utils/LocaleManager';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { fileIo as fs } from '@kit.CoreFileKit';
 import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
@@ -28,7 +29,7 @@ interface SettingsCategoryParam {
 }
 
 interface CategorySelectOption {
-  value: string;
+  value: ResourceStr;
 }
 
 @Builder
@@ -89,7 +90,9 @@ export struct SettingsCategoryDetail {
   @State privacyStats: boolean = true;
   @State reduceMotion: boolean = false;
   @State gapless: boolean = true;
-  @State cacheSizeText: string = '约 0.0 MB';
+  @State audioFade: AudioFadeLevel = 'short';
+  @State appLanguage: AppLanguage = 'zh-Hans';
+  @State cacheSizeText: string = '';
   @State appVersionDisplay: string = 'Lumio Music';
 
   private getThemeColors(): ColorTokens {
@@ -118,9 +121,11 @@ export struct SettingsCategoryDetail {
     this.privacyStats = this.settings.getPrivacyStats();
     this.reduceMotion = this.settings.getReduceMotion();
     this.gapless = this.settings.getGapless();
+    this.audioFade = this.settings.getAudioFade();
+    this.appLanguage = this.settings.getLanguage();
   }
 
-  private toast(message: string): void {
+  private toast(message: ResourceStr): void {
     try {
       this.getUIContext().getPromptAction().showToast({ message });
     } catch (e) {
@@ -131,9 +136,9 @@ export struct SettingsCategoryDetail {
   // ===== Select 选项 =====
   private repeatOptions(): CategorySelectOption[] {
     return [
-      { value: '列表循环' },
-      { value: '单曲循环' },
-      { value: '随机播放' }
+      { value: $r('app.string.repeat_list') },
+      { value: $r('app.string.repeat_one') },
+      { value: $r('app.string.shuffle') }
     ];
   }
 
@@ -144,15 +149,62 @@ export struct SettingsCategoryDetail {
 
   private themeOptions(): CategorySelectOption[] {
     return [
-      { value: '跟随系统' },
-      { value: '浅色' },
-      { value: '深色' }
+      { value: $r('app.string.theme_system') },
+      { value: $r('app.string.theme_light') },
+      { value: $r('app.string.theme_dark') }
     ];
   }
 
   private themeIndex(): number {
     const order: ThemeMode[] = ['system', 'light', 'dark'];
     return order.indexOf(this.themeMode);
+  }
+
+  private audioOptions(): CategorySelectOption[] {
+    return [
+      { value: $r('app.string.off') },
+      { value: $r('app.string.short') },
+      { value: $r('app.string.medium') }
+    ];
+  }
+
+  private audioIndex(): number {
+    const order: AudioFadeLevel[] = ['off', 'short', 'medium'];
+    return order.indexOf(this.audioFade);
+  }
+
+  private localized(res: Resource): string {
+    const ctx: Context | undefined = this.getUIContext().getHostContext();
+    if (!ctx) {
+      return '';
+    }
+    try {
+      return ctx.resourceManager.getStringSync(res.id);
+    } catch (e) {
+      return '';
+    }
+  }
+
+  private languageOptions(): CategorySelectOption[] {
+    const ctx: Context | undefined = this.getUIContext().getHostContext();
+    if (!ctx) {
+      return [{ value: $r('app.string.lang_zh') }, { value: $r('app.string.lang_en') }, { value: $r('app.string.lang_fr') }];
+    }
+    try {
+      const rm = ctx.resourceManager;
+      return [
+        { value: rm.getStringSync($r('app.string.lang_zh').id) },
+        { value: rm.getStringSync($r('app.string.lang_en').id) },
+        { value: rm.getStringSync($r('app.string.lang_fr').id) }
+      ];
+    } catch (e) {
+      return [{ value: $r('app.string.lang_zh') }, { value: $r('app.string.lang_en') }, { value: $r('app.string.lang_fr') }];
+    }
+  }
+
+  private languageIndex(): number {
+    const order: AppLanguage[] = ['zh-Hans', 'en-Latn-US', 'fr-Latn-FR'];
+    return order.indexOf(this.appLanguage);
   }
 
   // ===== 外跳网页 =====
@@ -165,11 +217,11 @@ export struct SettingsCategoryDetail {
       const context = this.getUIContext().getHostContext() as common.UIAbilityContext;
       context.startAbility(want).catch((err: Error) => {
         Logger.error('Failed to open url: ' + (err as Error).message);
-        this.toast('无法打开网页');
+        this.toast($r('app.string.cannot_open_web'));
       });
     } catch (err) {
       Logger.error('Failed to open url: ' + (err as Error).message);
-      this.toast('无法打开网页');
+      this.toast($r('app.string.cannot_open_web'));
     }
   }
 
@@ -188,7 +240,7 @@ export struct SettingsCategoryDetail {
       const mb: number = total / (1024 * 1024);
       return `约 ${mb.toFixed(1)} MB`;
     } catch (e) {
-      return '约 0.0 MB';
+      return '';
     }
   }
 
@@ -255,7 +307,7 @@ export struct SettingsCategoryDetail {
 
   // ===== 通用卡片 @Builder =====
   @Builder
-  buildSectionLabel(text: string) {
+  buildSectionLabel(text: ResourceStr) {
     Text(text)
       .fontSize(TYPE_SM.footnote.size)
       .fontColor(this.getThemeColors().secondaryText)
@@ -264,7 +316,7 @@ export struct SettingsCategoryDetail {
   }
 
   @Builder
-  buildToggleItem(icon: ResourceStr, title: string, subtitle: string, index: number,
+  buildToggleItem(icon: ResourceStr, title: ResourceStr, subtitle: ResourceStr, index: number,
     iconColor: string, isOn: boolean, onToggle: (v: boolean) => void) {
     Row() {
       Image(icon)
@@ -303,7 +355,7 @@ export struct SettingsCategoryDetail {
   }
 
   @Builder
-  buildSelectItem(icon: ResourceStr, title: string, options: CategorySelectOption[], selectedIndex: number,
+  buildSelectItem(icon: ResourceStr, title: ResourceStr, options: CategorySelectOption[], selectedIndex: number,
     index: number, iconColor: string, onSelect: (i: number) => void) {
     Row() {
       Image(icon)
@@ -323,7 +375,7 @@ export struct SettingsCategoryDetail {
 
       Select(options)
         .selected(selectedIndex)
-        .value(options[selectedIndex]?.value?.toString() ?? '')
+        .value(options[selectedIndex]?.value ?? '')
         .optionFont({ size: 14, weight: FontWeight.Normal })
         .selectedOptionFont({ size: 14, weight: FontWeight.Medium })
         // 主题适配：浅色模式灰底白底/深色模式深底浅字；避免默认值在深色模式下文字不可见。
@@ -346,7 +398,7 @@ export struct SettingsCategoryDetail {
   }
 
   @Builder
-  buildNavItem(icon: ResourceStr, title: string, subtitle: string, index: number,
+  buildNavItem(icon: ResourceStr, title: ResourceStr, subtitle: ResourceStr, index: number,
     iconColor: string, onClick: () => void) {
     Row() {
       Image(icon)
@@ -388,14 +440,14 @@ export struct SettingsCategoryDetail {
   // ===== 各分类内容 =====
   @Builder
   buildPlaybackGroup() {
-    this.buildSectionLabel('播放')
+    this.buildSectionLabel($r('app.string.play'))
     Column() {
       this.buildToggleItem(
-        $r('app.media.ic_public_quickstart'), '自动下一首', '', 0, this.getThemeColors().secondaryText, this.autoNext,
+        $r('app.media.ic_public_quickstart'), $r('app.string.auto_next'), '', 0, this.getThemeColors().secondaryText, this.autoNext,
         (v: boolean) => { this.autoNext = v; this.settings.setAutoNext(v); }
       )
       this.buildSelectItem(
-        $r('app.media.ic_public_list_cycle'), '播放模式', this.repeatOptions(), this.repeatIndex(), 1, this.getThemeColors().secondaryText,
+        $r('app.media.ic_public_list_cycle'), $r('app.string.play_mode'), this.repeatOptions(), this.repeatIndex(), 1, this.getThemeColors().secondaryText,
         (i: number) => {
           const order: RepeatModeSetting[] = ['list', 'single', 'random'];
           this.repeatMode = order[i];
@@ -403,7 +455,7 @@ export struct SettingsCategoryDetail {
         }
       )
       this.buildToggleItem(
-        $r('app.media.ic_public_order_play'), '无缝播放 (Gapless)', '减少曲间停顿', 2, this.getThemeColors().secondaryText, this.gapless,
+        $r('app.media.ic_public_order_play'), $r('app.string.gapless'), $r('app.string.gapless_desc'), 2, this.getThemeColors().secondaryText, this.gapless,
         (v: boolean) => { this.gapless = v; this.settings.setGapless(v); }
       )
     }
@@ -411,15 +463,44 @@ export struct SettingsCategoryDetail {
   }
 
   @Builder
-  buildAppearanceGroup() {
-    this.buildSectionLabel('用户界面')
+  buildAudioGroup() {
+    this.buildSectionLabel($r('app.string.sound_effects'))
     Column() {
       this.buildSelectItem(
-        $r('app.media.ic_public_themes'), '深色模式', this.themeOptions(), this.themeIndex(), 0, this.getThemeColors().secondaryText,
+        $r('app.media.ic_public_sound'), $r('app.string.crossfade'), this.audioOptions(), this.audioIndex(), 0, this.getThemeColors().secondaryText,
+        (i: number) => {
+          const order: AudioFadeLevel[] = ['off', 'short', 'medium'];
+          this.audioFade = order[i];
+          this.settings.setAudioFade(order[i]);
+        }
+      )
+      Text($r('app.string.fade_desc'))
+        .fontSize(TYPE_SM.footnote.size)
+        .fontColor(this.getThemeColors().secondaryText)
+        .width('100%')
+        .padding({ left: SPACE_SM.base, right: SPACE_SM.base, top: SPACE_SM.cozy })
+    }
+    .margin({ bottom: SPACE_SM.compact })
+  }
+
+  @Builder
+  buildAppearanceGroup() {
+    this.buildSectionLabel($r('app.string.ui'))
+    Column() {
+      this.buildSelectItem(
+        $r('app.media.ic_public_themes'), $r('app.string.dark_mode'), this.themeOptions(), this.themeIndex(), 0, this.getThemeColors().secondaryText,
         (i: number) => {
           const order: ThemeMode[] = ['system', 'light', 'dark'];
           this.themeMode = order[i];
           ThemeManager.setThemeMode(order[i]);
+        }
+      )
+      this.buildSelectItem(
+        $r('app.media.ic_public_translate_c2e'), this.localized($r('app.string.language')), this.languageOptions(), this.languageIndex(), 1, this.getThemeColors().secondaryText,
+        (i: number) => {
+          const order: AppLanguage[] = ['zh-Hans', 'en-Latn-US', 'fr-Latn-FR'];
+          this.appLanguage = order[i];
+          LocaleManager.getInstance().setLanguage(order[i]);
         }
       )
     }
@@ -428,10 +509,10 @@ export struct SettingsCategoryDetail {
 
   @Builder
   buildAccessibilityGroup() {
-    this.buildSectionLabel('无障碍')
+    this.buildSectionLabel($r('app.string.accessibility'))
     Column() {
       this.buildToggleItem(
-        $r('app.media.ic_public_face'), '降低动态效果', '减少歌词流光等动画', 0, this.getThemeColors().secondaryText, this.reduceMotion,
+        $r('app.media.ic_public_face'), $r('app.string.reduce_motion'), $r('app.string.reduce_motion_desc'), 0, this.getThemeColors().secondaryText, this.reduceMotion,
         (v: boolean) => { this.reduceMotion = v; this.settings.setReduceMotion(v); }
       )
     }
@@ -440,25 +521,25 @@ export struct SettingsCategoryDetail {
 
   @Builder
   buildStorageGroup() {
-    this.buildSectionLabel('存储')
+    this.buildSectionLabel($r('app.string.storage'))
     Column() {
       this.buildNavItem(
-        $r('app.media.ic_public_delete'), '清除缓存', this.cacheSizeText, 0, this.getThemeColors().secondaryText,
+        $r('app.media.ic_public_delete'), $r('app.string.clear_cache'), this.cacheSizeText, 0, this.getThemeColors().secondaryText,
         () => { this.showClearCacheDialog(); }
       )
       this.buildNavItem(
-        $r('app.media.ic_public_view_list'), '清空播放历史', `共 ${this.store.recentlyPlayed.length} 首`, 1, this.getThemeColors().secondaryText,
+        $r('app.media.ic_public_view_list'), $r('app.string.clear_history'), `共 ${this.store.recentlyPlayed.length} 首`, 1, this.getThemeColors().secondaryText,
         () => {
           this.store.clearRecentlyPlayed();
-          this.toast('已清空播放历史');
+          this.toast($r('app.string.history_cleared'));
         }
       )
       this.buildNavItem(
-        $r('app.media.ic_public_folder'), '本地歌曲管理', '', 2, this.getThemeColors().secondaryText,
+        $r('app.media.ic_public_folder'), $r('app.string.local_songs_mgmt'), '', 2, this.getThemeColors().secondaryText,
         () => { this.onNavigate('ManageSongs'); }
       )
       this.buildNavItem(
-        $r('app.media.ic_public_view_list'), '重复歌曲清理', '', 3, this.getThemeColors().secondaryText,
+        $r('app.media.ic_public_view_list'), $r('app.string.dup_cleanup'), '', 3, this.getThemeColors().secondaryText,
         () => { this.onNavigate('DuplicateSongs'); }
       )
     }
@@ -467,10 +548,10 @@ export struct SettingsCategoryDetail {
 
   @Builder
   buildNotificationGroup() {
-    this.buildSectionLabel('通知')
+    this.buildSectionLabel($r('app.string.notifications'))
     Column() {
       this.buildToggleItem(
-        $r('app.media.ic_public_donotdisturb'), '锁屏/状态栏控制', '', 0, this.getThemeColors().secondaryText, this.notificationLockScreen,
+        $r('app.media.ic_public_donotdisturb'), $r('app.string.lockscreen_control'), '', 0, this.getThemeColors().secondaryText, this.notificationLockScreen,
         (v: boolean) => { this.notificationLockScreen = v; this.settings.setNotificationLockScreen(v); }
       )
     }
@@ -479,18 +560,18 @@ export struct SettingsCategoryDetail {
 
   @Builder
   buildPrivacyGroup() {
-    this.buildSectionLabel('隐私')
+    this.buildSectionLabel($r('app.string.privacy'))
     Column() {
       this.buildToggleItem(
-        $r('app.media.ic_public_favor_filled'), '启用听歌统计', '', 0, this.getThemeColors().secondaryText, this.privacyStats,
+        $r('app.media.ic_public_favor_filled'), $r('app.string.enable_stats'), '', 0, this.getThemeColors().secondaryText, this.privacyStats,
         (v: boolean) => { this.privacyStats = v; this.settings.setPrivacyStats(v); }
       )
       this.buildNavItem(
-        $r('app.media.ic_public_music_public_filled'), '我的听歌报告', '', 1, this.getThemeColors().secondaryText,
+        $r('app.media.ic_public_music_public_filled'), $r('app.string.listen_report'), '', 1, this.getThemeColors().secondaryText,
         () => { this.onNavigate('Wrapped'); }
       )
       this.buildNavItem(
-        $r('app.media.ic_public_delete'), '清除统计数据', '', 2, this.getThemeColors().secondaryText,
+        $r('app.media.ic_public_delete'), $r('app.string.clear_stats'), '', 2, this.getThemeColors().secondaryText,
         () => { this.showClearStatsDialog(); }
       )
     }
@@ -502,6 +583,8 @@ export struct SettingsCategoryDetail {
       Column() {
         if (this.category === 'playback') {
           this.buildPlaybackGroup();
+        } else if (this.category === 'audio') {
+          this.buildAudioGroup();
         } else if (this.category === 'appearance') {
           this.buildAppearanceGroup();
         } else if (this.category === 'accessibility') {
@@ -513,7 +596,7 @@ export struct SettingsCategoryDetail {
       } else if (this.category === 'privacy') {
         this.buildPrivacyGroup();
       } else {
-          Text('请选择设置分类')
+          Text($r('app.string.select_category'))
             .fontSize(TYPE_SM.subhead.size)
             .fontColor(this.getThemeColors().secondaryText)
             .width('100%')
@@ -529,14 +612,14 @@ export struct SettingsCategoryDetail {
 
   private showClearCacheDialog(): void {
     this.getUIContext().showAlertDialog({
-      title: '清除缓存',
+      title: $r('app.string.clear_cache'),
       message: `确定清除 ${this.cacheSizeText} 的缓存文件？`,
-      primaryButton: { value: '取消', action: () => {} },
+      primaryButton: { value: $r('app.string.cancel'), action: () => {} },
       secondaryButton: {
-        value: '清除',
+        value: $r('app.string.clear'),
         action: () => {
           this.clearCache().then(() => {
-            this.toast('已清除缓存');
+            this.toast($r('app.string.cache_cleared'));
           });
         }
       }
@@ -545,14 +628,14 @@ export struct SettingsCategoryDetail {
 
   private showClearStatsDialog(): void {
     this.getUIContext().showAlertDialog({
-      title: '清除统计数据',
-      message: '将清空播放历史等统计数据，且不可恢复。是否继续？',
-      primaryButton: { value: '取消', action: () => {} },
+      title: $r('app.string.clear_stats'),
+      message: $r('app.string.clear_stats_confirm'),
+      primaryButton: { value: $r('app.string.cancel'), action: () => {} },
       secondaryButton: {
-        value: '清除',
+        value: $r('app.string.clear'),
         action: () => {
           this.store.clearRecentlyPlayed();
-          this.toast('已清除统计数据');
+          this.toast($r('app.string.stats_cleared'));
         }
       }
     });

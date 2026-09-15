@@ -21,6 +21,13 @@ import { Logger } from './Logger';
 
 const TAG = 'CoverCache';
 
+// 正缓存（已解码 PixelMap）LRU 容量上限。封面解码后的 PixelMap 占用较大，
+// 超大曲库中若无限缓存会导致内存持续上涨直至 OOM，故设硬上限，超限淘汰最久未用项。
+const MAX_CACHE = 64;
+// 负缓存（确认无内嵌封面 / 不可抽取）容量上限。仅存字符串、占用极小，
+// 但仍需有界，避免极端曲库下无界增长；取值远大于正缓存以减少重复 I/O。
+const MAX_MISSING = 512;
+
 /**
  * 音频内嵌封面抽取与缓存。
  *
@@ -51,7 +58,13 @@ export class CoverCache {
   }
 
   get(src: string): image.PixelMap | undefined {
-    return this.cache.get(src);
+    const hit: image.PixelMap | undefined = this.cache.get(src);
+    if (hit !== undefined) {
+      // LRU：命中即视为最近使用，先删再插，将其移动到 Map 末尾。
+      this.cache.delete(src);
+      this.cache.set(src, hit);
+    }
+    return hit;
   }
 
   /**
@@ -66,7 +79,7 @@ export class CoverCache {
     if (!src) {
       return undefined;
     }
-    const hit: image.PixelMap | undefined = this.cache.get(src);
+    const hit: image.PixelMap | undefined = this.get(src);
     if (hit !== undefined) {
       return hit;
     }
@@ -78,22 +91,22 @@ export class CoverCache {
       return inflight;
     }
     if (!this.isExtractable(src)) {
-      this.missing.add(src);
+      this.markMissing(src);
       return undefined;
     }
     const task: Promise<image.PixelMap | undefined> = CoverCache.extractCover(src)
       .then((pixelMap: image.PixelMap | undefined) => {
         if (pixelMap !== undefined) {
-          this.cache.set(src, pixelMap);
+          this.put(src, pixelMap);
         } else {
-          this.missing.add(src);
+          this.markMissing(src);
         }
         this.pending.delete(src);
         return pixelMap;
       })
       .catch((err: Error) => {
         this.pending.delete(src);
-        this.missing.add(src);
+        this.markMissing(src);
         Logger.debugPrivate(TAG, `load failed for ${src}: ${err.message}`);
         return undefined;
       });
@@ -117,6 +130,44 @@ export class CoverCache {
       const batch = songs.slice(i, i + concurrency);
       await Promise.all(batch.map(s => this.load(s.src).then(() => {
       })));
+    }
+  }
+
+  /**
+   * 写入正缓存（LRU 有界）。已存在则先删再插，刷新其「最近使用」顺序；
+   * 超过 MAX_CACHE 时淘汰 Map 头部（最久未使用）项。
+   * 注意：仅移除 Map 引用，**不调用 image.PixelMap.release()**——被淘汰的
+   * PixelMap 可能仍被现有 CoverImageView / 列表项显示，release 会导致渲染异常。
+   */
+  private put(src: string, pixelMap: image.PixelMap): void {
+    if (this.cache.has(src)) {
+      this.cache.delete(src);
+    }
+    this.cache.set(src, pixelMap);
+    while (this.cache.size > MAX_CACHE) {
+      const oldest: string | undefined = this.cache.keys().next().value;
+      if (oldest === undefined) {
+        break;
+      }
+      this.cache.delete(oldest);
+    }
+  }
+
+  /**
+   * 记录负缓存（LRU 有界）。命中已有记录时同样刷新到 Set 末尾；
+   * 超过 MAX_MISSING 时淘汰最久未确认项（下次访问会重新尝试抽取，行为仍正确）。
+   */
+  private markMissing(src: string): void {
+    if (this.missing.has(src)) {
+      this.missing.delete(src);
+    }
+    this.missing.add(src);
+    while (this.missing.size > MAX_MISSING) {
+      const oldest: string | undefined = this.missing.values().next().value;
+      if (oldest === undefined) {
+        break;
+      }
+      this.missing.delete(oldest);
     }
   }
 

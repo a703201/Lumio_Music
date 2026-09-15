@@ -23,22 +23,6 @@
 #undef LOG_TAG
 #define LOG_TAG "NativeModule"
 
-static napi_value NativeAdd(napi_env env, napi_callback_info info) {
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-    double a, b;
-    napi_get_value_double(env, args[0], &a);
-    napi_get_value_double(env, args[1], &b);
-
-    double result = a + b;
-    napi_value ret;
-    napi_create_double(env, result, &ret);
-
-    return ret;
-}
-
 // 安全构造 UTF-8 字符串：非法 UTF-8 时回退空串，避免 napi_value 保持未初始化被后续使用（P1-6 联动）
 static napi_value MakeString(napi_env env, const std::string& s) {
     napi_value v;
@@ -103,26 +87,9 @@ static napi_value NativeParseAudioMetadata(napi_env env, napi_callback_info info
     return result;
 }
 
-static napi_value NativeGetDeviceInfo(napi_env env, napi_callback_info info) {
-    napi_value result;
-    napi_create_object(env, &result);
-
-    napi_value brand;
-    napi_create_string_utf8(env, "HarmonyOS", NAPI_AUTO_LENGTH, &brand);
-    napi_set_named_property(env, result, "brand", brand);
-
-    napi_value osType;
-    napi_create_string_utf8(env, "HarmonyOS", NAPI_AUTO_LENGTH, &osType);
-    napi_set_named_property(env, result, "osType", osType);
-
-    return result;
-}
-
 static napi_value Init(napi_env env, napi_value exports) {
     napi_property_descriptor desc[] = {
-        { "add", nullptr, NativeAdd, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "parseAudioMetadata", nullptr, NativeParseAudioMetadata, nullptr, nullptr, nullptr, napi_default, nullptr },
-        { "getDeviceInfo", nullptr, NativeGetDeviceInfo, nullptr, nullptr, nullptr, napi_default, nullptr }
+        { "parseAudioMetadata", nullptr, NativeParseAudioMetadata, nullptr, nullptr, nullptr, napi_default, nullptr }
     };
     napi_define_properties(env, exports, sizeof(desc) / sizeof(desc[0]), desc);
     return exports;

@@ -18,13 +18,13 @@ import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { semanticOf } from '../tokens/LumioColor';
 import { LumioTheme, SpringKind } from '../tokens/LumioTheme';
 import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
-import type uiMaterial from '@ohos.arkui.uiMaterial';
+import uiMaterial from '@ohos.arkui.uiMaterial';
 import { acquireSheetMaterial, SheetScaffold } from '../common/utils/SheetMaterial';
 
 interface OnboardFeature {
   icon: ResourceStr;
-  title: string;
-  desc: string;
+  title: ResourceStr;
+  desc: ResourceStr;
 }
 
 /**
@@ -51,10 +51,10 @@ export struct OnboardingSheet {
    */
   private features(): OnboardFeature[] {
     return [
-      { icon: $r('app.media.ic_public_albums'), title: '本地音乐库', desc: '导入本地音频，纯离线播放，隐私优先' },
-      { icon: $r('app.media.ic_public_favor'), title: '无损 · Hi-Res', desc: '自动识别无损与高解析音质，徽标呈现' },
-      { icon: $r('app.media.ic_public_view_list'), title: '智能歌单', desc: '按收藏、常听、年代、艺术家自动聚合' },
-      { icon: $r('app.media.ic_lib_play'), title: '系统深度融合', desc: '锁屏播控、实况窗、卡片与倍速睡眠' }
+      { icon: $r('app.media.ic_public_albums'), title: $r('app.string.onboard_local'), desc: $r('app.string.onboard_local_desc') },
+      { icon: $r('app.media.ic_public_favor'), title: $r('app.string.onboard_lossless'), desc: $r('app.string.onboard_lossless_desc') },
+      { icon: $r('app.media.ic_public_view_list'), title: $r('app.string.smart_playlist'), desc: $r('app.string.onboard_smart_desc') },
+      { icon: $r('app.media.ic_lib_play'), title: $r('app.string.onboard_system'), desc: $r('app.string.onboard_system_desc') }
     ];
   }
 
@@ -123,13 +123,13 @@ export struct OnboardingSheet {
           .height(72)
           .borderRadius(18)
           .margin({ top: SPACE_SM.compact, bottom: SPACE_SM.cozy })
-        Text('欢迎使用 Lumio Music')
+        Text($r('app.string.welcome'))
           .fontSize(TYPE_SM.title1.size)
           .fontWeight(FontWeight.Bold)
           .lineHeight(TYPE_SM.title1.lineHeight)
           .letterSpacing(TYPE_SM.title1.tracking)
           .fontColor(this.getThemeColors().primaryText)
-        Text('本地音乐，纯粹聆听')
+        Text($r('app.string.welcome_sub'))
           .fontSize(TYPE_SM.footnote.size)
           .fontColor(this.getThemeColors().secondaryText)
           .margin({ top: SPACE_SM.compact, bottom: SPACE_SM.base })
@@ -145,7 +145,7 @@ export struct OnboardingSheet {
       .width('100%')
       .margin({ top: SPACE_SM.compact, bottom: SPACE_SM.base })
 
-      Button('开始体验')
+      Button($r('app.string.get_started'))
         .width('86%')
         .height(48)
         .fontSize(TYPE_SM.headline.size)

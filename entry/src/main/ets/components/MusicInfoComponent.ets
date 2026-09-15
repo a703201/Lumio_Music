@@ -37,7 +37,6 @@ import { BreakpointConstants } from '../common/constants/BreakpointConstants';
 import { ControlAreaComponent } from './ControlAreaComponent';
 import { ContainerReader } from '@kit.ArkUI';
 import { LengthMetrics } from '@ohos.arkui.node';
-import { ApiCompat } from '../common/utils/ApiCompat';
 import { SPACE_SM } from '../tokens/LumioScale';
 import { onMediaOf } from '../tokens/LumioColor';
 
@@ -89,28 +88,22 @@ export struct MusicInfoComponent {
   }
 
   build() {
-    if (ApiCompat.isAtLeast(ApiCompat.API_26)) {
-      // 鸿蒙新特性 ContainerReader（API 26）：包裹 GridRow，使其断点分析基于「容器真实尺寸」
-      // 而非窗口尺寸。容器渲染尺寸经 onAreaChange 回填，折叠屏/平板分屏等容器宽度变化时布局自适应更精准。
-      // 注意：子内容必须直接挂在 ContainerReader() 构造之后；breakpointConfig 接受配置对象而非 builder，
-      // 之前把 { ... } 写在 .breakpointConfig({...}) 后面是位置错误，会被代码分析判「Identifier expected」。
-      ContainerReader({ size: this.containerSize }) {
-        this.GridRowContent()
-      }
-      .onAreaChange((_oldArea: Area, newArea: Area) => {
-        const w: number = typeof newArea.width === 'number' ? newArea.width : 0;
-        const h: number = typeof newArea.height === 'number' ? newArea.height : 0;
-        if (w > 0 && h > 0 && (w !== this.containerSize.width || h !== this.containerSize.height)) {
-          this.containerSize = { width: w, height: h };
-        }
-      })
-      .breakpointConfig({ width: [600, 840] })
-    } else {
-      // API 24 降级：ContainerReader 为 API 26 引入的组件，低版本实例化会直接崩溃。
-      // 直接渲染 GridRow——其 breakpoints reference=ComponentSize 已基于自身宽度断点，
-      // 同样能获得容器级自适应，无需 ContainerReader。
+    // ContainerReader（API 26 引入，最低平台已是 API 26，故无条件使用）：
+    // 包裹 GridRow，使其断点分析基于「容器真实尺寸」而非窗口尺寸。容器渲染尺寸经 onAreaChange 回填，
+    // 折叠屏/平板分屏等容器宽度变化时布局自适应更精准。
+    // 注意：子内容必须直接挂在 ContainerReader() 构造之后；breakpointConfig 接受配置对象而非 builder，
+    // 之前把 { ... } 写在 .breakpointConfig({...}) 后面是位置错误，会被代码分析判「Identifier expected」。
+    ContainerReader({ size: this.containerSize }) {
       this.GridRowContent()
     }
+    .onAreaChange((_oldArea: Area, newArea: Area) => {
+      const w: number = typeof newArea.width === 'number' ? newArea.width : 0;
+      const h: number = typeof newArea.height === 'number' ? newArea.height : 0;
+      if (w > 0 && h > 0 && (w !== this.containerSize.width || h !== this.containerSize.height)) {
+        this.containerSize = { width: w, height: h };
+      }
+    })
+    .breakpointConfig({ width: [600, 840] })
   }
 
   @Builder

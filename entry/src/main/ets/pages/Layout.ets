@@ -25,9 +25,9 @@ import { Motion, springSnappy } from '../common/utils/DesignSystem';
 import { image } from '@kit.ImageKit';
 import { PreferencesUtil } from '../utils/PreferencesUtil';
 import { SettingsStore } from '../utils/SettingsStore';
-import { ApiCompat } from '../common/utils/ApiCompat';
 import { OnboardingSheet } from '../components/OnboardingSheet';
-import type uiMaterial from '@ohos.arkui.uiMaterial';
+// 3.0.0 起最低平台 API 26，uiMaterial 模块全平台可用，静态导入 + 直接构造（不再有动态 import 双路径）。
+import uiMaterial from '@ohos.arkui.uiMaterial';
 import { semanticOf, onMediaOf } from '../tokens/LumioColor';
 import { LumioTheme, SpringKind } from '../tokens/LumioTheme';
 import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
@@ -35,7 +35,7 @@ import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
 const PLAYER_COVER_ID: string = 'player_cover';
 
 interface TabItem {
-  title: string;
+  title: ResourceStr;
   icon: Resource;
 }
 
@@ -54,6 +54,8 @@ struct Layout {
   @StorageProp('bottomHeight') bottomHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
   @StorageProp('coverRefreshToken') @Watch('onCoverRefreshed') coverRefreshToken: number = 0;
+  /** 应用内偏好语言标记：变化时经 .key() 强制整棵内容子树重建，使 $r 以新语言重新解析。 */
+  @StorageProp('appLocale') appLocale: string = 'zh-Hans';
   // 首次引导（半蒙面 Sheet）调度：AppStorage('showOnboarding') 由首启逻辑或「关于页-重新查看引导」置 true。
   @StorageLink('showOnboarding') @Watch('onShowOnboarding') showOnboarding: boolean = false;
   @State onboardingVisible: boolean = false;
@@ -73,12 +75,15 @@ struct Layout {
   // 底部迷你播放条的封面：缓存当前播放歌曲的真实封面（取自 CoverCache；未抽取到时回退默认图），
   // 通过 refreshPlayerCover() 在切歌 / 封面抽取完成（coverRefreshToken）时刷新。
   @State playerCover: Resource | image.PixelMap = $r('app.media.ic_default_cover');
-  // 底部浮动栏的沉浸系统材质（仅 API 26 经动态 import 注入；API 24 用 backgroundBlurStyle 兜底）
-  @State miniBarMaterial: uiMaterial.Material | undefined = undefined;
+  // 底部浮动栏的沉浸系统材质。最低平台已是 API 26，构造即就绪且此后不再变化，
+  // 故用普通成员而非 @State：无需触发重渲染，也避免 ArkUI 对 @State 对象做代理包装后
+  // 传给 systemMaterial() 时可能影响原生材质对象的识别。
+  private miniBarMaterial: uiMaterial.Material =
+    new uiMaterial.ImmersiveMaterial({ style: uiMaterial.ImmersiveStyle.REGULAR });
 
   private tabs: TabItem[] = [
-    { title: '音乐库', icon: $r('sys.symbol.music_square_stack_fill') },
-    { title: '我的', icon: $r('sys.symbol.person') }
+    { title: $r('app.string.music_library'), icon: $r('sys.symbol.music_square_stack_fill') },
+    { title: $r('app.string.mine'), icon: $r('sys.symbol.person') }
   ];
 
   aboutToAppear(): void {
@@ -94,16 +99,6 @@ struct Layout {
     this.maybeShowPermissionGuide();
     this.maybeShowOnboarding();
     this.refreshPlayerCover();
-    // API 26 才动态加载 @ohos.arkui.uiMaterial（整模块 API 26 新增，API 24 运行时不存在），
-    // 注入沉浸系统材质；失败仅进入 catch 兜底，不影响底栏渲染。
-    if (ApiCompat.isAtLeast(ApiCompat.API_26)) {
-      import('@ohos.arkui.uiMaterial').then((mod: ESObject): void => {
-        const def: ESObject = mod.default;
-        this.miniBarMaterial = new (def.ImmersiveMaterial as ESObject)({ style: (def.ImmersiveStyle as ESObject).REGULAR });
-      }).catch((): void => {
-        this.miniBarMaterial = undefined;
-      });
-    }
   }
 
   // 首次启动展示权限用途说明，仅弹一次（持久化标记）
@@ -343,52 +338,31 @@ struct Layout {
   /**
    * 底部悬浮导航（苹果风浮动胶囊 / 鸿蒙 Hds 浮动栏）：
    * - 居中悬浮胶囊（非通栏），浮于内容之上，内容可滚动至系统导航条区域，全屏沉浸；
-   * - API 26：启用 uiMaterial 系统沉浸材质（动态注入），自动适配深浅色与算力档位；
-   * - API 24：仅用 cardBg 主题色 + 阴影兜底（移除背景模糊：深色模式下 BlurStyle.CARD_*
-   *   在部分机型/仿真器上仍以白雾覆盖主题色，致胶囊在暗色模式下显示为白色，违背主题）。
+   * - 唯一形态：uiMaterial 系统沉浸材质，自动适配深浅色与算力档位。
+   *   最低平台已是 API 26，不存在「低版本无材质」的分支，故这里只有一条 .systemMaterial 链；
+   *   同节点**绝不**再叠加 backgroundColor（材质与纯色互斥，同时设置会让材质被纯色盖住）。
    */
   @Builder
   private customBottomBar() {
     // @Builder 调用返回 void，不能直接链式挂材质；材质挂在外层真实容器 Row 上。
-    if (ApiCompat.isAtLeast(ApiCompat.API_26) && this.miniBarMaterial) {
-      Row() {
-        this.miniBarInner()
-      }
-      .width('92%')
-      .constraintSize({ maxWidth: 520 })
-      .systemMaterial(this.miniBarMaterial as uiMaterial.Material)
-      .shadow({
-        radius: 22,
-        color: this.getThemeColors().separator,
-        offsetX: 0,
-        offsetY: 8
-      })
-      .border({
-        width: this.isDark ? 0.5 : 0,
-        color: semanticOf(this.isDark).borderSubtle
-      })
-      .borderRadius(30)
-      .margin({ bottom: this.bottomHeight + 12 })
-    } else {
-      Row() {
-        this.miniBarInner()
-      }
-      .width('92%')
-      .constraintSize({ maxWidth: 520 })
-      .backgroundColor(this.getThemeColors().cardBg)
-      .shadow({
-        radius: 22,
-        color: this.getThemeColors().separator,
-        offsetX: 0,
-        offsetY: 8
-      })
-      .border({
-        width: 0.5,
-        color: semanticOf(this.isDark).borderSubtle
-      })
-      .borderRadius(30)
-      .margin({ bottom: this.bottomHeight + 12 })
+    Row() {
+      this.miniBarInner()
     }
+    .width('92%')
+    .constraintSize({ maxWidth: 520 })
+    .systemMaterial(this.miniBarMaterial)
+    .shadow({
+      radius: 22,
+      color: this.getThemeColors().separator,
+      offsetX: 0,
+      offsetY: 8
+    })
+    .border({
+      width: this.isDark ? 0.5 : 0,
+      color: semanticOf(this.isDark).borderSubtle
+    })
+    .borderRadius(30)
+    .margin({ bottom: this.bottomHeight + 12 })
   }
 
   build() {
@@ -420,6 +394,7 @@ struct Layout {
       .height('100%')
       .backgroundColor(this.getThemeColors().bg)
       .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
+      .key(this.appLocale)
       .bindSheet($$this.onboardingVisible, this.onboardingContent(), {
         detents: ['90%'],
         dragBar: true,

@@ -23,6 +23,7 @@ import { semanticOf } from '../tokens/LumioColor';
 import { CoverImageView } from '../components/CoverImageView';
 import { QualityBadge } from '../components/QualityBadge';
 import { SongRow } from '../components/SongRow';
+import { SongDataSource } from '../datasource/SongDataSource';
 import { DuplicateDetector, DuplicateGroup } from '../utils/DuplicateDetector';
 import { LumioTheme, SpringKind } from '../tokens/LumioTheme';
 import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
@@ -40,7 +41,7 @@ interface YearStat {
 export struct SubPageHeader {
   @StorageProp('topHeight') topHeight: number = 0;
   @StorageProp('isDark') isDark: boolean = false;
-  title: string = '';
+  title: ResourceStr = '';
   onBack: () => void = () => {};
   rightSlot?: () => void;
 
@@ -89,8 +90,9 @@ export struct ManageSongsBody {
     return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
   }
 
-  @State songs: SongItem[] = [];
+  @State @Watch('onSongsChanged') songs: SongItem[] = [];
   @State itemScales: number[] = [];
+  private songsDataSource: SongDataSource = new SongDataSource([]);
   @State emptyIconScale: number = 1.0;
   @State pendingDelete: SongItem | null = null;
 
@@ -107,7 +109,11 @@ export struct ManageSongsBody {
     this.reload();
   }
 
-  private toast(message: string): void {
+  onSongsChanged(): void {
+    this.songsDataSource.setData(this.songs);
+  }
+
+  private toast(message: ResourceStr): void {
     try {
       this.getUIContext().getPromptAction().showToast({ message });
     } catch (e) {
@@ -126,10 +132,10 @@ export struct ManageSongsBody {
     }
     const title: string = this.pendingDelete.title;
     this.getUIContext().showAlertDialog({
-      title: '移除歌曲',
+      title: $r('app.string.remove_song'),
       message: `确定从本地库中移除「${title}」？`,
-      primaryButton: { value: '取消', action: () => { this.pendingDelete = null; } },
-      secondaryButton: { value: '移除', action: () => { this.doDelete(); } }
+      primaryButton: { value: $r('app.string.cancel'), action: () => { this.pendingDelete = null; } },
+      secondaryButton: { value: $r('app.string.remove'), action: () => { this.doDelete(); } }
     });
   }
 
@@ -140,7 +146,7 @@ export struct ManageSongsBody {
       AudioRendererController.getInstance().reconcileWithLibrary(this.store.songs);
       this.pendingDelete = null;
       this.reload();
-      this.toast('已移除歌曲');
+      this.toast($r('app.string.song_removed'));
     }
   }
 
@@ -149,7 +155,7 @@ export struct ManageSongsBody {
   build() {
     Column() {
       if (this.showHeader) {
-        SubPageHeader({ title: '本地歌曲管理', onBack: () => this.onBack() })
+        SubPageHeader({ title: $r('app.string.local_songs_mgmt'), onBack: () => this.onBack() })
       }
 
       Text(`${this.songs.length} 首`)
@@ -170,11 +176,11 @@ export struct ManageSongsBody {
             .margin({ bottom: SPACE_SM.base })
             .scale({ x: this.emptyIconScale, y: this.emptyIconScale })
             .animation({ duration: LumioTheme.duration(700), curve: LumioTheme.curve(SpringKind.Crisp) })
-          Text('暂无本地歌曲')
+          Text($r('app.string.no_local_songs'))
             .fontSize(TYPE_SM.headline.size)
             .fontColor(this.getThemeColors().secondaryText)
             .fontWeight(FontWeight.Medium)
-          Text('在「音乐库」导入本地音频后会显示在这里')
+          Text($r('app.string.local_songs_hint'))
             .fontSize(TYPE_SM.footnote.size)
             .fontColor(this.getThemeColors().secondaryText)
             .margin({ top: SPACE_SM.compact })
@@ -183,7 +189,7 @@ export struct ManageSongsBody {
         .justifyContent(FlexAlign.Center)
       } else {
         List() {
-          ForEach(this.songs, (song: SongItem, index: number) => {
+          LazyForEach(this.songsDataSource, (song: SongItem, index: number) => {
             ListItem() {
               SongRow({
               song: song,
@@ -202,7 +208,7 @@ export struct ManageSongsBody {
               }
             })
             }
-          })
+          }, (song: SongItem): string => song.id.toString())
         }
         .width('100%')
         .layoutWeight(1)
@@ -266,7 +272,7 @@ export struct DuplicateSongsBody {
     });
     this.refresh();
     try {
-      this.getUIContext().getPromptAction().showToast({ message: '已清理重复歌曲' });
+      this.getUIContext().getPromptAction().showToast({ message: $r('app.string.dup_cleaned') });
     } catch (e) {
       Logger.error('DuplicateSongs', 'toast failed');
     }
@@ -315,14 +321,14 @@ export struct DuplicateSongsBody {
           .alignItems(HorizontalAlign.Start)
           .padding({ left: SPACE_SM.cozy })
           if (i === 0) {
-            Text('保留')
+            Text($r('app.string.keep'))
               .fontSize(TYPE_SM.caption1.size)
               .fontColor(this.getThemeColors().secondaryText)
               .backgroundColor(this.getThemeColors().secondaryBg)
               .borderRadius(12)
               .padding({ left: SPACE_SM.cozy, right: SPACE_SM.cozy, top: SPACE_SM.tight, bottom: SPACE_SM.tight })
           } else {
-            Text('移除')
+            Text($r('app.string.remove'))
               .fontSize(TYPE_SM.footnote.size)
               .fontColor(this.getThemeColors().accent)
               .fontWeight(FontWeight.Medium)
@@ -350,14 +356,14 @@ export struct DuplicateSongsBody {
             .height(24)
             .fillColor(this.getThemeColors().primaryText)
             .onClick(() => this.onBack()).clickEffect({ level: ClickEffectLevel.LIGHT, scale: 0.96 })
-          Text('重复歌曲')
+          Text($r('app.string.duplicate_songs'))
             .fontSize(TYPE_SM.title2.size)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getThemeColors().primaryText)
             .margin({ left: SPACE_SM.cozy })
             .layoutWeight(1)
           if (this.duplicateCount() > 0) {
-            Text('清理全部')
+            Text($r('app.string.clean_all'))
               .fontSize(TYPE_SM.subhead.size)
               .fontColor(this.getThemeColors().accent)
               .fontWeight(FontWeight.Medium)
@@ -377,11 +383,11 @@ export struct DuplicateSongsBody {
             .height(64)
             .fillColor(this.getThemeColors().secondaryText)
             .margin({ bottom: SPACE_SM.base })
-          Text('没有发现重复歌曲')
+          Text($r('app.string.no_dupes'))
             .fontSize(TYPE_SM.headline.size)
             .fontColor(this.getThemeColors().secondaryText)
             .fontWeight(FontWeight.Medium)
-          Text('基于标题与歌手相似度比对，跨歌手同名不会被误判')
+          Text($r('app.string.dup_explain'))
             .fontSize(TYPE_SM.footnote.size)
             .fontColor(this.getThemeColors().secondaryText)
             .margin({ top: SPACE_SM.compact })
@@ -444,7 +450,7 @@ export struct WrappedBody {
     const map: Map<string, number> = new Map<string, number>();
     this.store.playCounts.forEach((plays: number, songId: number) => {
       const song: SongItem | undefined = this.store.songs.find((s: SongItem) => s.id === songId);
-      const year: string = (song && song.year) ? song.year : '未知年份';
+      const year: string = (song && song.year) ? song.year : (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.unknown_year').id) ?? '');
       map.set(year, (map.get(year) ?? 0) + plays);
     });
     const arr: YearStat[] = [];
@@ -455,7 +461,7 @@ export struct WrappedBody {
     return arr.slice(0, 6);
   }
 
-  private formatDuration(ms: number): string {
+  private formatDuration(ms: number): ResourceStr {
     const minutes: number = Math.floor(ms / 60000);
     const hours: number = Math.floor(minutes / 60);
     const days: number = Math.floor(hours / 24);
@@ -470,7 +476,7 @@ export struct WrappedBody {
     if (minutes > 0) {
       return `${minutes} 分钟`;
     }
-    return '不到 1 分钟';
+    return $r('app.string.under_1_min');
   }
 
   private maxYearPlays(): number {
@@ -486,7 +492,7 @@ export struct WrappedBody {
   @Builder
   buildHero() {
     Column() {
-      Text('听歌报告')
+      Text($r('app.string.report_title'))
         .fontSize(TYPE_SM.footnote.size)
         .fontColor(this.getThemeColors().accent)
         .fontWeight(FontWeight.Medium)
@@ -496,13 +502,13 @@ export struct WrappedBody {
         .fontSize(56)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getThemeColors().primaryText)
-      Text('次播放')
+      Text($r('app.string.plays_count'))
         .fontSize(TYPE_SM.body.size)
         .fontColor(this.getThemeColors().secondaryText)
         .margin({ top: SPACE_SM.hair, bottom: SPACE_SM.roomy })
       Row() {
         Column() {
-          Text('总收听时长')
+          Text($r('app.string.total_listen'))
             .fontSize(TYPE_SM.caption1.size)
             .fontColor(this.getThemeColors().secondaryText)
             .margin({ bottom: SPACE_SM.tight })
@@ -513,7 +519,7 @@ export struct WrappedBody {
         }
         .layoutWeight(1)
         Column() {
-          Text('歌曲总数')
+          Text($r('app.string.total_songs'))
             .fontSize(TYPE_SM.caption1.size)
             .fontColor(this.getThemeColors().secondaryText)
             .margin({ bottom: SPACE_SM.tight })
@@ -536,7 +542,7 @@ export struct WrappedBody {
   @Builder
   buildTopSongs() {
     Column() {
-      Text('最常播放')
+      Text($r('app.string.most_played'))
         .fontSize(TYPE_SM.title3.size)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getThemeColors().primaryText)
@@ -587,7 +593,7 @@ export struct WrappedBody {
   @Builder
   buildYearChart() {
     Column() {
-      Text('按发行年份')
+      Text($r('app.string.by_release_year'))
         .fontSize(TYPE_SM.title3.size)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.getThemeColors().primaryText)
@@ -627,7 +633,7 @@ export struct WrappedBody {
   build() {
     Column() {
       if (this.showHeader) {
-        SubPageHeader({ title: '我的听歌报告', onBack: () => this.onBack() })
+        SubPageHeader({ title: $r('app.string.listen_report'), onBack: () => this.onBack() })
       }
 
       if (!this.hasData) {
@@ -637,11 +643,11 @@ export struct WrappedBody {
             .height(64)
             .fillColor(this.getThemeColors().secondaryText)
             .margin({ bottom: SPACE_SM.base })
-          Text('还没有足够的数据')
+          Text($r('app.string.not_enough_data'))
             .fontSize(TYPE_SM.headline.size)
             .fontColor(this.getThemeColors().secondaryText)
             .fontWeight(FontWeight.Medium)
-          Text('多听几首歌，这里会生成你的听歌报告')
+          Text($r('app.string.more_data_hint'))
             .fontSize(TYPE_SM.footnote.size)
             .fontColor(this.getThemeColors().secondaryText)
             .margin({ top: SPACE_SM.compact })
@@ -656,7 +662,7 @@ export struct WrappedBody {
             if (this.yearStats.length > 0) {
               this.buildYearChart()
             }
-            Text('数据仅在本地统计，不上传任何服务器')
+            Text($r('app.string.local_only_stats'))
               .fontSize(TYPE_SM.caption1.size)
               .fontColor(this.getThemeColors().secondaryText)
               .margin({ top: SPACE_SM.compact, bottom: SPACE_SM.loose })
@@ -691,7 +697,7 @@ export struct PrivacyPolicyBody {
   }
 
   @Builder
-  buildSection(title: string, body: string) {
+  buildSection(title: ResourceStr, body: ResourceStr) {
     Column() {
       Text(title)
         .fontSize(TYPE_SM.title3.size)
@@ -712,51 +718,51 @@ export struct PrivacyPolicyBody {
   build() {
     Column() {
       if (this.showHeader) {
-        SubPageHeader({ title: '隐私政策', onBack: () => this.onBack() })
+        SubPageHeader({ title: $r('app.string.privacy_policy'), onBack: () => this.onBack() })
       }
 
       Scroll() {
         Column() {
           this.buildSection(
-            '概述',
-            'Lumio Music 是一款纯离线本地音乐播放器。你的歌曲、收藏、歌单与设置全部保存在设备本地，不提供云端服务、不要求注册账号、不集成任何第三方 SDK。除你主动触发的局域网投播与第三方网页跳转外，应用不会向任何外部服务器传输你的数据。'
+            $r('app.string.overview'),
+            $r('app.string.privacy_overview')
           )
           this.buildSection(
-            '我们收集的信息',
-            '我们不收集任何个人身份信息。你看到的「曲库」仅由你主动导入的本地音频文件解析而来，应用仅读取并展示其元数据：曲名、歌手、专辑、时长。收藏、歌单、播放与主题设置等均由你的本地操作产生，仅保存在本机，我们不会采集你的位置、设备标识符、账号或浏览行为等任何个人信息。'
+            $r('app.string.info_collected'),
+            $r('app.string.info_collected_desc')
           )
           this.buildSection(
-            '信息存储位置',
-            '上述所有数据均存储在设备本地的应用沙箱目录（Preferences 与文件目录）中，与其他应用隔离，仅本应用可访问，不会上传到任何服务器，也不会离开你的设备。卸载应用后，本地沙箱数据会随之删除。'
+            $r('app.string.storage_location'),
+            $r('app.string.storage_location_desc')
           )
           this.buildSection(
-            '权限说明',
-            '本应用仅申请以下权限：\n' +
-            '• 后台运行（KEEP_BACKGROUND_RUNNING）：用于锁屏或离开应用后继续播放音乐。\n' +
-            '• 网络访问（INTERNET）：仅用于（1）将本地音频经局域网投送到你主动选择的设备；（2）点击「开发者主页」等入口时调用系统浏览器打开第三方网页 a703201sworld.top。我们不会用它上传你的音乐或个人数据。'
+            $r('app.string.permissions_title'),
+            (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.perm_intro').id) ?? '') +
+            (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.perm_bg').id) ?? '') +
+            (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.perm_internet').id) ?? '')
           )
           this.buildSection(
-            '投播（局域网）传输',
-            '投播通过系统 AVSessionKit 的 AVCastController，将你设备上正在播放的本地音频经局域网（Wi-Fi）传输到你主动选择的设备（如智能音箱 / 电视）。传输仅发生在你的局域网内，不经过云端，且仅在你主动点击投送并选定设备时才会发起。'
+            $r('app.string.cast_title'),
+            $r('app.string.cast_desc')
           )
           this.buildSection(
-            '第三方外链',
-            '在「设置 - 关于开发者」等入口，本应用提供跳转链接 https://www.a703201sworld.top/resume/（开发者主页）。点击时仅由系统浏览器打开该网页，应用不嵌入也不向其传输你的数据。该网页由第三方运营，其隐私实践由该网站自行负责。'
+            $r('app.string.third_party_title'),
+            $r('app.string.third_party_desc')
           )
           this.buildSection(
-            '日志与脱敏',
-            '我们已对日志进行整改：原先可能写入系统日志的媒体文件路径、歌名等敏感信息，已改用 Logger 的 *Private 接口脱敏，确保日志中不会出现可定位到你文件的路径或可识别的歌名，也不记录任何个人信息。'
+            $r('app.string.logs_title'),
+            $r('app.string.logs_desc')
           )
           this.buildSection(
-            '我们的承诺',
-            '我们不做以下事情：无云端同步 / 存储；不向任何第三方共享、出售或传输你的数据；不集成任何会收集信息的第三方 SDK；不展示广告；不进行埋点、数据统计或行为分析；不要求注册账号，不收集个人身份信息。'
+            $r('app.string.commitment_title'),
+            $r('app.string.commitment_desc')
           )
           this.buildSection(
-            '你的权利与联系方式',
-            '你完全掌控自己的本地数据：可在「设置」中清除缓存、清除听歌统计、关闭相关功能；卸载应用即可删除全部本地数据。\n' +
-            '如有疑问或需行使相关权利，请联系：\n' +
-            '主体 / 开发者名称：何宇翔\n' +
-            '联系邮箱：Lumio_a7032@qq.com'
+            $r('app.string.rights_title'),
+            (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.rights_desc').id) ?? '') +
+            (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.contact_hint').id) ?? '') +
+            (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.contact_entity').id) ?? '') +
+            (this.getUIContext().getHostContext()?.resourceManager.getStringSync($r('app.string.contact_email').id) ?? '')
           )
         }
         .width('100%')

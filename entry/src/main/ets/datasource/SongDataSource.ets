@@ -49,6 +49,12 @@ export class SongDataSource implements IDataSource {
     return this.dataArray[index];
   }
 
+  /** 整表刷新（过滤/排序结果变化时调用），内部触发 LazyForEach 重渲染。 */
+  public setData(items: SongItem[]): void {
+    this.dataArray = [...items];
+    this.notifyDataReload();
+  }
+
   public addData(index: number, data: SongItem): void {
     this.dataArray.splice(index, 0, data);
     this.notifyDataAdd(index);

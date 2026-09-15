@@ -1,8 +1,1136 @@
 {
   "string": [
     {
+      "name": "module_desc",
+      "value": "Local Music Player"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "HarmonyOS local music player"
+    },
+    {
       "name": "EntryAbility_label",
       "value": "Lumio Music"
+    },
+    {
+      "name": "keep_background_reason",
+      "value": "Used to keep playing music in the background"
+    },
+    {
+      "name": "internet_reason",
+      "value": "Used for LAN casting (Cast+/DLNA) device discovery and media streaming"
+    },
+    {
+      "name": "sequential_playback",
+      "value": "Play in order"
+    },
+    {
+      "name": "random_playback",
+      "value": "Shuffle"
+    },
+    {
+      "name": "single_playback",
+      "value": "Repeat one"
+    },
+    {
+      "name": "play_list",
+      "value": "Playlist (%d songs)"
+    },
+    {
+      "name": "page_show",
+      "value": "Lumio Music"
+    },
+    {
+      "name": "FormAbility_label",
+      "value": "Music Controls Card"
+    },
+    {
+      "name": "FormAbility_desc",
+      "value": "Home screen music controls card with play/pause, track switching and live status"
+    },
+    {
+      "name": "form_display_name",
+      "value": "Music Controls"
+    },
+    {
+      "name": "form_desc",
+      "value": "Control music playback right from your home screen"
+    },
+    {
+      "name": "queue_title",
+      "value": "Play Queue"
+    },
+    {
+      "name": "queue_empty",
+      "value": "The queue is empty"
+    },
+    {
+      "name": "queue_play",
+      "value": "Play"
+    },
+    {
+      "name": "queue_play_next",
+      "value": "Play next"
+    },
+    {
+      "name": "queue_remove",
+      "value": "Remove"
+    },
+    {
+      "name": "sort_default",
+      "value": "Default"
+    },
+    {
+      "name": "sort_title",
+      "value": "Title"
+    },
+    {
+      "name": "sort_artist",
+      "value": "Artist"
+    },
+    {
+      "name": "sort_recent",
+      "value": "Recently played"
+    },
+    {
+      "name": "sort_random",
+      "value": "Random"
+    },
+    {
+      "name": "sort_album",
+      "value": "Album"
+    },
+    {
+      "name": "perm_guide_title",
+      "value": "Permissions"
+    },
+    {
+      "name": "perm_guide_message",
+      "value": "For a better listening experience, Lumio Music needs the following capabilities:\n\n· Background playback: keep playing music while the screen is locked, the app is in the background, or you switch to another app.\n· Network access: discover cast devices on the same local network (such as speakers and TVs) and stream music to them.\n\nThese capabilities are used only for playback and casting in this app. None of your personal data is ever uploaded."
+    },
+    {
+      "name": "perm_guide_ok",
+      "value": "Got it"
+    },
+    {
+      "name": "empty_go_library",
+      "value": "Go to Library"
+    },
+    {
+      "name": "distributed_reason",
+      "value": "Used for cross-device handoff (continue the current track on your tablet, smart screen and other devices signed in to the same HUAWEI ID)"
+    },
+    {
+      "name": "play_all",
+      "value": "Play all"
+    },
+    {
+      "name": "songs_count",
+      "value": "%d songs"
+    },
+    {
+      "name": "edit_tags",
+      "value": "Edit tags"
+    },
+    {
+      "name": "tag_title",
+      "value": "Title"
+    },
+    {
+      "name": "tag_artist",
+      "value": "Artist"
+    },
+    {
+      "name": "tag_album",
+      "value": "Album"
+    },
+    {
+      "name": "tag_year",
+      "value": "Year"
+    },
+    {
+      "name": "tag_save",
+      "value": "Save"
+    },
+    {
+      "name": "tag_saved",
+      "value": "Tags saved"
+    },
+    {
+      "name": "tag_unsupported",
+      "value": "Editing tags isn't supported for this audio format"
+    },
+    {
+      "name": "tag_backup_failed",
+      "value": "Couldn't create a backup; write cancelled"
+    },
+    {
+      "name": "tag_write_failed",
+      "value": "Failed to write tags; the original file was restored"
+    },
+    {
+      "name": "tag_container_unsupported",
+      "value": "This file's tag structure can't be safely rewritten; aborted to avoid corruption"
+    },
+    {
+      "name": "share",
+      "value": "Share"
+    },
+    {
+      "name": "share_song",
+      "value": "Share song"
+    },
+    {
+      "name": "export_playlist",
+      "value": "Export playlist"
+    },
+    {
+      "name": "playlist_exported",
+      "value": "Playlist exported"
+    },
+    {
+      "name": "share_wrapped",
+      "value": "Share yearly recap"
+    },
+    {
+      "name": "no_lyric_file",
+      "value": "No matching lyrics file found"
+    },
+    {
+      "name": "match_lyric",
+      "value": "Match lyrics"
+    },
+    {
+      "name": "lyric_matched",
+      "value": "Matched a lyrics file with the same name"
+    },
+    {
+      "name": "export_canceled",
+      "value": "Export cancelled"
+    },
+    {
+      "name": "language",
+      "value": "Language"
+    },
+    {
+      "name": "lang_zh",
+      "value": "Simplified Chinese"
+    },
+    {
+      "name": "lang_en",
+      "value": "English"
+    },
+    {
+      "name": "lang_fr",
+      "value": "Français"
+    },
+    {
+      "name": "play",
+      "value": "Play"
+    },
+    {
+      "name": "cancel",
+      "value": "Cancel"
+    },
+    {
+      "name": "favorite",
+      "value": "Favorite"
+    },
+    {
+      "name": "unfavorite",
+      "value": "Unfavorite"
+    },
+    {
+      "name": "favorited",
+      "value": "Favorited"
+    },
+    {
+      "name": "unfavorited",
+      "value": "Removed from favorites"
+    },
+    {
+      "name": "add_to_playlist",
+      "value": "Add to playlist"
+    },
+    {
+      "name": "details",
+      "value": "Details"
+    },
+    {
+      "name": "unknown",
+      "value": "Unknown"
+    },
+    {
+      "name": "unknown_artist",
+      "value": "Unknown artist"
+    },
+    {
+      "name": "new_playlist",
+      "value": "New playlist"
+    },
+    {
+      "name": "delete",
+      "value": "Delete"
+    },
+    {
+      "name": "album",
+      "value": "Album"
+    },
+    {
+      "name": "my_playlists",
+      "value": "My Playlists"
+    },
+    {
+      "name": "playlist_empty",
+      "value": "This playlist has no songs"
+    },
+    {
+      "name": "playlist_name_empty",
+      "value": "Playlist name can't be empty"
+    },
+    {
+      "name": "playlist_exists",
+      "value": "A playlist with this name already exists"
+    },
+    {
+      "name": "enter_playlist_name",
+      "value": "Enter a playlist name"
+    },
+    {
+      "name": "confirm",
+      "value": "OK"
+    },
+    {
+      "name": "remove",
+      "value": "Remove"
+    },
+    {
+      "name": "title",
+      "value": "Title"
+    },
+    {
+      "name": "album_empty",
+      "value": "This album has no songs"
+    },
+    {
+      "name": "artist_empty",
+      "value": "This artist has no songs"
+    },
+    {
+      "name": "artist",
+      "value": "Artist"
+    },
+    {
+      "name": "my_favorites",
+      "value": "My Favorites"
+    },
+    {
+      "name": "music_library",
+      "value": "Library"
+    },
+    {
+      "name": "play_history",
+      "value": "Play History"
+    },
+    {
+      "name": "add_songs",
+      "value": "Add Songs"
+    },
+    {
+      "name": "playlist",
+      "value": "Playlist"
+    },
+    {
+      "name": "delete_playlist",
+      "value": "Delete Playlist"
+    },
+    {
+      "name": "smart_playlist",
+      "value": "Smart Playlists"
+    },
+    {
+      "name": "privacy_policy",
+      "value": "Privacy Policy"
+    },
+    {
+      "name": "mine",
+      "value": "Profile"
+    },
+    {
+      "name": "auto_next_mode",
+      "value": "Auto-next · Play mode"
+    },
+    {
+      "name": "sound_effects",
+      "value": "Audio Effects"
+    },
+    {
+      "name": "crossfade",
+      "value": "Crossfade"
+    },
+    {
+      "name": "dark_mode_theme",
+      "value": "Dark Mode · Theme"
+    },
+    {
+      "name": "ui",
+      "value": "Interface"
+    },
+    {
+      "name": "reduce_motion",
+      "value": "Reduce Motion"
+    },
+    {
+      "name": "storage",
+      "value": "Storage"
+    },
+    {
+      "name": "notifications",
+      "value": "Notifications"
+    },
+    {
+      "name": "lockscreen_control",
+      "value": "Lock screen / status bar"
+    },
+    {
+      "name": "privacy",
+      "value": "Privacy"
+    },
+    {
+      "name": "cache_history_mgmt",
+      "value": "Cache · History · Local"
+    },
+    {
+      "name": "listen_stats",
+      "value": "Listening Stats"
+    },
+    {
+      "name": "settings",
+      "value": "Settings"
+    },
+    {
+      "name": "local_songs_mgmt",
+      "value": "Local Songs"
+    },
+    {
+      "name": "listen_report",
+      "value": "Listening Report"
+    },
+    {
+      "name": "dup_cleanup",
+      "value": "Duplicate Cleanup"
+    },
+    {
+      "name": "accessibility",
+      "value": "Accessibility"
+    },
+    {
+      "name": "repeat_list",
+      "value": "List loop"
+    },
+    {
+      "name": "repeat_one",
+      "value": "Repeat one"
+    },
+    {
+      "name": "shuffle",
+      "value": "Shuffle"
+    },
+    {
+      "name": "theme_system",
+      "value": "Follow system"
+    },
+    {
+      "name": "theme_light",
+      "value": "Light"
+    },
+    {
+      "name": "theme_dark",
+      "value": "Dark"
+    },
+    {
+      "name": "off",
+      "value": "Off"
+    },
+    {
+      "name": "short",
+      "value": "Short"
+    },
+    {
+      "name": "medium",
+      "value": "Medium"
+    },
+    {
+      "name": "auto_next",
+      "value": "Auto-next"
+    },
+    {
+      "name": "play_mode",
+      "value": "Play mode"
+    },
+    {
+      "name": "gapless",
+      "value": "Gapless playback"
+    },
+    {
+      "name": "gapless_desc",
+      "value": "Reduce gaps between tracks"
+    },
+    {
+      "name": "fade_desc",
+      "value": "Brief volume fade on play/pause/skip to avoid abrupt pops and hard cuts."
+    },
+    {
+      "name": "dark_mode",
+      "value": "Dark Mode"
+    },
+    {
+      "name": "reduce_motion_desc",
+      "value": "Reduce lyric glow and other animations"
+    },
+    {
+      "name": "clear_history",
+      "value": "Clear Play History"
+    },
+    {
+      "name": "history_cleared",
+      "value": "Play history cleared"
+    },
+    {
+      "name": "enable_stats",
+      "value": "Enable Listening Stats"
+    },
+    {
+      "name": "select_category",
+      "value": "Select a settings category"
+    },
+    {
+      "name": "cache_size",
+      "value": "About 0.0 MB"
+    },
+    {
+      "name": "cannot_open_web",
+      "value": "Can't open web page"
+    },
+    {
+      "name": "clear_cache",
+      "value": "Clear Cache"
+    },
+    {
+      "name": "cache_cleared",
+      "value": "Cache cleared"
+    },
+    {
+      "name": "clear_stats",
+      "value": "Clear Statistics"
+    },
+    {
+      "name": "clear",
+      "value": "Clear"
+    },
+    {
+      "name": "clear_stats_confirm",
+      "value": "This clears play history and stats permanently. Continue?"
+    },
+    {
+      "name": "more",
+      "value": "More"
+    },
+    {
+      "name": "about",
+      "value": "About"
+    },
+    {
+      "name": "folder_browse",
+      "value": "Folder Browse"
+    },
+    {
+      "name": "by_source",
+      "value": "Organized by source folder"
+    },
+    {
+      "name": "app_desc",
+      "value": "Local Music Player"
+    },
+    {
+      "name": "features",
+      "value": "Features"
+    },
+    {
+      "name": "feat_local",
+      "value": "Local Playback"
+    },
+    {
+      "name": "feat_scan",
+      "value": "File Scanning"
+    },
+    {
+      "name": "feat_lyrics",
+      "value": "Lyrics Display"
+    },
+    {
+      "name": "app_info",
+      "value": "App Info"
+    },
+    {
+      "name": "app_version",
+      "value": "Version"
+    },
+    {
+      "name": "developer",
+      "value": "Developer"
+    },
+    {
+      "name": "tech_support",
+      "value": "Support"
+    },
+    {
+      "name": "architecture",
+      "value": "Architecture"
+    },
+    {
+      "name": "onboarding",
+      "value": "Get Started"
+    },
+    {
+      "name": "app_brief",
+      "value": "A clean local music player with import, playback control and lyrics display."
+    },
+    {
+      "name": "onboard_local",
+      "value": "Local Library"
+    },
+    {
+      "name": "onboard_local_desc",
+      "value": "Import local audio, fully offline, privacy first"
+    },
+    {
+      "name": "onboard_lossless",
+      "value": "Lossless · Hi-Res"
+    },
+    {
+      "name": "onboard_lossless_desc",
+      "value": "Auto-detect lossless & hi-res, shown with badges"
+    },
+    {
+      "name": "onboard_smart_desc",
+      "value": "Auto-group by favorites, frequent, era, artist"
+    },
+    {
+      "name": "onboard_system",
+      "value": "Deep System Integration"
+    },
+    {
+      "name": "onboard_system_desc",
+      "value": "Lock-screen controls, home card, speed sleep"
+    },
+    {
+      "name": "welcome",
+      "value": "Welcome to Lumio Music"
+    },
+    {
+      "name": "welcome_sub",
+      "value": "Local music, pure listening"
+    },
+    {
+      "name": "get_started",
+      "value": "Get Started"
+    },
+    {
+      "name": "song_already_in_playlist",
+      "value": "Song is already in the playlist"
+    },
+    {
+      "name": "no_playlist_hint",
+      "value": "No playlists yet, tap below to create one"
+    },
+    {
+      "name": "speed_normal",
+      "value": "1x (Normal)"
+    },
+    {
+      "name": "play_speed",
+      "value": "Playback Speed"
+    },
+    {
+      "name": "sleep_timer",
+      "value": "Sleep Timer"
+    },
+    {
+      "name": "minutes_unit",
+      "value": " minutes"
+    },
+    {
+      "name": "will_pause_prefix",
+      "value": "Will pause in "
+    },
+    {
+      "name": "minutes_then_pause",
+      "value": " minutes then pause"
+    },
+    {
+      "name": "stop_after_current",
+      "value": "Stop after current song"
+    },
+    {
+      "name": "will_pause_after",
+      "value": "Will pause after current song"
+    },
+    {
+      "name": "turn_off_timer",
+      "value": "Turn off timer"
+    },
+    {
+      "name": "sleep_timer_off",
+      "value": "Sleep timer off"
+    },
+    {
+      "name": "no_lyrics",
+      "value": "No lyrics yet"
+    },
+    {
+      "name": "lossless",
+      "value": "Lossless"
+    },
+    {
+      "name": "remove_song",
+      "value": "Remove song"
+    },
+    {
+      "name": "song_removed",
+      "value": "Song removed"
+    },
+    {
+      "name": "no_local_songs",
+      "value": "No local songs"
+    },
+    {
+      "name": "local_songs_hint",
+      "value": "Import local audio in Library and it will show here"
+    },
+    {
+      "name": "dup_cleaned",
+      "value": "Duplicate songs cleaned"
+    },
+    {
+      "name": "keep",
+      "value": "Keep"
+    },
+    {
+      "name": "duplicate_songs",
+      "value": "Duplicate songs"
+    },
+    {
+      "name": "clean_all",
+      "value": "Clean all"
+    },
+    {
+      "name": "no_dupes",
+      "value": "No duplicate songs found"
+    },
+    {
+      "name": "dup_explain",
+      "value": "Compared by title and artist similarity; same titles across artists won’t be mistaken."
+    },
+    {
+      "name": "unknown_year",
+      "value": "Unknown year"
+    },
+    {
+      "name": "under_1_min",
+      "value": "Under 1 minute"
+    },
+    {
+      "name": "report_title",
+      "value": "Listening Report"
+    },
+    {
+      "name": "plays_count",
+      "value": " plays"
+    },
+    {
+      "name": "total_listen",
+      "value": "Total listening time"
+    },
+    {
+      "name": "total_songs",
+      "value": "Total songs"
+    },
+    {
+      "name": "most_played",
+      "value": "Most played"
+    },
+    {
+      "name": "by_release_year",
+      "value": "By release year"
+    },
+    {
+      "name": "not_enough_data",
+      "value": "Not enough data yet"
+    },
+    {
+      "name": "more_data_hint",
+      "value": "Listen to more songs and your report will appear here"
+    },
+    {
+      "name": "local_only_stats",
+      "value": "Stats are kept only on this device, never uploaded"
+    },
+    {
+      "name": "overview",
+      "value": "Overview"
+    },
+    {
+      "name": "privacy_overview",
+      "value": "Lumio Music is a fully offline local music player. Your songs, favorites, playlists and settings are all stored on your device. It offers no cloud service, requires no account, and integrates no third-party SDK. Except for cast on your LAN and third-party web links you open yourself, the app never sends your data to any external server."
+    },
+    {
+      "name": "info_collected",
+      "value": "Information we collect"
+    },
+    {
+      "name": "info_collected_desc",
+      "value": "We collect no personally identifiable information. The “library” you see comes only from local audio files you import; the app only reads and shows their metadata: title, artist, album, duration. Favorites, playlists, playback and theme settings are generated by your local actions and stored only on this device. We never collect your location, device identifiers, account or browsing behavior."
+    },
+    {
+      "name": "storage_location",
+      "value": "Where data is stored"
+    },
+    {
+      "name": "storage_location_desc",
+      "value": "All the data above is stored in the app’s sandboxed local directory (Preferences and files), isolated from other apps and accessible only by this app. It is never uploaded to any server and never leaves your device. Uninstalling the app deletes the local sandbox data."
+    },
+    {
+      "name": "permissions_title",
+      "value": "Permissions"
+    },
+    {
+      "name": "perm_intro",
+      "value": "This app only requests the following permissions:\n"
+    },
+    {
+      "name": "perm_bg",
+      "value": "• Background run (KEEP_BACKGROUND_RUNNING): to keep playing music after lock screen or leaving the app.\n"
+    },
+    {
+      "name": "perm_internet",
+      "value": "• Network access (INTERNET): only to (1) cast local audio over your LAN to a device you choose, and (2) open third-party web pages like the developer site via the system browser when you tap those entries. We never use it to upload your music or personal data."
+    },
+    {
+      "name": "cast_title",
+      "value": "Cast (LAN) transfer"
+    },
+    {
+      "name": "cast_desc",
+      "value": "Cast uses the system AVSessionKit AVCastController to send the local audio playing on your device over your LAN (Wi-Fi) to a device you choose (e.g. speaker / TV). Transfer stays on your LAN, never via the cloud, and only starts when you tap cast and pick a device."
+    },
+    {
+      "name": "third_party_title",
+      "value": "Third-party links"
+    },
+    {
+      "name": "third_party_desc",
+      "value": "In entries like Settings - About Developer, the app provides a link to https://www.a703201sworld.top/resume/ (developer site). Tapping only opens it in the system browser; the app doesn’t embed it or send it your data. That site is run by a third party and handles its own privacy."
+    },
+    {
+      "name": "logs_title",
+      "value": "Logs and desensitization"
+    },
+    {
+      "name": "logs_desc",
+      "value": "We have hardened logging: media file paths and song titles that could appear in system logs now go through Logger’s *Private interface to be desensitized, so logs never contain paths that identify your files or recognizable song titles, and no personal info is recorded."
+    },
+    {
+      "name": "commitment_title",
+      "value": "Our commitment"
+    },
+    {
+      "name": "commitment_desc",
+      "value": "We do none of the following: no cloud sync / storage; no sharing, selling or transferring your data to any third party; no third-party SDK that collects info; no ads; no tracking, analytics or behavior profiling; no account required; no personal data collected."
+    },
+    {
+      "name": "rights_title",
+      "value": "Your rights and contact"
+    },
+    {
+      "name": "rights_desc",
+      "value": "You fully control your local data: in Settings you can clear cache, clear listening stats and turn off features; uninstalling the app deletes all local data.\n"
+    },
+    {
+      "name": "contact_hint",
+      "value": "If you have questions or want to exercise your rights, contact:\n"
+    },
+    {
+      "name": "contact_entity",
+      "value": "Entity / Developer name: He Yuxiang\n"
+    },
+    {
+      "name": "contact_email",
+      "value": "Email: Lumio_a7032@qq.com"
+    },
+    {
+      "name": "song_info",
+      "value": "Song info"
+    },
+    {
+      "name": "no_song_selected",
+      "value": "No song selected"
+    },
+    {
+      "name": "file_name",
+      "value": "File name"
+    },
+    {
+      "name": "singer",
+      "value": "Singer"
+    },
+    {
+      "name": "composer",
+      "value": "Composer"
+    },
+    {
+      "name": "collection",
+      "value": "Collection"
+    },
+    {
+      "name": "era",
+      "value": "Era"
+    },
+    {
+      "name": "added_time",
+      "value": "Added"
+    },
+    {
+      "name": "no_local_songs_hint",
+      "value": "No local songs yet, import from Library"
+    },
+    {
+      "name": "no_fav_songs",
+      "value": "No favorite songs"
+    },
+    {
+      "name": "fav_hint",
+      "value": "Tap the favorite button on the player to add"
+    },
+    {
+      "name": "import_music",
+      "value": "Import Music"
+    },
+    {
+      "name": "folder",
+      "value": "Folder"
+    },
+    {
+      "name": "no_folders",
+      "value": "No folders to browse yet"
+    },
+    {
+      "name": "load_failed",
+      "value": "Data failed to load, please retry"
+    },
+    {
+      "name": "retry_failed",
+      "value": "Retry failed, check storage permission"
+    },
+    {
+      "name": "no_new_files",
+      "value": "No new music files"
+    },
+    {
+      "name": "import_failed",
+      "value": "Import failed: "
+    },
+    {
+      "name": "unknown_error",
+      "value": "Unknown error"
+    },
+    {
+      "name": "detail",
+      "value": "Details"
+    },
+    {
+      "name": "select_song_hint",
+      "value": "Select a song to view details"
+    },
+    {
+      "name": "import",
+      "value": "Import"
+    },
+    {
+      "name": "search_hint",
+      "value": "Search songs, artists"
+    },
+    {
+      "name": "importing",
+      "value": "Importing..."
+    },
+    {
+      "name": "retry",
+      "value": "Retry"
+    },
+    {
+      "name": "library_empty",
+      "value": "Your library is empty"
+    },
+    {
+      "name": "empty_import_hint",
+      "value": "Click \"Import\" at the top right to add local audio"
+    },
+    {
+      "name": "no_play_history",
+      "value": "No play history yet"
+    },
+    {
+      "name": "history_hint",
+      "value": "Play songs and they’ll show here"
+    },
+    {
+      "name": "move_out_playlist",
+      "value": "Remove from playlist"
+    },
+    {
+      "name": "move_out",
+      "value": "Remove"
+    },
+    {
+      "name": "moved_out",
+      "value": "Removed from playlist"
+    },
+    {
+      "name": "all_in_playlist",
+      "value": "All library songs are already in the playlist"
+    },
+    {
+      "name": "select_first",
+      "value": "Select a song first"
+    },
+    {
+      "name": "add",
+      "value": "Add"
+    },
+    {
+      "name": "export",
+      "value": "Export"
+    },
+    {
+      "name": "long_press_hint",
+      "value": "Long-press a song to drag and reorder"
+    },
+    {
+      "name": "add_from_lib_hint",
+      "value": "Tap \"Add Songs\" to pick from your library"
+    },
+    {
+      "name": "renamed",
+      "value": "Renamed"
+    },
+    {
+      "name": "playlist_deleted",
+      "value": "Playlist deleted"
+    },
+    {
+      "name": "rename",
+      "value": "Rename"
+    },
+    {
+      "name": "rename_playlist",
+      "value": "Rename playlist"
+    },
+    {
+      "name": "no_songs_yet",
+      "value": " No songs yet"
+    },
+    {
+      "name": "no_my_playlists",
+      "value": "No playlists created yet"
+    },
+    {
+      "name": "create_first_hint",
+      "value": "Tap \"+\" at the top right to create your first playlist"
+    },
+    {
+      "name": "stats_cleared",
+      "value": "Statistics cleared"
+    },
+    {
+      "name": "song_not_exist",
+      "value": "Song does not exist"
+    },
+    {
+      "name": "year_label",
+      "value": "Year"
+    },
+    {
+      "name": "wrapped_title",
+      "value": "My Lumio Music Year in Review"
+    },
+    {
+      "name": "most_played_label",
+      "value": "Most played: "
+    },
+    {
+      "name": "year_record",
+      "value": "Year in Review"
+    },
+    {
+      "name": "unnamed_playlist",
+      "value": "Untitled playlist"
+    },
+    {
+      "name": "my_hearts",
+      "value": "My Favorites"
+    },
+    {
+      "name": "recent_often",
+      "value": "Frequently played"
+    },
+    {
+      "name": "unknown_era",
+      "value": "Unknown era"
+    },
+    {
+      "name": "era_memory",
+      "value": "Era memories"
+    },
+    {
+      "name": "discover_surprise",
+      "value": "Discover surprises"
+    },
+    {
+      "name": "lossless_enjoy",
+      "value": "Lossless enjoy"
+    },
+    {
+      "name": "classic_lossy",
+      "value": "Classic lossy"
+    },
+    {
+      "name": "recent_played",
+      "value": "Recently played"
+    },
+    {
+      "name": "current_next",
+      "value": "Up next"
+    },
+    {
+      "name": "play_next",
+      "value": "Play next"
+    },
+    {
+      "name": "next",
+      "value": "Next"
+    },
+    {
+      "name": "previous",
+      "value": "Previous"
+    },
+    {
+      "name": "pause",
+      "value": "Pause"
+    },
+    {
+      "name": "instrumental_note",
+      "value": "This is an instrumental track, enjoy."
     }
   ]
 }

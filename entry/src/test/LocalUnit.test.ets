@@ -21,6 +21,81 @@ import { MusicStore } from '../main/ets/services/MusicStore';
 import { SongItem } from '../main/ets/songdatacontroller/SongData';
 import { RepeatMode, Playlist } from '../main/ets/models/music';
 import { Logger } from '../main/ets/utils/Logger';
+import { DuplicateDetector, DuplicateGroup } from '../main/ets/utils/DuplicateDetector';
+import { sortSongs } from '../main/ets/common/utils/SortUtil';
+
+/**
+ * 构造一个字段完整的 SongItem（SongItem 是普通类，`new` 后所有字段均有默认值）。
+ * id/title/singer/album 是本次测试关心的字段，src/index 一并填上以免被误用为 undefined。
+ */
+function buildSong(id: number, title: string, singer: string, album: string): SongItem {
+  const song: SongItem = new SongItem();
+  song.id = id;
+  song.title = title;
+  song.singer = singer;
+  song.album = album;
+  song.src = `/music/${id}.mp3`;
+  song.index = id;
+  return song;
+}
+
+/** 按顺序取出 id，用于「不修改入参 / 保持顺序」类断言。 */
+function collectIds(songs: SongItem[]): number[] {
+  const out: number[] = [];
+  for (let i = 0; i < songs.length; i++) {
+    out.push(songs[i].id);
+  }
+  return out;
+}
+
+/** 取出 id 后升序排列，用于「排列不变（同一集合）」类断言。 */
+function collectSortedIds(songs: SongItem[]): number[] {
+  const out: number[] = collectIds(songs);
+  out.sort((a: number, b: number) => a - b);
+  return out;
+}
+
+/** 中英混合 + 含前导空格的名字，用于排序稳定性断言。 */
+function buildMixedSongs(): SongItem[] {
+  return [
+    buildSong(1, '北京', '周杰伦', '叶惠美'),
+    buildSong(2, 'Apple', 'Adele', '19'),
+    buildSong(3, '  Shanghai', 'Zoe', '  Album X'),
+    buildSong(4, '夜曲', '周杰伦', '十一月的萧邦')
+  ];
+}
+
+/**
+ * 断言辅助：相邻元素满足 localeCompare(...,'zh') 非降序。
+ * 不写死期望顺序——localeCompare 的结果依赖运行环境 ICU 数据，
+ * 写死顺序会在不同设备上假失败；只校验「有序性」这一真实契约。
+ */
+function isSortedByTitle(songs: SongItem[]): boolean {
+  for (let i = 1; i < songs.length; i++) {
+    if (songs[i - 1].title.localeCompare(songs[i].title, 'zh') > 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isSortedBySinger(songs: SongItem[]): boolean {
+  for (let i = 1; i < songs.length; i++) {
+    if (songs[i - 1].singer.localeCompare(songs[i].singer, 'zh') > 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isSortedByAlbum(songs: SongItem[]): boolean {
+  for (let i = 1; i < songs.length; i++) {
+    if (songs[i - 1].album.localeCompare(songs[i].album, 'zh') > 0) {
+      return false;
+    }
+  }
+  return true;
+}
 
 // ============================================================
 // LrcUtils — 纯函数测试（无需 Context / 系统 API）
@@ -192,6 +267,115 @@ describe('LrcUtils', () => {
       const result: LrcEntry[] = parseKrcLyric(krc);
       // First line has empty body (match still succeeds since regex captures groups)
       expect(result.length).assertEqual(2);
+    });
+  });
+
+  describe('parseLrcLyric — 畸形时间戳与空白行', () => {
+
+    it('out-of-range timestamp [99:99.999] should keep the raw ms arithmetic', 0, () => {
+      const result: LrcEntry[] = parseLrcLyric('[99:99.999]Out of range');
+      expect(result.length).assertEqual(1);
+      // 与实现使用同一表达式，规避浮点表示差异
+      const expected: number = (99 * 60 + 99.999) * 1000;
+      expect(result[0].lineStartTime).assertEqual(expected);
+      expect(result[0].lineStartTime > 6000000).assertEqual(true);
+    });
+
+    it('blank and whitespace-only input should return empty array', 0, () => {
+      expect(parseLrcLyric('\n   \n\t\n').length).assertEqual(0);
+    });
+
+    it('blank lines between valid lines should not create entries', 0, () => {
+      const result: LrcEntry[] = parseLrcLyric('[00:10.00]First\n\n   \n[00:20.00]Second');
+      expect(result.length).assertEqual(2);
+      expect(result[0].lineWords).assertContain('First');
+      expect(result[1].lineWords).assertContain('Second');
+    });
+
+    it('text without any timestamp should return empty array', 0, () => {
+      expect(parseLrcLyric('just plain text without timestamps').length).assertEqual(0);
+    });
+
+    it('timestamp without milliseconds [00:10] should be ignored', 0, () => {
+      expect(parseLrcLyric('[00:10]No millis').length).assertEqual(0);
+    });
+
+    it('single-digit minute [0:10.00] should be ignored', 0, () => {
+      expect(parseLrcLyric('[0:10.00]Short minute').length).assertEqual(0);
+    });
+
+    it('colon as millisecond separator [00:21:98] is accepted by regex but yields NaN time', 0, () => {
+      const result: LrcEntry[] = parseLrcLyric('[00:21:98]Colon ms');
+      expect(result.length).assertEqual(1);
+      expect(Number.isNaN(result[0].lineStartTime)).assertEqual(true);
+    });
+
+    it('three lines sharing one timestamp should merge into original plus translation', 0, () => {
+      const result: LrcEntry[] = parseLrcLyric('[00:10.00]Hello\n[00:10.00]你好\n[00:10.00]Hola');
+      expect(result.length).assertEqual(1);
+      expect(result[0].lineWords).assertEqual('Hello / Hola');
+      expect(result[0].translation).assertEqual('你好');
+    });
+
+    it('credit line carrying a timestamp should still be dropped', 0, () => {
+      const result: LrcEntry[] = parseLrcLyric('[00:01.00]作词: 某人\n[00:05.00]正文');
+      expect(result.length).assertEqual(1);
+      expect(result[0].lineWords).assertContain('正文');
+    });
+  });
+
+  describe('parseKrcLyric — 逐字边界', () => {
+
+    it('empty word text between two tags should keep an empty word', 0, () => {
+      const result: LrcEntry[] = parseKrcLyric('[0,100]<0,50,0><50,50,0>尾');
+      expect(result.length).assertEqual(1);
+      expect(result[0].words.length).assertEqual(2);
+      expect(result[0].words[0].text).assertEqual('');
+      expect(result[0].words[0].wordStartTime).assertEqual(0);
+      expect(result[0].words[0].duration).assertEqual(50);
+      expect(result[0].lineWords).assertEqual('尾');
+    });
+
+    it('zero start and zero duration tag <0,0,0> should be preserved', 0, () => {
+      const result: LrcEntry[] = parseKrcLyric('[0,100]<0,0,0>字');
+      expect(result.length).assertEqual(1);
+      expect(result[0].words.length).assertEqual(1);
+      expect(result[0].words[0].wordStartTime).assertEqual(0);
+      expect(result[0].words[0].duration).assertEqual(0);
+      expect(result[0].lineWords).assertEqual('字');
+    });
+
+    it('two-number tag <0,0> is not a word tag and should yield no words', 0, () => {
+      const result: LrcEntry[] = parseKrcLyric('[0,100]<0,0>字');
+      expect(result.length).assertEqual(1);
+      expect(result[0].words.length).assertEqual(0);
+      expect(result[0].lineWords).assertEqual('');
+    });
+
+    it('very long word text should be preserved without truncation', 0, () => {
+      let longText: string = '';
+      for (let i = 0; i < 1000; i++) {
+        longText += '长';
+      }
+      const krc: string = `[0,5000]<0,5000,0>${longText}`;
+      const result: LrcEntry[] = parseKrcLyric(krc);
+      expect(result.length).assertEqual(1);
+      expect(result[0].words.length).assertEqual(1);
+      expect(result[0].words[0].text.length).assertEqual(1000);
+      expect(result[0].lineWords.length).assertEqual(1000);
+    });
+
+    it('two lines sharing the same start time should both be kept', 0, () => {
+      const result: LrcEntry[] = parseKrcLyric('[100,50]A\n[100,50]B');
+      expect(result.length).assertEqual(2);
+      expect(result[0].lineStartTime).assertEqual(100);
+      expect(result[1].lineStartTime).assertEqual(100);
+    });
+
+    it('lines without the [start,duration] head should be skipped', 0, () => {
+      const result: LrcEntry[] = parseKrcLyric('no head line\n[200,50]<0,50,0>ok');
+      expect(result.length).assertEqual(1);
+      expect(result[0].lineStartTime).assertEqual(200);
     });
   });
 });
@@ -495,6 +679,150 @@ describe('MusicStore', () => {
     });
   });
 
+  describe('歌单重名与删除幂等（补充）', () => {
+
+    it('should allow duplicate names at store level but report them via hasPlaylistName', 0, () => {
+      const first: Playlist = store.addPlaylist('My List', []);
+      const second: Playlist = store.addPlaylist('My List', []);
+      expect(store.playlists.length).assertEqual(2);
+      expect(store.hasPlaylistName('My List')).assertEqual(true);
+      // 名字相同的两个歌单 id 必须不同，否则删除会误伤
+      expect(first.id).not().assertEqual(second.id);
+    });
+
+    it('should detect duplicate name only after trimming', 0, () => {
+      store.addPlaylist('Trimmed', []);
+      expect(store.hasPlaylistName('  Trimmed  ')).assertEqual(true);
+      expect(store.hasPlaylistName('Trimmed Name')).assertEqual(false);
+    });
+
+    it('hasPlaylistName should treat whitespace-only query as empty name', 0, () => {
+      expect(store.hasPlaylistName('   ')).assertEqual(false);
+      store.addPlaylist('', []);
+      expect(store.hasPlaylistName('   ')).assertEqual(true);
+    });
+
+    it('renamePlaylist should trim the new name', 0, () => {
+      const pl: Playlist = store.addPlaylist('Old', []);
+      store.renamePlaylist(pl.id, '  New  ');
+      expect(store.getPlaylistById(pl.id)?.name).assertEqual('New');
+    });
+
+    it('renamePlaylist should not block renaming onto an existing name (guard is at UI layer)', 0, () => {
+      store.addPlaylist('Taken', []);
+      const pl: Playlist = store.addPlaylist('Free', []);
+      store.renamePlaylist(pl.id, 'Taken');
+      expect(store.getPlaylistById(pl.id)?.name).assertEqual('Taken');
+      expect(store.playlists.length).assertEqual(2);
+    });
+
+    it('deleting the same playlist twice should be idempotent', 0, () => {
+      const pl: Playlist = store.addPlaylist('Temp', [1]);
+      store.deletePlaylist(pl.id);
+      expect(store.playlists.length).assertEqual(0);
+      store.deletePlaylist(pl.id);
+      expect(store.playlists.length).assertEqual(0);
+    });
+
+    it('deleting from an empty store should not error', 0, () => {
+      expect(store.playlists.length).assertEqual(0);
+      store.deletePlaylist('anything');
+      expect(store.playlists.length).assertEqual(0);
+    });
+  });
+
+  describe('收藏切换幂等（补充）', () => {
+
+    it('toggling twice should return to the original state', 0, () => {
+      store.toggleFavorite(1);
+      store.toggleFavorite(1);
+      expect(store.isFavorite(1)).assertEqual(false);
+      expect(store.favorites.size).assertEqual(0);
+    });
+
+    it('toggling three times should end up favorited with a single set entry', 0, () => {
+      store.toggleFavorite(1);
+      store.toggleFavorite(1);
+      store.toggleFavorite(1);
+      expect(store.isFavorite(1)).assertEqual(true);
+      expect(store.favorites.size).assertEqual(1);
+    });
+
+    it('repeated toggles on one id should never grow the favorites set', 0, () => {
+      for (let i = 0; i < 10; i++) {
+        store.toggleFavorite(42);
+      }
+      expect(store.favorites.size).assertEqual(0);
+      store.toggleFavorite(42);
+      expect(store.favorites.size).assertEqual(1);
+    });
+
+    it('should treat id 0 as a normal id', 0, () => {
+      store.toggleFavorite(0);
+      expect(store.isFavorite(0)).assertEqual(true);
+      expect(store.favorites.size).assertEqual(1);
+    });
+
+    it('toggling one id should not affect another id', 0, () => {
+      store.toggleFavorite(1);
+      store.toggleFavorite(2);
+      store.toggleFavorite(1);
+      expect(store.isFavorite(1)).assertEqual(false);
+      expect(store.isFavorite(2)).assertEqual(true);
+      expect(store.favorites.size).assertEqual(1);
+    });
+  });
+
+  describe('最近播放去重与上限（补充）', () => {
+
+    it('adding the same id repeatedly should keep a single entry at front', 0, () => {
+      const song: SongItem = buildSong(1, 'Repeat', 'A', 'X');
+      store.addToRecentlyPlayed(song);
+      store.addToRecentlyPlayed(song);
+      store.addToRecentlyPlayed(song);
+      expect(store.recentlyPlayed.length).assertEqual(1);
+      expect(store.recentlyPlayed[0].id).assertEqual(1);
+    });
+
+    it('dedup should be keyed by id even for different SongItem instances', 0, () => {
+      store.addToRecentlyPlayed(buildSong(5, 'Old Title', 'A', 'X'));
+      store.addToRecentlyPlayed(buildSong(5, 'New Title', 'B', 'Y'));
+      expect(store.recentlyPlayed.length).assertEqual(1);
+      // 后入的实例替换先入的实例
+      expect(store.recentlyPlayed[0].title).assertEqual('New Title');
+    });
+
+    it('exactly 50 entries should not be trimmed', 0, () => {
+      for (let i = 0; i < 50; i++) {
+        store.addToRecentlyPlayed(buildSong(i, `Song ${i}`, 'A', 'X'));
+      }
+      expect(store.recentlyPlayed.length).assertEqual(50);
+      expect(store.recentlyPlayed[0].id).assertEqual(49);
+      expect(store.recentlyPlayed[49].id).assertEqual(0);
+    });
+
+    it('the 51st distinct entry should drop the oldest one', 0, () => {
+      for (let i = 0; i < 51; i++) {
+        store.addToRecentlyPlayed(buildSong(i, `Song ${i}`, 'A', 'X'));
+      }
+      expect(store.recentlyPlayed.length).assertEqual(50);
+      expect(store.recentlyPlayed[0].id).assertEqual(50);
+      // 最旧的 id 0 已被挤出
+      expect(store.recentlyPlayed.filter((s: SongItem) => s.id === 0).length).assertEqual(0);
+    });
+
+    it('re-adding an old entry at the 50 cap should refresh it, not grow the list', 0, () => {
+      for (let i = 0; i < 50; i++) {
+        store.addToRecentlyPlayed(buildSong(i, `Song ${i}`, 'A', 'X'));
+      }
+      // 重新播放最早的一条：应移到队首且总数不变
+      store.addToRecentlyPlayed(buildSong(0, 'Song 0', 'A', 'X'));
+      expect(store.recentlyPlayed.length).assertEqual(50);
+      expect(store.recentlyPlayed[0].id).assertEqual(0);
+      expect(store.recentlyPlayed.filter((s: SongItem) => s.id === 0).length).assertEqual(1);
+    });
+  });
+
   describe('loadError flag', () => {
     it('should default to false', 0, () => {
       expect(store.loadError).assertEqual(false);
@@ -582,5 +910,434 @@ describe('MusicStore CRUD Integration', () => {
     expect(store.isFavorite(1)).assertEqual(false);
     expect(store.recentlyPlayed.length).assertEqual(0);
     expect(store.getPlaylistSongs(store.playlists[0]).length).assertEqual(0);
+  });
+});
+
+// ============================================================
+// DuplicateDetector — 纯函数测试（归一化 / 相似度阈值 / 聚类）
+// ============================================================
+
+describe('DuplicateDetector', () => {
+
+  describe('normalizeTitle', () => {
+
+    it('should lowercase and strip spaces and punctuation', 0, () => {
+      // '!' 与空格都在剥离字符集内
+      expect(DuplicateDetector.normalizeTitle('  Hello World!  ')).assertEqual('helloworld');
+      expect(DuplicateDetector.normalizeTitle('hello world')).assertEqual('helloworld');
+    });
+
+    it('should treat fullwidth punctuation and CJK punctuation as separators', 0, () => {
+      expect(DuplicateDetector.normalizeTitle('（Hello）')).assertEqual('hello');
+      expect(DuplicateDetector.normalizeTitle('夜曲。')).assertEqual('夜曲');
+      expect(DuplicateDetector.normalizeTitle('A、B（C），D')).assertEqual('abcd');
+    });
+
+    it('should strip hyphen and underscore and brackets', 0, () => {
+      expect(DuplicateDetector.normalizeTitle('foo-bar_baz')).assertEqual('foobarbaz');
+      expect(DuplicateDetector.normalizeTitle('[Live] Song')).assertEqual('livesong');
+      expect(DuplicateDetector.normalizeTitle('【Live】Song')).assertEqual('livesong');
+    });
+
+    it('should be case-insensitive', 0, () => {
+      expect(DuplicateDetector.normalizeTitle('ABC')).assertEqual(DuplicateDetector.normalizeTitle('abc'));
+      expect(DuplicateDetector.normalizeTitle('The Song')).assertEqual(DuplicateDetector.normalizeTitle('the song'));
+    });
+
+    it('should return empty string for blank or punctuation-only titles', 0, () => {
+      expect(DuplicateDetector.normalizeTitle('')).assertEqual('');
+      expect(DuplicateDetector.normalizeTitle('   ')).assertEqual('');
+      expect(DuplicateDetector.normalizeTitle('\t\n')).assertEqual('');
+      expect(DuplicateDetector.normalizeTitle('!!!???...')).assertEqual('');
+    });
+
+    it('should keep digits and latin letters intact', 0, () => {
+      expect(DuplicateDetector.normalizeTitle('Track 01')).assertEqual('track01');
+    });
+  });
+
+  describe('similarity', () => {
+
+    it('identical strings should have similarity 1', 0, () => {
+      expect(DuplicateDetector.similarity('hello', 'hello')).assertEqual(1);
+      expect(DuplicateDetector.similarity('夜曲', '夜曲')).assertEqual(1);
+    });
+
+    it('two empty strings should have similarity 1', 0, () => {
+      expect(DuplicateDetector.similarity('', '')).assertEqual(1);
+    });
+
+    it('one empty string should have similarity 0', 0, () => {
+      expect(DuplicateDetector.similarity('a', '')).assertEqual(0);
+      expect(DuplicateDetector.similarity('', 'a')).assertEqual(0);
+    });
+
+    it('completely different equal-length strings should have similarity 0', 0, () => {
+      expect(DuplicateDetector.similarity('abc', 'xyz')).assertEqual(0);
+    });
+
+    it('one-edit distance should scale by the longer length', 0, () => {
+      // 'abcd' vs 'abc': 编辑距离 1，max 长度 4 → 1 - 1/4
+      expect(DuplicateDetector.similarity('abcd', 'abc')).assertEqual(0.75);
+      // 'abcdefghij' vs 'abcdefghi': 编辑距离 1，max 长度 10 → 1 - 1/10
+      expect(DuplicateDetector.similarity('abcdefghij', 'abcdefghi')).assertEqual(0.9);
+    });
+
+    it('should be symmetric', 0, () => {
+      expect(DuplicateDetector.similarity('kitten', 'sitting'))
+        .assertEqual(DuplicateDetector.similarity('sitting', 'kitten'));
+    });
+
+    it('classic kitten/sitting case should land between 0.5 and 0.6', 0, () => {
+      const s: number = DuplicateDetector.similarity('kitten', 'sitting');
+      expect(s > 0.5).assertEqual(true);
+      expect(s < 0.6).assertEqual(true);
+    });
+  });
+
+  describe('sameTitle', () => {
+
+    it('should be true for same title differing only in case/punctuation/spaces', 0, () => {
+      const a: SongItem = buildSong(1, 'Hello World!', 'A', 'X');
+      const b: SongItem = buildSong(2, '  hello   world  ', 'A', 'X');
+      expect(DuplicateDetector.sameTitle(a, b)).assertEqual(true);
+    });
+
+    it('should be true for CJK title with trailing punctuation', 0, () => {
+      const a: SongItem = buildSong(1, '夜曲。', '周杰伦', '萧邦');
+      const b: SongItem = buildSong(2, '夜曲', '周杰伦', '萧邦');
+      expect(DuplicateDetector.sameTitle(a, b)).assertEqual(true);
+    });
+
+    it('should be true just above the 0.85 threshold', 0, () => {
+      // 归一化后长度 10 / 9，编辑距离 1 → 0.9 >= 0.85
+      const a: SongItem = buildSong(1, 'abcdefghij', 'A', 'X');
+      const b: SongItem = buildSong(2, 'abcdefghi', 'A', 'X');
+      expect(DuplicateDetector.sameTitle(a, b)).assertEqual(true);
+    });
+
+    it('should be false just below the 0.85 threshold', 0, () => {
+      // 归一化后长度 4 / 3，编辑距离 1 → 0.75 < 0.85
+      const a: SongItem = buildSong(1, 'abcd', 'A', 'X');
+      const b: SongItem = buildSong(2, 'abc', 'A', 'X');
+      expect(DuplicateDetector.sameTitle(a, b)).assertEqual(false);
+    });
+
+    it('should be false for different titles', 0, () => {
+      const a: SongItem = buildSong(1, 'Song One', 'A', 'X');
+      const b: SongItem = buildSong(2, 'Completely Different', 'A', 'X');
+      expect(DuplicateDetector.sameTitle(a, b)).assertEqual(false);
+    });
+
+    it('should be false when either normalized title is empty', 0, () => {
+      const empty: SongItem = buildSong(1, '', 'A', 'X');
+      const blank: SongItem = buildSong(2, '   ', 'A', 'X');
+      const real: SongItem = buildSong(3, 'Song', 'A', 'X');
+      expect(DuplicateDetector.sameTitle(empty, empty)).assertEqual(false);
+      expect(DuplicateDetector.sameTitle(blank, blank)).assertEqual(false);
+      expect(DuplicateDetector.sameTitle(empty, real)).assertEqual(false);
+      expect(DuplicateDetector.sameTitle(real, empty)).assertEqual(false);
+    });
+
+    it('title equality should ignore singer (singer is handled by findDuplicates)', 0, () => {
+      const a: SongItem = buildSong(1, 'Same', 'Artist A', 'X');
+      const b: SongItem = buildSong(2, 'Same', 'Artist B', 'X');
+      expect(DuplicateDetector.sameTitle(a, b)).assertEqual(true);
+    });
+  });
+
+  describe('findDuplicates', () => {
+
+    it('empty input should return empty groups', 0, () => {
+      expect(DuplicateDetector.findDuplicates([]).length).assertEqual(0);
+    });
+
+    it('input without duplicates should return empty groups', 0, () => {
+      const songs: SongItem[] = [
+        buildSong(1, 'Alpha', 'A', 'X'),
+        buildSong(2, 'Beta', 'A', 'X'),
+        buildSong(3, 'Gamma', 'A', 'X')
+      ];
+      expect(DuplicateDetector.findDuplicates(songs).length).assertEqual(0);
+    });
+
+    it('should group two same-title same-singer songs with normalized key', 0, () => {
+      const songs: SongItem[] = [
+        buildSong(1, 'Hello World!', 'Adele', '19'),
+        buildSong(2, 'hello world', 'Adele', '19')
+      ];
+      const groups: DuplicateGroup[] = DuplicateDetector.findDuplicates(songs);
+      expect(groups.length).assertEqual(1);
+      expect(groups[0].key).assertEqual('helloworld');
+      expect(groups[0].songs.length).assertEqual(2);
+      expect(groups[0].songs[0].id).assertEqual(1);
+      expect(groups[0].songs[1].id).assertEqual(2);
+    });
+
+    it('should group three same-title songs into one group', 0, () => {
+      const songs: SongItem[] = [
+        buildSong(1, 'Same', 'A', 'X'),
+        buildSong(2, 'same', 'A', 'X'),
+        buildSong(3, '  SAME  ', 'A', 'X')
+      ];
+      const groups: DuplicateGroup[] = DuplicateDetector.findDuplicates(songs);
+      expect(groups.length).assertEqual(1);
+      expect(groups[0].songs.length).assertEqual(3);
+    });
+
+    it('should not group when both singers are set and differ', 0, () => {
+      const songs: SongItem[] = [
+        buildSong(1, 'Same', 'Artist A', 'X'),
+        buildSong(2, 'Same', 'Artist B', 'X')
+      ];
+      expect(DuplicateDetector.findDuplicates(songs).length).assertEqual(0);
+    });
+
+    it('should group when one singer is empty (unknown artist fallback)', 0, () => {
+      const songs: SongItem[] = [
+        buildSong(1, 'Same', 'Artist A', 'X'),
+        buildSong(2, 'Same', '', 'X')
+      ];
+      const groups: DuplicateGroup[] = DuplicateDetector.findDuplicates(songs);
+      expect(groups.length).assertEqual(1);
+      expect(groups[0].songs.length).assertEqual(2);
+    });
+
+    it('should group when both singers are empty', 0, () => {
+      const songs: SongItem[] = [
+        buildSong(1, 'Same', '', 'X'),
+        buildSong(2, 'same', '', 'X')
+      ];
+      expect(DuplicateDetector.findDuplicates(songs).length).assertEqual(1);
+    });
+
+    it('should produce independent groups for two different duplicate clusters', 0, () => {
+      const songs: SongItem[] = [
+        buildSong(1, 'Alpha', 'A', 'X'),
+        buildSong(2, 'alpha', 'A', 'X'),
+        buildSong(3, 'Beta', 'B', 'Y'),
+        buildSong(4, 'beta', 'B', 'Y')
+      ];
+      const groups: DuplicateGroup[] = DuplicateDetector.findDuplicates(songs);
+      expect(groups.length).assertEqual(2);
+      expect(groups[0].key).assertEqual('alpha');
+      expect(groups[1].key).assertEqual('beta');
+    });
+
+    it('should skip songs with empty title instead of grouping them together', 0, () => {
+      const songs: SongItem[] = [
+        buildSong(1, '', 'A', 'X'),
+        buildSong(2, '', 'A', 'X'),
+        buildSong(3, 'Real', 'A', 'X')
+      ];
+      expect(DuplicateDetector.findDuplicates(songs).length).assertEqual(0);
+    });
+  });
+});
+
+// ============================================================
+// SortUtil — 纯函数测试（各档位 / 边界 / 不修改入参）
+// ============================================================
+
+describe('SortUtil', () => {
+
+  describe('mode 0 默认顺序', () => {
+
+    it('should keep the input order', 0, () => {
+      const songs: SongItem[] = buildMixedSongs();
+      const result: SongItem[] = sortSongs(songs, 0, []);
+      expect(collectIds(result).join(',')).assertEqual('1,2,3,4');
+    });
+
+    it('should return a new array instead of the input reference', 0, () => {
+      const songs: SongItem[] = buildMixedSongs();
+      expect(sortSongs(songs, 0, []) === songs).assertEqual(false);
+    });
+
+    it('empty array should return empty array', 0, () => {
+      expect(sortSongs([], 0, []).length).assertEqual(0);
+    });
+
+    it('single element should be returned as-is', 0, () => {
+      const songs: SongItem[] = [buildSong(7, 'Only', 'Solo', 'Alone')];
+      const result: SongItem[] = sortSongs(songs, 0, []);
+      expect(result.length).assertEqual(1);
+      expect(result[0].id).assertEqual(7);
+    });
+
+    it('unknown mode should fall back to the input order', 0, () => {
+      const songs: SongItem[] = buildMixedSongs();
+      expect(collectIds(sortSongs(songs, 99, [])).join(',')).assertEqual('1,2,3,4');
+    });
+  });
+
+  describe('mode 1 按标题', () => {
+
+    it('should sort mixed Chinese and English titles in zh locale order', 0, () => {
+      const result: SongItem[] = sortSongs(buildMixedSongs(), 1, []);
+      expect(result.length).assertEqual(4);
+      expect(isSortedByTitle(result)).assertEqual(true);
+    });
+
+    it('should preserve the same set of songs (permutation only)', 0, () => {
+      const result: SongItem[] = sortSongs(buildMixedSongs(), 1, []);
+      expect(collectSortedIds(result).join(',')).assertEqual('1,2,3,4');
+    });
+
+    it('empty array should return empty array', 0, () => {
+      expect(sortSongs([], 1, []).length).assertEqual(0);
+    });
+
+    it('single element should not be reordered', 0, () => {
+      const songs: SongItem[] = [buildSong(7, 'Only', 'Solo', 'Alone')];
+      const result: SongItem[] = sortSongs(songs, 1, []);
+      expect(result.length).assertEqual(1);
+      expect(result[0].id).assertEqual(7);
+    });
+
+    it('should not mutate the input array', 0, () => {
+      const songs: SongItem[] = buildMixedSongs();
+      sortSongs(songs, 1, []);
+      expect(collectIds(songs).join(',')).assertEqual('1,2,3,4');
+    });
+  });
+
+  describe('mode 2 按歌手', () => {
+
+    it('should sort by singer in zh locale order', 0, () => {
+      const result: SongItem[] = sortSongs(buildMixedSongs(), 2, []);
+      expect(result.length).assertEqual(4);
+      expect(isSortedBySinger(result)).assertEqual(true);
+    });
+
+    it('should preserve the same set of songs', 0, () => {
+      const result: SongItem[] = sortSongs(buildMixedSongs(), 2, []);
+      expect(collectSortedIds(result).join(',')).assertEqual('1,2,3,4');
+    });
+
+    it('empty array should return empty array', 0, () => {
+      expect(sortSongs([], 2, []).length).assertEqual(0);
+    });
+
+    it('single element should not be reordered', 0, () => {
+      const result: SongItem[] = sortSongs([buildSong(7, 'Only', 'Solo', 'Alone')], 2, []);
+      expect(result[0].id).assertEqual(7);
+    });
+  });
+
+  describe('mode 3 按最近播放', () => {
+
+    it('should put recently played songs first, newest first', 0, () => {
+      const songs: SongItem[] = buildMixedSongs();
+      // 最近播放顺序：id 4 最新，其次 id 2
+      const recent: SongItem[] = [buildSong(4, '夜曲', '周杰伦', '十一月的萧邦'), buildSong(2, 'Apple', 'Adele', '19')];
+      const result: SongItem[] = sortSongs(songs, 3, recent);
+      expect(result.length).assertEqual(4);
+      expect(result[0].id).assertEqual(4);
+      expect(result[1].id).assertEqual(2);
+      expect(collectSortedIds(result).join(',')).assertEqual('1,2,3,4');
+    });
+
+    it('empty recently played should keep the input order', 0, () => {
+      const result: SongItem[] = sortSongs(buildMixedSongs(), 3, []);
+      expect(collectIds(result).join(',')).assertEqual('1,2,3,4');
+    });
+
+    it('recently played ids not present in songs should be ignored', 0, () => {
+      const recent: SongItem[] = [buildSong(101, 'Ghost', 'Nobody', 'Nowhere')];
+      const result: SongItem[] = sortSongs(buildMixedSongs(), 3, recent);
+      expect(collectIds(result).join(',')).assertEqual('1,2,3,4');
+    });
+
+    it('empty array should return empty array', 0, () => {
+      expect(sortSongs([], 3, [buildSong(1, 'A', 'B', 'C')]).length).assertEqual(0);
+    });
+  });
+
+  describe('mode 4 随机', () => {
+
+    it('should return a permutation of the input (no lost or duplicated songs)', 0, () => {
+      const result: SongItem[] = sortSongs(buildMixedSongs(), 4, []);
+      expect(result.length).assertEqual(4);
+      expect(collectSortedIds(result).join(',')).assertEqual('1,2,3,4');
+    });
+
+    it('should not mutate the input array', 0, () => {
+      const songs: SongItem[] = buildMixedSongs();
+      sortSongs(songs, 4, []);
+      expect(collectIds(songs).join(',')).assertEqual('1,2,3,4');
+    });
+
+    it('empty array should return empty array', 0, () => {
+      expect(sortSongs([], 4, []).length).assertEqual(0);
+    });
+
+    it('single element should be returned unchanged', 0, () => {
+      const result: SongItem[] = sortSongs([buildSong(7, 'Only', 'Solo', 'Alone')], 4, []);
+      expect(result.length).assertEqual(1);
+      expect(result[0].id).assertEqual(7);
+    });
+  });
+
+  describe('mode 5 按专辑', () => {
+
+    it('should sort by album in zh locale order', 0, () => {
+      const result: SongItem[] = sortSongs(buildMixedSongs(), 5, []);
+      expect(result.length).assertEqual(4);
+      expect(isSortedByAlbum(result)).assertEqual(true);
+    });
+
+    it('should preserve the same set of songs', 0, () => {
+      const result: SongItem[] = sortSongs(buildMixedSongs(), 5, []);
+      expect(collectSortedIds(result).join(',')).assertEqual('1,2,3,4');
+    });
+
+    it('should not mutate the input array', 0, () => {
+      const songs: SongItem[] = buildMixedSongs();
+      sortSongs(songs, 5, []);
+      expect(collectIds(songs).join(',')).assertEqual('1,2,3,4');
+    });
+
+    it('empty array should return empty array', 0, () => {
+      expect(sortSongs([], 5, []).length).assertEqual(0);
+    });
+
+    it('single element should not be reordered', 0, () => {
+      const result: SongItem[] = sortSongs([buildSong(7, 'Only', 'Solo', 'Alone')], 5, []);
+      expect(result[0].id).assertEqual(7);
+    });
+  });
+
+  describe('排序稳定性', () => {
+
+    it('songs with identical title should keep their relative input order', 0, () => {
+      const songs: SongItem[] = [
+        buildSong(1, 'Same', 'A', 'X'),
+        buildSong(2, 'Same', 'B', 'Y'),
+        buildSong(3, 'Same', 'C', 'Z')
+      ];
+      const result: SongItem[] = sortSongs(songs, 1, []);
+      expect(collectIds(result).join(',')).assertEqual('1,2,3');
+    });
+
+    it('songs with identical album should keep their relative input order', 0, () => {
+      const songs: SongItem[] = [
+        buildSong(1, 'A', 'X', 'Same Album'),
+        buildSong(2, 'B', 'Y', 'Same Album'),
+        buildSong(3, 'C', 'Z', 'Same Album')
+      ];
+      const result: SongItem[] = sortSongs(songs, 5, []);
+      expect(collectIds(result).join(',')).assertEqual('1,2,3');
+    });
+
+    it('titles with leading and trailing spaces should still be orderable', 0, () => {
+      const songs: SongItem[] = [
+        buildSong(1, '  Zebra', 'A', 'X'),
+        buildSong(2, 'Apple  ', 'A', 'X')
+      ];
+      const result: SongItem[] = sortSongs(songs, 1, []);
+      expect(isSortedByTitle(result)).assertEqual(true);
+      expect(collectSortedIds(result).join(',')).assertEqual('1,2');
+    });
   });
 });

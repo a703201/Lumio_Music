@@ -15,6 +15,7 @@
  */
 
 import { SongItem, Playlist } from '../models/music';
+import { SongDataSource } from '../datasource/SongDataSource';
 import { ThemeManager, ColorTokens } from '../utils/ThemeManager';
 import { MusicStore } from '../services/MusicStore';
 import { AudioRendererController } from '../utils/AudioRendererController';
@@ -26,9 +27,10 @@ import { AddToPlaylistSheet } from '../components/AddToPlaylistSheet';
 import { SettingsStore } from '../utils/SettingsStore';
 import { semanticOf } from '../tokens/LumioColor';
 import { SongRow, SongMenuEntry } from '../components/SongRow';
+import { ShareUtil } from '../utils/ShareUtil';
 import { LumioTheme, SpringKind } from '../tokens/LumioTheme';
 import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
-import type uiMaterial from '@ohos.arkui.uiMaterial';
+import uiMaterial from '@ohos.arkui.uiMaterial';
 import { acquireSheetMaterial, SheetScaffold } from '../common/utils/SheetMaterial';
 
 const TAG: string = 'PlaylistDetail';
@@ -54,7 +56,12 @@ struct PlaylistDetail {
 
   @State playlistId: string = '';
   @State playlistName: string = '';
-  @State songs: SongItem[] = [];
+  @State @Watch('onSongsChanged') songs: SongItem[] = [];
+  private songsDataSource: SongDataSource = new SongDataSource([]);
+
+  onSongsChanged(): void {
+    this.songsDataSource.setData(this.songs);
+  }
   @State itemScales: number[] = [];
   @State backScale: number = 1.0;
   @State playAllScale: number = 1.0;
@@ -105,7 +112,7 @@ struct PlaylistDetail {
     this.itemScales = ordered.map(() => 1.0);
   }
 
-  private toast(message: string): void {
+  private toast(message: string | Resource): void {
     try {
       this.getUIContext().getPromptAction().showToast({ message });
     } catch (e) {
@@ -124,7 +131,7 @@ struct PlaylistDetail {
 
   private playAll(): void {
     if (this.songs.length === 0) {
-      this.toast('歌单还没有歌曲');
+      this.toast($r('app.string.playlist_empty'));
       return;
     }
     AudioRendererController.getInstance().setQueue(this.songs, 0, true);
@@ -143,15 +150,15 @@ struct PlaylistDetail {
     const songId: number = song.id;
     const title: string = song.title;
     this.getUIContext().showAlertDialog({
-      title: '移出歌单',
+      title: $r('app.string.move_out_playlist'),
       message: `将「${title}」移出本歌单？歌曲仍保留在本地库。`,
-      primaryButton: { value: '取消', action: () => {} },
+      primaryButton: { value: $r('app.string.cancel'), action: () => {} },
       secondaryButton: {
-        value: '移出',
+        value: $r('app.string.move_out'),
         action: () => {
           this.store.removeSongFromPlaylist(this.playlistId, songId);
           this.reload();
-          this.toast('已移出歌单');
+          this.toast($r('app.string.moved_out'));
         }
       }
     });
@@ -162,7 +169,7 @@ struct PlaylistDetail {
     this.store.toggleFavorite(song.id);
     try {
       this.getUIContext().getPromptAction().showToast({
-        message: isFav ? '已取消收藏' : '已收藏'
+        message: isFav ? $r('app.string.unfavorited') : $r('app.string.favorited')
       });
     } catch (e) {
       Logger.error('PlaylistDetail', 'showToast failed');
@@ -175,6 +182,16 @@ struct PlaylistDetail {
     this.sheetOpen = true;
   }
 
+  /** 把当前歌单导出为 .m3u（经系统文件选择器落盘，不申请存储权限）。 */
+  private async onExport(): Promise<void> {
+    const playlist = this.store.getPlaylistById(this.playlistId);
+    if (!playlist) {
+      return;
+    }
+    const ok: boolean = await ShareUtil.exportPlaylist(playlist);
+    this.toast(ok ? $r('app.string.playlist_exported') : $r('app.string.export_canceled'));
+  }
+
   private openSongDetail(song: SongItem): void {
     this.selectedSong = song;
     this.sheetKind = 'detail';
@@ -183,10 +200,10 @@ struct PlaylistDetail {
 
     private buildMenuItems(song: SongItem, index: number): SongMenuEntry[] {
     return [
-      { text: '播放', icon: $r('app.media.ic_lib_play'), action: () => { this.playAt(index); } },
-      { text: this.store.isFavorite(song.id) ? '取消收藏' : '收藏', icon: $r('app.media.ic_public_collect'), action: () => { this.toggleFavoriteSong(song); } },
-      { text: '添加到歌单', icon: $r('app.media.ic_public_add'), action: () => { this.openAddToPlaylist(song); } },
-      { text: '详细', icon: $r('app.media.ic_public_detail'), action: () => { this.openSongDetail(song); } }
+      { text: $r('app.string.play'), icon: $r('app.media.ic_lib_play'), action: () => { this.playAt(index); } },
+      { text: this.store.isFavorite(song.id) ? $r('app.string.unfavorite') : $r('app.string.favorite'), icon: $r('app.media.ic_public_collect'), action: () => { this.toggleFavoriteSong(song); } },
+      { text: $r('app.string.add_to_playlist'), icon: $r('app.media.ic_public_add'), action: () => { this.openAddToPlaylist(song); } },
+      { text: $r('app.string.details'), icon: $r('app.media.ic_public_detail'), action: () => { this.openSongDetail(song); } }
     ];
   }
 
@@ -203,7 +220,7 @@ struct PlaylistDetail {
     this.candidates = this.store.songs.filter((s: SongItem) => !existing.has(s.id));
     this.selectedIds = [];
     if (this.candidates.length === 0) {
-      this.toast('本地库的歌曲都已在歌单中');
+      this.toast($r('app.string.all_in_playlist'));
       return;
     }
     this.sheetKind = 'picker';
@@ -234,7 +251,7 @@ struct PlaylistDetail {
 
   private commitAdd(): void {
     if (this.selectedIds.length === 0) {
-      this.toast('请先选择歌曲');
+      this.toast($r('app.string.select_first'));
       return;
     }
     const added: number = this.store.addSongsToPlaylist(this.playlistId, this.selectedIds);
@@ -248,7 +265,7 @@ struct PlaylistDetail {
     SheetScaffold({ material: this.material, fallbackColor: this.getThemeColors().surfaceOverlay }) {
       Column() {
         Row() {
-          Text('添加歌曲')
+          Text($r('app.string.add_songs'))
           .fontSize(TYPE_SM.title3.size)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.getThemeColors().primaryText)
@@ -303,7 +320,7 @@ struct PlaylistDetail {
       .scrollBar(BarState.Off)
 
       Row() {
-        Button('取消')
+        Button($r('app.string.cancel'))
           .layoutWeight(1)
           .height(42)
           .fontSize(TYPE_SM.body.size)
@@ -314,7 +331,7 @@ struct PlaylistDetail {
           this.sheetOpen = false;
         })
 
-        Button('添加')
+        Button($r('app.string.add'))
           .layoutWeight(1)
           .height(42)
           .fontSize(TYPE_SM.body.size)
@@ -358,7 +375,7 @@ struct PlaylistDetail {
               }
             })
 
-          Text(this.playlistName.length > 0 ? this.playlistName : '歌单')
+          Text(this.playlistName.length > 0 ? this.playlistName : $r('app.string.playlist'))
             .fontSize(TYPE_SM.title2.size)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.getThemeColors().primaryText)
@@ -384,7 +401,7 @@ struct PlaylistDetail {
               .width(20)
               .height(20)
               .fillColor(semanticOf(this.isDark).onAccent)
-            Text('播放全部')
+            Text($r('app.string.play_all'))
               .fontSize(TYPE_SM.subhead.size)
               .fontColor(semanticOf(this.isDark).onAccent)
               .margin({ left: SPACE_SM.compact })
@@ -411,7 +428,7 @@ struct PlaylistDetail {
             Text('+')
               .fontSize(TYPE_SM.title3.size)
               .fontColor(this.getThemeColors().primaryText)
-            Text('添加歌曲')
+            Text($r('app.string.add_songs'))
               .fontSize(TYPE_SM.subhead.size)
               .fontColor(this.getThemeColors().primaryText)
               .margin({ left: SPACE_SM.compact })
@@ -425,12 +442,27 @@ struct PlaylistDetail {
           .onClick(() => {
             this.openPicker();
           })
+
+          Row() {
+            Text($r('app.string.export'))
+              .fontSize(TYPE_SM.subhead.size)
+              .fontColor(this.getThemeColors().primaryText)
+          }
+          .layoutWeight(1)
+          .height(40)
+          .justifyContent(FlexAlign.Center)
+          .backgroundColor(this.getThemeColors().cardBg)
+          .borderRadius(24)
+          .margin({ left: SPACE_SM.cozy })
+          .onClick(() => {
+            this.onExport();
+          })
         }
         .width('100%')
         .padding({ left: SPACE_SM.base, right: SPACE_SM.base, bottom: SPACE_SM.cozy })
 
         if (this.songs.length > 0) {
-          Text('长按歌曲可拖动排序')
+          Text($r('app.string.long_press_hint'))
             .fontSize(TYPE_SM.caption1.size)
             .fontColor(this.getThemeColors().secondaryText)
             .margin({ left: SPACE_SM.base, bottom: SPACE_SM.tight })
@@ -444,12 +476,12 @@ struct PlaylistDetail {
               .fillColor(this.getThemeColors().secondaryText)
               .margin({ bottom: SPACE_SM.base })
 
-            Text('歌单还没有歌曲')
+            Text($r('app.string.playlist_empty'))
               .fontSize(TYPE_SM.headline.size)
               .fontColor(this.getThemeColors().secondaryText)
               .fontWeight(FontWeight.Medium)
 
-            Text('点击「添加歌曲」从本地库挑选')
+            Text($r('app.string.add_from_lib_hint'))
               .fontSize(TYPE_SM.footnote.size)
               .fontColor(semanticOf(this.isDark).labelSecondary)
               .margin({ top: SPACE_SM.compact })
@@ -458,7 +490,7 @@ struct PlaylistDetail {
           .justifyContent(FlexAlign.Center)
         } else {
           List() {
-            ForEach(this.songs, (song: SongItem, index: number) => {
+            LazyForEach(this.songsDataSource, (song: SongItem, index: number) => {
               ListItem() {
                 SongRow({
               song: song,
@@ -520,7 +552,7 @@ struct PlaylistDetail {
   @Builder
   sheetContent() {
     if (this.sheetKind === 'detail') {
-      SongDetailSheet({ songId: this.selectedSong?.id ?? 0 })
+      SongDetailSheet({ songId: this.selectedSong?.id ?? 0, pathStack: this.pathStack })
     } else if (this.sheetKind === 'add') {
       AddToPlaylistSheet({
         songId: this.selectedSong?.id ?? 0,

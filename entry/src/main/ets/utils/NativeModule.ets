@@ -41,10 +41,6 @@ export class NativeUtils {
     return NativeUtils.instance;
   }
 
-  public add(a: number, b: number): number {
-    return nativeModule.add(a, b);
-  }
-
   public parseAudioMetadata(filePath: string): AudioMetadata {
     return nativeModule.parseAudioMetadata(filePath);
   }

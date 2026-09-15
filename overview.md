@@ -1,7 +1,7 @@
 # Lumio Music — 项目交付概览
 
-> HarmonyOS 6.1.1 / API 24，ArkTS + ArkUI + C++ NAPI。
-> 版本 `2.1.0`（`AppScope/app.json5`），bundleName `com.Lumio.music`。
+> HarmonyOS（compatibleSdkVersion 26.0.0 / API 26），ArkTS + ArkUI + C++ NAPI。
+> 版本 `3.0.0`（`AppScope/app.json5`），bundleName `com.Lumio.music`。
 > 许可证 Apache-2.0，Copyright 2026 何宇翔。
 
 ## 1. 项目定位
@@ -29,7 +29,7 @@ Lumio Music 是一款运行在 HarmonyOS 平台的**纯本地**音乐播放器�
 ┌──────────────────────────────────────────────────────────────┐
 │                      ArkTS / ArkUI 前端                       │
 │  HdsNavigation + HdsTabs  │  Navigation + NavPathStack 路由  │
-│  11 条 NavDestination 路由（route_map.json）                 │
+│  17 条 NavDestination 路由（route_map.json）                 │
 ├──────────────────────────────────────────────────────────────┤
 │  业务层        │ LocalLibrary / Mine / PlayerPage / Settings  │
 │                │ SettingsCategory / About / PrivacyPolicy    │
@@ -56,7 +56,6 @@ Lumio Music 是一款运行在 HarmonyOS 平台的**纯本地**音乐播放器�
 |------|------|------|
 | `KEEP_BACKGROUND_RUNNING` | 后台持续播放 | inuse |
 | `INTERNET` | 关于页网页跳转 / 投播设备网络发现 | always |
-| `GET_NETWORK_INFO` | 查询网络状态 | always |
 
 > 无 `READ_MEDIA`/`WRITE_MEDIA`/`DETECT_GESTURE` — 歌曲经 DocumentViewPicker 选择后拷入沙箱，不访问系统媒体库。
 
@@ -79,17 +78,16 @@ Lumio Music 是一款运行在 HarmonyOS 平台的**纯本地**音乐播放器�
 |------|------|------|
 | README | `README.md` | 用户/开发者入口文档 |
 | CHANGELOG | `CHANGELOG.md` | 版本演进日志 |
-| PRD | `docs/PRD_Lumio_Music.md` | 产品需求文档（FR-01~FR-34） |
+| PRD | `docs/PRD.md` | 产品需求文档（合并版：PRD + PRD_Lumio_Music） |
 | 模块拆解 | `docs/功能模块拆解表.md` | 模块→文件映射（A~W 共 23 个一级模块） |
-| 审查报告 1 | `docs/代码审查报告_PRD落地.md` | PRD 落地批次（P0×6/P1×10/P2×13） |
-| 审查报告 2 | `docs/代码审查报告_第二轮增强.md` | 第二轮增强（P0×3/P1×7/P2×11） |
-| 实施计划 1 | `docs/实施计划_PRD落地.md` | W1~W5 + 第三轮 F1~F7 |
-| 实施计划 2 | `docs/实施计划_第二轮增强.md` | A~E + 第三轮交互打磨 |
+| 设计系统 | `docs/设计系统.md` | 设计系统（合并版：令牌架构 + Apple 设计语言 + UI 设计系统） |
+| 审查报告 | `docs/审查报告.md` | 审查报告（合并版：架构/合规/安全/设计/Sheet/卡片/完成度） |
+| 实施计划 | `docs/实施计划.md` | 实施计划（合并版：范围与规划 + 两轮计划） |
 | C++ 验证 | `docs/C++解析器真实音频验证.md` | 真实音频 + 合成样本验证报告 |
 
 ## 7. 已知限制
 
-- **智感握姿主动感知**：6.1.1 SDK 无 `@kit.MultimodalAwarenessKit`，仅底栏布局自适应生效。
+- **智感握姿主动感知**：API 26 SDK 无 `@kit.MultimodalAwarenessKit`，仅底栏布局自适应生效。
 - **空间音频 / 多频段 EQ**：`setSpatializationEnabled` 需系统权限，多频段 EQ 无公开 API，设置页仅只读展示。
 - **歌单云同步**：无账号体系，仅支持本地歌单（含手动拖拽排序）。
 - **音频格式真机矩阵**：C++ 解析器已做「失败回退文件名」兜底不崩，冷门编码分支需真机复验。

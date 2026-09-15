@@ -21,7 +21,8 @@ import { SPACE_SM, LUMIO_RADIUS } from '../../tokens/LumioScale';
  * Inset Grouped 容器：整组圆角卡片（backgroundColor = cardBg），叠在玻璃之上形成「卡中卡」，
  * 对标 iOS 设置分组。统一内距：左右 base(16) / 上下 cozy(12)。
  *
- * 通过 ThemeManager.getColors() 取色（随 isDark 切换；宿主组件持有 @StorageProp('isDark') 会触发重渲染）。
+ * 取色走 @StorageProp('isDark') + 静态令牌（ThemeManager.darkColors/lightColors），
+ * 组件自身即响应主题切换；不再用非响应式的 ThemeManager.getColors()。
  *
  * @param expand 为 true 时容器沿主轴撑满父级剩余空间（用于内部含 layoutWeight(1) 的 List 等场景）；
  *               默认 false（内容高度自适应，适合 SongDetailSheet 等定高内容块）。
@@ -32,13 +33,15 @@ export struct GroupedSheetContainer {
   @BuilderParam content: () => void;
   /** 是否沿主轴撑满父级剩余空间。 */
   @Prop expand: boolean = false;
+  /** 深浅主题（响应式）：驱动卡片底色随主题切换。 */
+  @StorageProp('isDark') isDark: boolean = false;
 
   build() {
     Column() {
       this.content();
     }
     .width('100%')
-    .backgroundColor(ThemeManager.getColors().cardBg)
+    .backgroundColor(this.isDark ? ThemeManager.darkColors.cardBg : ThemeManager.lightColors.cardBg)
     .borderRadius(LUMIO_RADIUS.md)
     .padding({
       top: SPACE_SM.cozy,
