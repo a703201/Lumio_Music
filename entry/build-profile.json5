@@ -8,6 +8,13 @@
     },
     "externalNativeOptions": {
       "path": "./src/main/cpp/CMakeLists.txt",
+      // abiFilters 缺省值为 ["arm64-v8a"]（DevEco 4.1.3.400+ 起），
+      // 缺少 x86_64 会导致 HAP 内只有 arm64-v8a 的 .so，
+      // 安装到 x86_64 模拟器时报 code:9568347 install parse native so failed。
+      "abiFilters": [
+        "arm64-v8a",
+        "x86_64"
+      ],
       "arguments": "",
       "cppFlags": ""
     }

@@ -28,7 +28,8 @@
 - 播放/暂停语义：播放中显示暂停图标(playing?pause:play)，ControlArea/Layout/WidgetCard 三处一致。
 - 范围红线：功能 21/路由 14/AppStorage 键 26/Sheet 三机制冻结；不合并两个 SongItem；FolderBrowse.songRow()@153 是降级变体（无长按菜单、height 64）接入时不得补菜单。
 - 改版已基本完成（2026-09-12，提交 718560c→dbfc957）：令牌全覆盖、硬编码色清零、表面层级翻转（灰底白卡）、SongRow 收口、长按菜单标准 Menu/MenuItem、播放页媒体层接 onMediaOf。
-- 液态玻璃底部导航：依赖 com.hm.appleui.hw（仅 arm64-v8a）；AppleUI 以「前一个兄弟节点」为截帧目标→Stack{Bottom}: 探针→内容→AppleUI→导航项；deviceInfo.abiList 是 string。
+- 底部导航现状（2026-10-06）：已从「自绘浮动胶囊 + uiMaterial.ImmersiveMaterial」改为 **HdsTabs（`@kit.UIDesignKit`）+ barFloatingStyle 沉浸材质**，Tab 用 `BottomTabBarStyle.of(...)`；播放按钮改为 FAB 悬浮右上（`Alignment.BottomEnd`）。AppleUI/liquidglass 方案是**历史路径**（依赖 com.hm.appleui.hw 仅 arm64-v8a，现全仓零引用）。deviceInfo.abiList 是 string。
+- ⚠️ **BottomTabBarStyle 图标必须传 `TabBarSymbol`**：icon 参数类型是 `ResourceStr | TabBarSymbol`，传 `$r('sys.symbol.*')`（Resource）会走 ResourceStr 分支被当**图片**渲染→图标空白；须传 `{ normal: SymbolGlyphModifier, selected: SymbolGlyphModifier }`。`SymbolGlyphModifier` 从 `@kit.ArkUI` 具名导入；TabBarSymbol 是全局声明裸用。`iconStyle`（TabBarIconStyle）**仅对 svg 图源生效**，对系统符号无效，符号选中/未选中颜色只能用 modifier 的 `fontColor([...])`。
 - 图标库 example/HarmonyOS_Icons（290 个并入 resources/base/media，索引 docs/图标库索引.json）。
 - 平板主从布局（G，LocalLibrary `lg` 断点）：左 List + 右常驻详情面板（masterDetailPanel）；已把 module.json5 deviceTypes 加 `"tablet"` 才能在平板上触发 lg。
 
@@ -49,6 +50,13 @@
   - ⚠️ **`/tmp` 不可写**（重定向到 /tmp 会静默失败）→ 构建日志必须 `tee` 到**仓库内**文件再 grep；日志非 UTF-8，用 `grep -a`。
   - 已验证：清 build 全量重建 = `BUILD SUCCESSFUL`，32/33 任务真实执行（约 1m22s），ERROR 计数 0。此前「沙箱无 SDK 无法出 HAP」的记录**已作废**。
   - ⚠️ **2026-09-12 当前会话复核（重要）**：本会话沙箱**仅有 `/d/Codes/Project/Lumio_Music`，无 DevEco Studio / HarmonyOS SDK / hvigorw.js，连托管 Node 也未挂载**（`/c/Users` 不存在）。即本环境**无法复现构建**，上述「沙箱可构建」指 2026-09-13 那次会话（可能已重镜像或指用户本机）。**本会话所有改动只能做静态审查，最终编译门禁必须由用户在 DevEco 真机执行 `hvigorw assembleHap` 确认 0 ERROR。**
+
+### ABI 配置（2026-10-06：修模拟器安装失败 code:9568347）
+- **症状**：DevEco 本地模拟器部署报 `Install Failed: code:9568347 / install parse native so failed`（"设备 Abi 与 C++ 工程配置的 Abi 不匹配"）。构建成功、仅安装被拒。
+- **根因**：`entry/build-profile.json5` 的 `externalNativeOptions` 原先**未配 `abiFilters`** → 合法缺省只有 `arm64-v8a`；本地模拟器是 **x86_64**(ohos-x64) → HAP 的 `libs/` 与设备 ABI 交集为空。
+- **修复**：显式 `"abiFilters": ["arm64-v8a", "x86_64"]`（依据官方 FAQ faqs-app-debugging-14）。代价：双 ABI 构建时间/HAP 体积约翻倍；只上真机可退回 `["arm64-v8a"]`。
+- **查设备 ABI**：`hdc shell param get const.product.cpu.abilist`。改 ABI 后建议 Clean Project（或删 `entry/.cxx`+`entry/build`）再全量构建。
+- 依赖 `com.hm.appleui.hw@1.1.2` **只含 arm64-v8a so**（libliquidglass.so），且 main/Beta 分支 ArkTS **零引用**（死依赖，hvigor 按已有 ABI 目录收集，不阻塞 x86_64 安装；清理可省包体）。`nativeCompiler: "BiSheng"` 支持 x86_64，无需改。
 
 ## 兼容（3.0.0 起 min 26 / target 26）
 - **决策（2026-09-13，用户批准）**：3.0.0 **放弃 API 24 设备覆盖率**，`compatibleSdkVersion` → `"26.0.0"`；ApiCompat 闸门与全部降级垫片（`import type`+动态 import 的 uiMaterial、ContainerReader 降级分支、`fill` 重载）**正在移除**，收敛为单一 API 26 路径（P0-A1）。

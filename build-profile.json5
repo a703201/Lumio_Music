@@ -5,13 +5,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\a7032\\.ohos\\config\\default_Lumio_Music_hRUlq04PupK9R-lFEei8NzYA29c2T_GXvumZ8DK4wys=.cer",
+          "certpath": "C:\\Users\\a7032\\.ohos\\config\\default_Lumio_Music_-Mori_U7X8lpiegP8ViTnpJB1L7H4ANeDc4aBBt9ACo=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001B5803706C7F0CF974930617F1465BCA3EDE8D3BC28262A6DD3300D65721C087C1CF1698219EE4B8",
-          "profile": "C:\\Users\\a7032\\.ohos\\config\\default_Lumio_Music_hRUlq04PupK9R-lFEei8NzYA29c2T_GXvumZ8DK4wys=.p7b",
+          "keyPassword": "0000001A8F7DA9864F2139C65A115EABEB18B4EF5E674804AE2D93CEBAA1C942AC2C3DF8DDA5A346872D",
+          "profile": "C:\\Users\\a7032\\.ohos\\config\\default_Lumio_Music_-Mori_U7X8lpiegP8ViTnpJB1L7H4ANeDc4aBBt9ACo=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\a7032\\.ohos\\config\\default_Lumio_Music_hRUlq04PupK9R-lFEei8NzYA29c2T_GXvumZ8DK4wys=.p12",
-          "storePassword": "0000001BDA709720AC16CBC588C22FC0F73FB8E1ABCBB07AC3AFD6F78E58292EDE35096BD7A3345EB3A069"
+          "storeFile": "C:\\Users\\a7032\\.ohos\\config\\default_Lumio_Music_-Mori_U7X8lpiegP8ViTnpJB1L7H4ANeDc4aBBt9ACo=.p12",
+          "storePassword": "0000001AB14EA9DA1AC6B96E3BE3B7EEF5B253D040C26B383ABDD8242823CBA73A25D02974C51908C62D"
         }
       }
     ],

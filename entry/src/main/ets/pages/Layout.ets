@@ -20,17 +20,16 @@ import { Mine } from './Mine';
 import { MusicStore } from '../services/MusicStore';
 import { SongItem } from '../models/music';
 import { common } from '@kit.AbilityKit';
-import { curves } from '@kit.ArkUI';
+import { curves, SymbolGlyphModifier } from '@kit.ArkUI';
 import { Motion, springSnappy } from '../common/utils/DesignSystem';
 import { image } from '@kit.ImageKit';
 import { PreferencesUtil } from '../utils/PreferencesUtil';
 import { SettingsStore } from '../utils/SettingsStore';
 import { OnboardingSheet } from '../components/OnboardingSheet';
-// 3.0.0 起最低平台 API 26，uiMaterial 模块全平台可用，静态导入 + 直接构造（不再有动态 import 双路径）。
-import uiMaterial from '@ohos.arkui.uiMaterial';
+// 3.0.0 起最低平台 API 26：底部导航换用 HdsTabs（@kit.UIDesignKit）+ hdsMaterial 沉浸材质，
+// 替代原自绘浮动胶囊 + uiMaterial.ImmersiveMaterial 方案。
+import { HdsTabs, HdsTabsController, BlurStrategy, hdsMaterial } from '@kit.UIDesignKit';
 import { semanticOf, onMediaOf } from '../tokens/LumioColor';
-import { LumioTheme, SpringKind } from '../tokens/LumioTheme';
-import { TYPE_SM, SPACE_SM } from '../tokens/LumioScale';
 
 const PLAYER_COVER_ID: string = 'player_cover';
 
@@ -64,27 +63,40 @@ struct Layout {
     return this.isDark ? ThemeManager.darkColors : ThemeManager.lightColors;
   }
 
-  private tabsController: TabsController = new TabsController();
+  private tabsController: HdsTabsController = new HdsTabsController();
   private store: MusicStore = MusicStore.getInstance();
   private rotateTimer: number = -1;
   @State currentIndex: number = 0;
   @State coverRotation: number = 0;
-  // 底部悬浮导航交互动画状态
+  // 播放按钮按压缩放
   @State playerScale: number = 1.0;
-  @State tabScales: number[] = [1.0, 1.0];
   // 底部迷你播放条的封面：缓存当前播放歌曲的真实封面（取自 CoverCache；未抽取到时回退默认图），
   // 通过 refreshPlayerCover() 在切歌 / 封面抽取完成（coverRefreshToken）时刷新。
   @State playerCover: Resource | image.PixelMap = $r('app.media.ic_default_cover');
-  // 底部浮动栏的沉浸系统材质。最低平台已是 API 26，构造即就绪且此后不再变化，
-  // 故用普通成员而非 @State：无需触发重渲染，也避免 ArkUI 对 @State 对象做代理包装后
-  // 传给 systemMaterial() 时可能影响原生材质对象的识别。
-  private miniBarMaterial: uiMaterial.Material =
-    new uiMaterial.ImmersiveMaterial({ style: uiMaterial.ImmersiveStyle.REGULAR });
 
   private tabs: TabItem[] = [
     { title: $r('app.string.music_library'), icon: $r('sys.symbol.music_square_stack_fill') },
     { title: $r('app.string.mine'), icon: $r('sys.symbol.person') }
   ];
+
+  /**
+   * 构造底部页签的系统符号图标样式。
+   *
+   * BottomTabBarStyle 的 icon 参数类型是 ResourceStr | TabBarSymbol：
+   * - 传 Resource（即 $r('sys.symbol.*')）会走 ResourceStr 分支，被当作**图片**资源渲染，
+   *   而 sys.symbol 不是图片资源，结果为空白 —— 这就是图标不显示的原因；
+   * - 只有传 TabBarSymbol（normal / selected 为 SymbolGlyphModifier）才按 SymbolGlyph 渲染系统符号。
+   *
+   * 另外 BottomTabBarStyle.iconStyle 的 TabBarIconStyle 官方说明「仅对 svg 图源生效」，
+   * 对系统符号无效，因此选中态/未选中态的颜色只能由这里的 fontColor 控制。
+   */
+  private buildTabSymbol(item: TabItem): TabBarSymbol {
+    let normal: SymbolGlyphModifier = new SymbolGlyphModifier(item.icon);
+    normal.fontColor([this.getThemeColors().secondaryText]);
+    let selected: SymbolGlyphModifier = new SymbolGlyphModifier(item.icon);
+    selected.fontColor([this.getThemeColors().accent]);
+    return { normal: normal, selected: selected };
+  }
 
   aboutToAppear(): void {
     AppStorage.setOrCreate('songList', this.store.songs);
@@ -207,41 +219,7 @@ struct Layout {
   }
 
   @Builder
-  private capsuleTabItem(item: TabItem, index: number) {
-    Column({ space: 4 }) {
-      SymbolGlyph(item.icon)
-        .fontSize(TYPE_SM.title1.size)
-        .fontColor([index === this.currentIndex ? this.getThemeColors().accent : this.getThemeColors().secondaryText])
-        .animation({ duration: 160, curve: LumioTheme.curve(SpringKind.Crisp) })
 
-      Text(item.title)
-        .fontSize(TYPE_SM.caption2.size)
-        .fontColor(index === this.currentIndex ? this.getThemeColors().accent : this.getThemeColors().secondaryText)
-        .fontWeight(index === this.currentIndex ? FontWeight.Medium : FontWeight.Regular)
-        .animation({ duration: 160, curve: LumioTheme.curve(SpringKind.Crisp) })
-    }
-    .height('100%')
-    .layoutWeight(1)
-    .justifyContent(FlexAlign.Center)
-    .scale({ x: this.tabScales[index] ?? 1.0, y: this.tabScales[index] ?? 1.0 })
-    .animation({ curve: springSnappy(), duration: Motion.tap })
-    .onClick(() => {
-      this.tabsController.changeIndex(index);
-    })
-    .onTouch((event: TouchEvent) => {
-      if (event.type === TouchType.Down) {
-        let scales = [...this.tabScales];
-        scales[index] = 0.9;
-        this.tabScales = scales;
-      } else if (event.type === TouchType.Up || event.type === TouchType.Cancel) {
-        let scales = [...this.tabScales];
-        scales[index] = 1.0;
-        this.tabScales = scales;
-      }
-    })
-  }
-
-  @Builder
   private playerButton() {
     Stack() {
       if (this.songList.length > 0) {
@@ -279,6 +257,7 @@ struct Layout {
     .height(56)
     .backgroundColor(this.getThemeColors().accent)
     .borderRadius(16)
+    .margin({ bottom: this.bottomHeight + 72, right: 16 })
     .shadow({
       radius: 12,
       color: semanticOf(this.isDark).fillAccentMuted,
@@ -317,78 +296,44 @@ struct Layout {
     .hitTestBehavior(HitTestMode.None)
   }
 
-  @Builder
-  private miniBarInner() {
-    Row({ space: 12 }) {
-      Row({ space: 0 }) {
-        ForEach(this.tabs, (item: TabItem, index: number) => {
-          this.capsuleTabItem(item, index)
-        }, (item: TabItem, index: number) => index.toString())
-      }
-      .layoutWeight(1)
-      .height(56)
-      .justifyContent(FlexAlign.SpaceEvenly)
-
-      this.playerButton()
-    }
-    .width('100%')
-    .padding({ left: SPACE_SM.compact, right: SPACE_SM.compact })
-  }
-
-  /**
-   * 底部悬浮导航（苹果风浮动胶囊 / 鸿蒙 Hds 浮动栏）：
-   * - 居中悬浮胶囊（非通栏），浮于内容之上，内容可滚动至系统导航条区域，全屏沉浸；
-   * - 唯一形态：uiMaterial 系统沉浸材质，自动适配深浅色与算力档位。
-   *   最低平台已是 API 26，不存在「低版本无材质」的分支，故这里只有一条 .systemMaterial 链；
-   *   同节点**绝不**再叠加 backgroundColor（材质与纯色互斥，同时设置会让材质被纯色盖住）。
-   */
-  @Builder
-  private customBottomBar() {
-    // @Builder 调用返回 void，不能直接链式挂材质；材质挂在外层真实容器 Row 上。
-    Row() {
-      this.miniBarInner()
-    }
-    .width('92%')
-    .constraintSize({ maxWidth: 520 })
-    .systemMaterial(this.miniBarMaterial)
-    .shadow({
-      radius: 22,
-      color: this.getThemeColors().separator,
-      offsetX: 0,
-      offsetY: 8
-    })
-    .border({
-      width: this.isDark ? 0.5 : 0,
-      color: semanticOf(this.isDark).borderSubtle
-    })
-    .borderRadius(30)
-    .margin({ bottom: this.bottomHeight + 12 })
-  }
-
   build() {
     NavDestination() {
-      Stack({ alignContent: Alignment.Bottom }) {
-        Tabs({ barPosition: BarPosition.End, controller: this.tabsController }) {
+      Stack({ alignContent: Alignment.BottomEnd }) {
+        HdsTabs({ controller: this.tabsController }) {
           TabContent() {
             LocalLibrary()
           }
+          .tabBar(BottomTabBarStyle.of(this.buildTabSymbol(this.tabs[0]), this.tabs[0].title)
+            .labelStyle({ selectedColor: this.getThemeColors().accent, unselectedColor: this.getThemeColors().secondaryText }))
 
           TabContent() {
             Mine()
           }
+          .tabBar(BottomTabBarStyle.of(this.buildTabSymbol(this.tabs[1]), this.tabs[1].title)
+            .labelStyle({ selectedColor: this.getThemeColors().accent, unselectedColor: this.getThemeColors().secondaryText }))
         }
-        .barHeight(0)
+        .barPosition(BarPosition.End)
+        .barMode(BarMode.Fixed)
+        .barOverlap(true)
         .scrollable(false)
         .animationDuration(200)
-        .backgroundColor(this.getThemeColors().bg)
+        .blurStrategy(BlurStrategy.ADAPTIVE)
+        .barFloatingStyle({
+          barBottomMargin: this.bottomHeight + 8,
+          barSideMargin: 12,
+          systemMaterialEffect: {
+            materialType: hdsMaterial.MaterialType.IMMERSIVE,
+            materialLevel: hdsMaterial.MaterialLevel.ADAPTIVE
+          },
+          thermoCtrl: true
+        })
         .onChange((index: number) => {
           this.currentIndex = index;
         })
-        // 全屏沉浸：内容底部仅预留系统导航条安全区 + 少量余量，
-        // 列表可滚动至系统导航条区域，浮动底栏覆盖其上方而非预留整块空白。
-        .padding({ bottom: this.bottomHeight + 16 })
+        .backgroundColor(this.getThemeColors().bg)
 
-        this.customBottomBar()
+        // 播放按钮悬浮在 tabBar 右上方（FAB 风格），不挤占 tab 项空间
+        this.playerButton()
       }
       .width('100%')
       .height('100%')
